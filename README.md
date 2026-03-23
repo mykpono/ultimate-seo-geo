@@ -161,6 +161,17 @@ ultimate-seo-geo/
 
 This means a simple schema request loads SKILL.md + `references/schema-types.md` — not the full 5,300+ lines of domain knowledge.
 
+### Claude Code: why two `.claude-plugin/` folders?
+
+Do **not** merge them into one directory. This repo follows the layout Claude Code expects for a **GitHub marketplace** plus an **installable plugin**:
+
+| Location | File | Role |
+|----------|------|------|
+| **Repo root** | `.claude-plugin/marketplace.json` | **Marketplace catalog** — lists plugins, owner metadata, and each plugin’s `source` path (here: `./plugins/ultimate-seo-geo`). |
+| **Under that path** | `plugins/ultimate-seo-geo/.claude-plugin/plugin.json` | **Plugin manifest** for the package at `source` — name, version, keywords, repository URL, etc. |
+
+When someone runs `/plugin marketplace add mykpono/ultimate-seo-geo`, the tool reads the **root** catalog, then resolves **`source`** and loads **that folder’s** `plugin.json`. Putting both JSON files in a single `.claude-plugin/` would break that resolution. A repo that is **only** a plugin (no marketplace) can use a single plugin manifest at the root, but then you typically would **not** use the marketplace flow for that repo.
+
 ---
 
 ## Scripts
