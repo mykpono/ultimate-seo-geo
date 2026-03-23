@@ -228,10 +228,21 @@ git push origin main
 
 ---
 
+## Verify locally (before or after push)
+
+From the repo root, run **`CURSOR_VERIFY.md`** (step-by-step checks) or at minimum:
+
+```bash
+python3 scripts/check-plugin-sync.py
+```
+
+---
+
 ## Verify it works (after pushing)
 
-In Claude Code:
-```bash
+In **Claude Code** (type in the app chat, not in Terminal/zsh):
+
+```text
 /plugin marketplace add mykpono/ultimate-seo-geo
 /plugin install ultimate-seo-geo@ultimate-seo-geo
 ```

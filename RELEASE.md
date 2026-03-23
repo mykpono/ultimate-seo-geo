@@ -21,6 +21,8 @@ Use this before tagging or publishing a new version.
    python3 scripts/check-plugin-sync.py
    ```
 
+   Broader manual checklist: **`CURSOR_VERIFY.md`**.
+
 4. Commit, push, and tag as needed.
 
 CI fails if root `SKILL.md` / `references/` disagree with `plugins/ultimate-seo-geo/skills/ultimate-seo-geo/` or if any version field above diverges.
