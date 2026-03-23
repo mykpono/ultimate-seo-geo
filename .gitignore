@@ -1,0 +1,19 @@
+# Eval workspace artifacts
+benchmarks/
+**/iteration-*/
+**/with_skill/
+**/without_skill/
+
+# Packaged skill output
+*.skill
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
