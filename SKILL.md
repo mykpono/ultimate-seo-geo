@@ -1,18 +1,6 @@
 ---
 name: ultimate-seo-geo
-license: MIT
-version: 1.2.0
-updated: 2026-03-24
-description: >-
-  Universal SEO + GEO skill: scored full-site audits with fixes; technical SEO (CWV/INP,
-  crawl, JS rendering); CORE-EEAT (80) + CITE domain (40) scoring; Schema.org JSON-LD;
-  entity/KG/Wikidata signals; GEO for AI Overviews, AI Mode, ChatGPT, Perplexity; keywords,
-  links, images, hreflang, programmatic and local SEO, migrations, pruning. Includes 24 SEO diagnostic Python scripts
-  plus requirements-check (deps) and score_eval_transcript (eval harness); check-plugin-sync
-  is CI-only. Use when the user mentions SEO, GEO, audit, schema, rankings,
-  traffic drop, AI citations, backlinks, sitemap, crawl, robots, migration, hreflang,
-  snippets, content strategy—or visibility or traffic-loss questions. Not for PPC/Ads,
-  social management, or generic marketing strategy.
+description: Universal SEO + GEO skill for scored full-site audits, technical SEO, CORE-EEAT and CITE scoring, Schema.org JSON-LD, entity optimization, and GEO for AI Overviews, ChatGPT, and Perplexity. Use when the user mentions SEO, GEO, audit, schema, rankings, traffic drop, AI citations, backlinks, sitemap, crawl, robots, migration, hreflang, or content strategy.
 ---
 
 # Ultimate SEO + GEO — Universal Search Optimization Skill

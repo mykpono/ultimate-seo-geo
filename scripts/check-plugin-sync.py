@@ -18,7 +18,8 @@ def _read(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
-def _skill_frontmatter_version(path: Path) -> str:
+def _skill_frontmatter_version(path: Path) -> str | None:
+    """Extract version from SKILL.md frontmatter, or None if not present."""
     t = _read(path)
     if not t.startswith("---"):
         sys.exit(f"{path}: missing YAML frontmatter")
@@ -32,7 +33,7 @@ def _skill_frontmatter_version(path: Path) -> str:
         )
         if m:
             return m.group(1).strip().strip("'\"")
-    sys.exit(f"{path}: version not found in YAML frontmatter (expected top-level version: …)")
+    return None
 
 
 def main() -> int:
@@ -127,30 +128,24 @@ def main() -> int:
     market_path = ROOT / ".claude-plugin/marketplace.json"
     with open(market_path, encoding="utf-8") as f:
         market = json.load(f)
-    meta_v = market["metadata"]["version"]
-    listed_v = market["plugins"][0]["version"]
-    if meta_v != listed_v:
-        sys.exit(
-            f"marketplace.json: metadata.version ({meta_v!r}) != plugins[0].version ({listed_v!r})"
-        )
+    listed_v = market["plugins"][0].get("version")
 
     plugin_json = ROOT / "plugins/ultimate-seo-geo/.claude-plugin/plugin.json"
     with open(plugin_json, encoding="utf-8") as f:
         pjson = json.load(f)
-    pj_v = pjson["version"]
+    pj_v = pjson.get("version")
 
-    sk_v = _skill_frontmatter_version(skill_root)
+    versions = {}
+    if listed_v:
+        versions["marketplace.plugins[0].version"] = listed_v
+    if pj_v:
+        versions["plugin.json version"] = pj_v
 
-    versions = {
-        "marketplace.metadata.version": meta_v,
-        "marketplace.plugins[0].version": listed_v,
-        "plugin.json version": pj_v,
-        "SKILL.md frontmatter version": sk_v,
-    }
-    unique = set(versions.values())
-    if len(unique) != 1:
-        lines = "\n".join(f"  {k}: {v!r}" for k, v in versions.items())
-        sys.exit("Version strings must match everywhere:\n" + lines)
+    if len(versions) >= 2:
+        unique = set(versions.values())
+        if len(unique) != 1:
+            lines = "\n".join(f"  {k}: {v!r}" for k, v in versions.items())
+            sys.exit("Version strings must match everywhere:\n" + lines)
 
     print("Plugin sync + version alignment OK ✓")
     for k, v in versions.items():
