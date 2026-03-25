@@ -6,7 +6,8 @@ Use this before tagging or publishing a new version. Run everything from the **r
 
 ## 1. Bump the version (same value everywhere)
 
-- `SKILL.md` frontmatter → top-level `version:` (must match marketplace + `plugin.json`)
+- `SKILL.md` frontmatter → top-level `version:` and `updated:` (must match marketplace + `plugin.json`)
+- `SKILL.md` body → **Skill at a glance** table: keep **Version** / **Updated** in sync with frontmatter
 - `.claude-plugin/marketplace.json` → `metadata.version` **and** `plugins[0].version`
 - `plugins/ultimate-seo-geo/.claude-plugin/plugin.json` → `version`
 - Optional: `README.md` and `plugins/ultimate-seo-geo/README.md` version badges
