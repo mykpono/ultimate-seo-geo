@@ -358,6 +358,9 @@ def collect_data(url: str) -> dict:
         ("link_profile", "link_profile.py", [url, "--max-pages", "20"]),
         ("hreflang", "hreflang_checker.py", [url]),
         ("duplicate_content", "duplicate_content.py", [url]),
+        ("sitemap", "sitemap_checker.py", [url]),
+        ("local_signals", "local_signals_checker.py", [url]),
+        ("indexnow_probe", "indexnow_checker.py", [url, "--probe"]),
     ]
 
     # Add parse_html and readability if page was fetched
@@ -374,6 +377,20 @@ def collect_data(url: str) -> dict:
         data["sections"][name] = result
         status = "⚠️ error" if "error" in result and result.get("error") else "✅"
         print(f"  {status} {script} ({elapsed}s)")
+
+    # HTML-file-based checks (before temp file removal)
+    if html_path and os.path.exists(html_path):
+        for name, script, args in (
+            ("schema_validation", "validate_schema.py", [html_path]),
+            ("image_seo", "image_checker.py", [html_path, "--base-url", url]),
+        ):
+            print(f"  ⏳ Running {script}...")
+            start = time.time()
+            result = run_script(script, args)
+            elapsed = round(time.time() - start, 1)
+            data["sections"][name] = result
+            status = "⚠️ error" if "error" in result and result.get("error") else "✅"
+            print(f"  {status} {script} ({elapsed}s)")
 
     # Cleanup temp file
     if html_path and os.path.exists(html_path):
@@ -402,6 +419,11 @@ def calculate_overall_score(data: dict) -> dict:
         "link_profile": 7,
         "hreflang": 5,
         "duplicate_content": 5,
+        "schema_validation": 5,
+        "image_seo": 3,
+        "sitemap": 3,
+        "local_signals": 3,
+        "indexnow_probe": 2,
     }
 
     # Security score
@@ -541,6 +563,41 @@ def calculate_overall_score(data: dict) -> dict:
     else:
         scores["duplicate_content"] = 0
 
+    # JSON-LD validation (validate_schema.py --json)
+    sch = data["sections"].get("schema_validation", {})
+    if sch and not sch.get("error"):
+        scores["schema_validation"] = int(sch.get("score", 0))
+    else:
+        scores["schema_validation"] = 0
+
+    # Image alt coverage
+    img = data["sections"].get("image_seo", {})
+    if img and not img.get("error"):
+        scores["image_seo"] = int(img.get("score", 0))
+    else:
+        scores["image_seo"] = 0
+
+    # Sitemap discovery
+    sm = data["sections"].get("sitemap", {})
+    if sm and not sm.get("error"):
+        scores["sitemap"] = int(sm.get("score", 0))
+    else:
+        scores["sitemap"] = 0
+
+    # Local signals
+    loc = data["sections"].get("local_signals", {})
+    if loc and not loc.get("error"):
+        scores["local_signals"] = int(loc.get("score", 0))
+    else:
+        scores["local_signals"] = 0
+
+    # IndexNow probe (no API key)
+    inx = data["sections"].get("indexnow_probe", {})
+    if inx and not inx.get("error"):
+        scores["indexnow_probe"] = int(inx.get("score", 50))
+    else:
+        scores["indexnow_probe"] = 0
+
     # Weighted average (only scored categories)
     total_weight = 0
     weighted_sum = 0
@@ -651,6 +708,11 @@ def render_all_recommendations(data: dict) -> str:
         "article": "📄 Article SEO", "entity": "🏛️ Entity SEO",
         "link_profile": "🔗 Link Profile", "hreflang": "🌍 Hreflang",
         "duplicate_content": "📋 Content Uniqueness",
+        "schema_validation": "🧩 JSON-LD",
+        "image_seo": "🖼️ Image SEO",
+        "sitemap": "🗺️ Sitemaps",
+        "local_signals": "📍 Local signals",
+        "indexnow_probe": "📡 IndexNow",
     }
     html = ""
     env_fixes = data.get("environment_fixes", [])
@@ -742,6 +804,11 @@ def generate_html(data: dict, scores: dict) -> str:
     lp = data["sections"].get("link_profile", {})
     hf = data["sections"].get("hreflang", {})
     dc = data["sections"].get("duplicate_content", {})
+    sch = data["sections"].get("schema_validation", {})
+    imgsec = data["sections"].get("image_seo", {})
+    smap = data["sections"].get("sitemap", {})
+    lsig = data["sections"].get("local_signals", {})
+    inxp = data["sections"].get("indexnow_probe", {})
     env = data.get("environment", {})
     env_fixes = data.get("environment_fixes", [])
 
@@ -778,6 +845,11 @@ def generate_html(data: dict, scores: dict) -> str:
         "link_profile": ("🔗", "Link Profile"),
         "hreflang": ("🌍", "Hreflang"),
         "duplicate_content": ("📋", "Content Uniqueness"),
+        "schema_validation": ("🧩", "JSON-LD"),
+        "image_seo": ("🖼️", "Image SEO"),
+        "sitemap": ("🗺️", "Sitemaps"),
+        "local_signals": ("📍", "Local signals"),
+        "indexnow_probe": ("📡", "IndexNow"),
     }
 
     category_cards = ""
@@ -1315,7 +1387,7 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
                     <tr><td>Title</td><td>{(op.get('title','') or '—')[:70]}</td><td>{len(op.get('title','') or '')}</td></tr>
                     <tr><td>Meta Description</td><td>{(op.get('meta_description','') or '—')[:100]}</td><td>{len(op.get('meta_description','') or '')}</td></tr>
                     <tr><td>H1</td><td>{(op.get('h1',[''])[0] if isinstance(op.get('h1'), list) and op.get('h1') else op.get('h1','') or '—')[:70]}</td><td>—</td></tr>
-                    <tr><td>Canonical</td><td class="link-url">{op.get('canonical','—')[:80]}</td><td>—</td></tr>
+                    <tr><td>Canonical</td><td class="link-url">{(op.get('canonical') or '—')[:80]}</td><td>—</td></tr>
                 </tbody>
             </table>
             {render_recommendations(op)}
@@ -1428,6 +1500,91 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
                 <div class="summary-item"><div class="val">{len(dc.get('thin_pages', []))}</div><div class="lbl">Thin Pages</div></div>
             </div>
             {render_recommendations(dc)}
+        </div>
+    </div>
+
+    <!-- JSON-LD validation -->
+    <div class="section" id="section-schema_validation">
+        <div class="section-header" onclick="toggleSection('schema_validation')">
+            <h2>🧩 JSON-LD / Schema <span class="badge {"pass" if scores["categories"].get("schema_validation",0) >= 70 else "warning"}">{scores["categories"].get("schema_validation",0)}/100</span></h2>
+            <span class="chevron" id="chevron-schema_validation">▼</span>
+        </div>
+        <div class="section-body" id="body-schema_validation">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">{sch.get("jsonld_blocks", 0) if sch and not sch.get("error") else "—"}</div><div class="lbl">Blocks</div></div>
+                <div class="summary-item"><div class="val">{sch.get("error_count", 0) if sch and not sch.get("error") else "—"}</div><div class="lbl">Issues</div></div>
+                <div class="summary-item"><div class="val">{sch.get("critical_count", 0) if sch and not sch.get("error") else "—"}</div><div class="lbl">Critical</div></div>
+            </div>
+            {f'<p style="color:var(--red)">{html_lib.escape(str(sch.get("error","")))}</p>' if sch.get("error") else ""}
+            {render_recommendations(sch) if sch and not sch.get("error") else ""}
+        </div>
+    </div>
+
+    <!-- Image SEO -->
+    <div class="section" id="section-image_seo">
+        <div class="section-header" onclick="toggleSection('image_seo')">
+            <h2>🖼️ Image SEO <span class="badge {"pass" if scores["categories"].get("image_seo",0) >= 70 else "warning"}">{scores["categories"].get("image_seo",0)}/100</span></h2>
+            <span class="chevron" id="chevron-image_seo">▼</span>
+        </div>
+        <div class="section-body" id="body-image_seo">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">{imgsec.get("total_images", "—") if imgsec and not imgsec.get("error") else "—"}</div><div class="lbl">Images</div></div>
+                <div class="summary-item"><div class="val">{imgsec.get("missing_alt", "—") if imgsec and not imgsec.get("error") else "—"}</div><div class="lbl">Missing alt</div></div>
+                <div class="summary-item"><div class="val">{imgsec.get("missing_alt_pct", "—") if imgsec and not imgsec.get("error") else "—"}%</div><div class="lbl">Missing %</div></div>
+            </div>
+            {f'<p style="color:var(--red)">{html_lib.escape(str(imgsec.get("error","")))}</p>' if imgsec.get("error") else ""}
+            {render_recommendations(imgsec) if imgsec and not imgsec.get("error") else ""}
+        </div>
+    </div>
+
+    <!-- Sitemaps -->
+    <div class="section" id="section-sitemap">
+        <div class="section-header" onclick="toggleSection('sitemap')">
+            <h2>🗺️ Sitemaps <span class="badge {"pass" if scores["categories"].get("sitemap",0) >= 70 else "warning"}">{scores["categories"].get("sitemap",0)}/100</span></h2>
+            <span class="chevron" id="chevron-sitemap">▼</span>
+        </div>
+        <div class="section-body" id="body-sitemap">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">{len(smap.get("sitemap_urls", [])) if smap and not smap.get("error") else "—"}</div><div class="lbl">Sitemaps listed</div></div>
+                <div class="summary-item"><div class="val">{smap.get("primary_status", "—") if smap and not smap.get("error") else "—"}</div><div class="lbl">Primary HTTP</div></div>
+                <div class="summary-item"><div class="val">{smap.get("url_count_estimate", "—") if smap and not smap.get("error") else "—"}</div><div class="lbl">URLs (1st)</div></div>
+            </div>
+            {f'<p style="color:var(--red)">{html_lib.escape(str(smap.get("error","")))}</p>' if smap.get("error") else ""}
+            {render_recommendations(smap) if smap and not smap.get("error") else ""}
+        </div>
+    </div>
+
+    <!-- Local signals -->
+    <div class="section" id="section-local_signals">
+        <div class="section-header" onclick="toggleSection('local_signals')">
+            <h2>📍 Local signals <span class="badge {"pass" if scores["categories"].get("local_signals",0) >= 70 else "warning"}">{scores["categories"].get("local_signals",0)}/100</span></h2>
+            <span class="chevron" id="chevron-local_signals">▼</span>
+        </div>
+        <div class="section-body" id="body-local_signals">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">{"Yes" if lsig.get("localbusiness_jsonld") else "No"}</div><div class="lbl">LocalBusiness</div></div>
+                <div class="summary-item"><div class="val">{lsig.get("tel_links", "—")}</div><div class="lbl">tel: links</div></div>
+                <div class="summary-item"><div class="val">{"Yes" if lsig.get("structured_address_signals") else "No"}</div><div class="lbl">Address JSON</div></div>
+            </div>
+            {f'<p style="color:var(--red)">{html_lib.escape(str(lsig.get("error","")))}</p>' if lsig.get("error") else ""}
+            {render_recommendations(lsig) if lsig and not lsig.get("error") else ""}
+        </div>
+    </div>
+
+    <!-- IndexNow probe -->
+    <div class="section" id="section-indexnow_probe">
+        <div class="section-header" onclick="toggleSection('indexnow_probe')">
+            <h2>📡 IndexNow (probe) <span class="badge info">{scores["categories"].get("indexnow_probe",0)}/100</span></h2>
+            <span class="chevron" id="chevron-indexnow_probe">▼</span>
+        </div>
+        <div class="section-body" id="body-indexnow_probe">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">{"Yes" if inxp.get("meta_indexnow_present") else "No"}</div><div class="lbl">Meta tag</div></div>
+                <div class="summary-item"><div class="val">{"Yes" if inxp.get("robots_mentions_indexnow") else "No"}</div><div class="lbl">robots hint</div></div>
+                <div class="summary-item"><div class="val">{"Yes" if inxp.get("robots_has_sitemap") else "No"}</div><div class="lbl">Sitemap in robots</div></div>
+            </div>
+            {f'<p style="color:var(--red)">{html_lib.escape(str(inxp.get("error","")))}</p>' if inxp.get("error") else ""}
+            {render_recommendations(inxp) if inxp and not inxp.get("error") else ""}
         </div>
     </div>
 

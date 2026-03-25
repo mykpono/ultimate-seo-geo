@@ -8,10 +8,11 @@ Example usage:
   python3 validate_schema.py path/to/file.html
 """
 
+import argparse
 import json
+import os
 import re
 import sys
-import os
 from typing import List
 
 
@@ -98,34 +99,99 @@ def _validate_schema_object(obj: dict, block_num: int) -> List[str]:
     return errors
 
 
+def _is_critical(msg: str) -> bool:
+    low = msg.lower()
+    return any(k in low for k in ("placeholder", "deprecated", "retired"))
+
+
 def main():
-    if len(sys.argv) < 2:
+    parser = argparse.ArgumentParser(description="Validate JSON-LD in HTML")
+    parser.add_argument("path", nargs="?", help="Path to HTML (or HTML-like) file")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON on stdout (exit 0)",
+    )
+    args = parser.parse_args()
+
+    if not args.path:
+        if args.json:
+            print(json.dumps({"error": "no_path", "schema_errors": [], "jsonld_blocks": 0}))
         sys.exit(0)
 
-    filepath = sys.argv[1]
-
-    if not os.path.isfile(filepath):
-        sys.exit(0)
-
-    # Only validate HTML-like files
+    filepath = args.path
     valid_extensions = (".html", ".htm", ".jsx", ".tsx", ".vue", ".svelte", ".php", ".ejs")
+    if not os.path.isfile(filepath):
+        if args.json:
+            print(json.dumps({"error": "not_found", "path": filepath, "schema_errors": []}))
+        sys.exit(0)
+
     if not filepath.endswith(valid_extensions):
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "error": "unsupported_extension",
+                        "path": filepath,
+                        "schema_errors": [],
+                    }
+                )
+            )
         sys.exit(0)
 
     try:
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
     except (OSError, IOError):
+        if args.json:
+            print(json.dumps({"error": "read_failed", "path": filepath, "schema_errors": []}))
         sys.exit(0)
 
     errors = validate_jsonld(content)
+    block_count = len(
+        re.findall(
+            r'<script\s+type=["\']application/ld\+json["\']',
+            content,
+            re.IGNORECASE,
+        )
+    )
+
+    if args.json:
+        critical_ct = sum(1 for e in errors if _is_critical(e))
+        issues = []
+        for e in errors[:40]:
+            issues.append(
+                {
+                    "finding": e,
+                    "severity": "critical" if _is_critical(e) else "warning",
+                    "fix": "Fix JSON-LD per references/schema-types.md",
+                }
+            )
+        score = 100
+        if block_count == 0:
+            score = 55  # informational — not all pages need schema
+        score = max(0, score - len(errors) * 8 - critical_ct * 12)
+        payload = {
+            "path": filepath,
+            "jsonld_blocks": block_count,
+            "schema_errors": errors,
+            "error_count": len(errors),
+            "critical_count": critical_ct,
+            "score": min(100, score),
+            "issues": issues,
+            "recommendations": (
+                ["No JSON-LD blocks found — add relevant schema where applicable."]
+                if block_count == 0
+                else []
+            ),
+        }
+        print(json.dumps(payload))
+        sys.exit(0)
 
     if not errors:
         sys.exit(0)
 
-    # Categorize errors
-    critical_keywords = ["placeholder", "deprecated", "retired"]
-    critical = [e for e in errors if any(kw in e.lower() for kw in critical_keywords)]
+    critical = [e for e in errors if _is_critical(e)]
     warnings = [e for e in errors if e not in critical]
 
     if warnings:
@@ -137,9 +203,9 @@ def main():
         print("🛑 Schema validation ERRORS (blocking):")
         for e in critical:
             print(f"  - {e}")
-        sys.exit(2)  # Block the edit
+        sys.exit(2)
 
-    sys.exit(1)  # Warnings only — proceed
+    sys.exit(1)
 
 
 if __name__ == "__main__":

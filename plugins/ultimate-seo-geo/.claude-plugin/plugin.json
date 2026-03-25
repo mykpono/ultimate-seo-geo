@@ -1,7 +1,7 @@
 {
   "name": "ultimate-seo-geo",
-  "version": "1.1.1",
-  "description": "The definitive SEO + GEO skill for Claude. Full site audits with scored findings, AI search optimization (Google AI Overviews, ChatGPT, Perplexity), schema generation, E-E-A-T assessment, CORE-EEAT 80-item content audit, CITE domain authority rating, entity optimization, and 20 diagnostic scripts. Three modes: Audit → Plan → Execute.",
+  "version": "1.1.2",
+  "description": "The definitive SEO + GEO skill for Claude. Full site audits with scored findings, AI search optimization (Google AI Overviews, ChatGPT, Perplexity), schema generation, E-E-A-T assessment, CORE-EEAT 80-item content audit, CITE domain authority rating, entity optimization, and 23 diagnostic scripts. Three modes: Audit → Plan → Execute.",
   "author": {
     "name": "Myk Pono",
     "url": "https://mykpono.com"

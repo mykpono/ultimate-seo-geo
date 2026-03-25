@@ -88,6 +88,15 @@ def main() -> int:
                 f"scripts/{name} differs from plugin copy.\nFix: bash setup-plugin.sh"
             )
 
+    runner = "run_individual_checks.sh"
+    r_root = scr_root / runner
+    r_plug = scr_plugin / runner
+    if r_root.is_file():
+        if not r_plug.is_file() or _read(r_root) != _read(r_plug):
+            sys.exit(
+                f"scripts/{runner} missing or differs in plugin copy.\nFix: bash setup-plugin.sh"
+            )
+
     ev_root = ROOT / "evals"
     ev_plugin = ROOT / "plugins/ultimate-seo-geo/skills/ultimate-seo-geo/evals"
     if not ev_root.is_dir() or not ev_plugin.is_dir():

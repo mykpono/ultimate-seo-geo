@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.1.1-green.svg)](../../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.2-green.svg)](../../CHANGELOG.md)
 
 > The definitive SEO + GEO skill for Claude. Full site audits, AI search optimization, schema generation, E-E-A-T assessment, and 20 diagnostic scripts.
 
@@ -93,8 +93,8 @@ We're moving from Magento to Shopify — 3,000 product pages. What do we need fo
 - **llms.txt** — Template generation for the emerging AI content standard
 - **RSL 1.0** — Machine-readable AI licensing (December 2025 standard)
 
-### 20 Python Diagnostic Scripts
-`generate_report.py` · `validate_schema.py` · `robots_checker.py` · `pagespeed.py` · `hreflang_checker.py` · `internal_links.py` · `broken_links.py` · `redirect_checker.py` · `security_headers.py` · `entity_checker.py` · `llms_txt_checker.py` · `indexnow_checker.py` · `social_meta.py` · `readability.py` · `duplicate_content.py` · `article_seo.py` · `link_profile.py` · `finding_verifier.py` · `fetch_page.py` · `parse_html.py`
+### 23 Python audit scripts
+Includes `sitemap_checker.py`, `local_signals_checker.py`, `image_checker.py`, full `generate_report.py` pipeline, and the rest — see **`references/audit-script-matrix.md`** in the skill tree for the step ↔ script map.
 
 ---
 

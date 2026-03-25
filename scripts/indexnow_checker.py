@@ -197,6 +197,60 @@ def extract_sitemap_urls(site_url: str, limit: int = 50) -> list:
 # Main
 # ---------------------------------------------------------------------------
 
+def probe_indexnow(site_url: str) -> dict:
+    """Surface IndexNow-related hints without an API key (for automated reports)."""
+    parsed = urlparse(site_url)
+    if not parsed.scheme:
+        site_url = f"https://{site_url}"
+        parsed = urlparse(site_url)
+    base = f"{parsed.scheme}://{parsed.netloc}"
+
+    status, html = fetch_url(site_url)
+    if status is None:
+        return {"error": html, "url": site_url, "probe": True}
+
+    out: dict = {
+        "probe": True,
+        "url": site_url,
+        "homepage_ok": status == 200,
+        "meta_indexnow_present": False,
+        "robots_mentions_indexnow": False,
+        "robots_has_sitemap": False,
+        "score": 50,
+        "issues": [],
+        "recommendations": [],
+    }
+
+    if BeautifulSoup:
+        soup = BeautifulSoup(html, "html.parser")
+        meta = soup.find("meta", attrs={"name": "indexnow"})
+        if meta and (meta.get("content") or "").strip():
+            out["meta_indexnow_present"] = True
+
+    rstatus, rbody = fetch_url(f"{base}/robots.txt")
+    if rstatus == 200 and rbody:
+        low = rbody.lower()
+        if "indexnow" in low:
+            out["robots_mentions_indexnow"] = True
+        if "sitemap:" in low:
+            out["robots_has_sitemap"] = True
+
+    sc = 40
+    if out["homepage_ok"]:
+        sc += 20
+    if out["meta_indexnow_present"] or out["robots_mentions_indexnow"]:
+        sc += 30
+    if out["robots_has_sitemap"]:
+        sc += 10
+    out["score"] = min(100, sc)
+
+    if not out["meta_indexnow_present"] and not out["robots_mentions_indexnow"]:
+        out["recommendations"].append(
+            "IndexNow not detected — optional; see references/technical-checklist.md for IndexNow setup."
+        )
+    return out
+
+
 def run_indexnow_check(site_url: str, key: str) -> dict:
     """Run all IndexNow validation checks."""
     # Fetch homepage for meta tag check
@@ -235,13 +289,36 @@ def main():
         description="IndexNow Checker & Pinger — validate and submit URLs to search engines"
     )
     parser.add_argument("url", help="Site URL")
-    parser.add_argument("--key", required=True, help="IndexNow API key")
+    parser.add_argument(
+        "--key",
+        default="",
+        help="IndexNow API key (required unless --probe)",
+    )
+    parser.add_argument(
+        "--probe",
+        action="store_true",
+        help="Info-only: detect IndexNow hints without a key (for reports)",
+    )
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     parser.add_argument("--ping", nargs="*", help="URL(s) to submit via IndexNow API")
     parser.add_argument("--ping-sitemap", action="store_true", help="Submit all sitemap URLs")
     parser.add_argument("--engine", default="bing", choices=INDEXNOW_ENDPOINTS.keys(),
                         help="Search engine to ping (default: bing)")
     args = parser.parse_args()
+
+    if args.probe:
+        report = probe_indexnow(args.url)
+        if args.json:
+            print(json.dumps(report, indent=2))
+            return
+        if report.get("error"):
+            print(f"Error: {report['error']}")
+            sys.exit(1)
+        print(json.dumps(report, indent=2))
+        return
+
+    if not args.key:
+        parser.error("--key is required unless --probe is set")
 
     report = run_indexnow_check(args.url, args.key)
 

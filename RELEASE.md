@@ -44,6 +44,8 @@ This verifies:
 
 CI fails if root skill/references/scripts/evals disagree with the plugin tree or versions diverge.
 
+**Audit script map:** `references/audit-script-matrix.md` (each automated step ↔ script). **Smoke all tools (truncated JSON):** `bash scripts/run_individual_checks.sh https://example.com`.
+
 ---
 
 ## 4. Pre-release verification (optional, deeper checks)

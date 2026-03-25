@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.1.1-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.2-green.svg)](CHANGELOG.md)
 
 The definitive SEO and Generative Engine Optimization skill for Claude. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity).
 
@@ -142,7 +142,7 @@ ultimate-seo-geo/
 │   ├── crawl-indexation.md   Sitemaps, canonicals, crawl budget
 │   └── image-seo.md          Alt text, WebP, responsive images
 │
-├── scripts/               ← 20 audit Python scripts (+ check-plugin-sync.py for CI)
+├── scripts/               ← 23 audit Python scripts (+ check-plugin-sync.py for CI)
 │   ├── generate_report.py    Full-site HTML dashboard (runs all scripts)
 │   ├── validate_schema.py    JSON-LD validation
 │   ├── robots_checker.py     AI crawler access check
@@ -181,11 +181,13 @@ When someone runs `/plugin marketplace add mykpono/ultimate-seo-geo`, the tool r
 
 ## Scripts
 
-The **20 audit** Python scripts (excluding maintainer-only `check-plugin-sync.py`) require Python 3.8+ and install dependencies with:
+The **23 audit** Python scripts (excluding maintainer-only `check-plugin-sync.py`) require Python 3.8+ and install dependencies with:
 
 ```bash
-pip install requests beautifulsoup4 --break-system-packages -q
+pip install -r requirements.txt
 ```
+
+On **PEP 668**–managed Python (e.g. Homebrew), use a venv first: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, then run scripts with `.venv/bin/python`.
 
 Run the full-site report to start any audit:
 
@@ -215,6 +217,9 @@ python scripts/generate_report.py https://example.com --output seo-report.html
 | `finding_verifier.py` | Deduplicates findings across a full audit |
 | `fetch_page.py` | Fetch and save raw HTML (utility) |
 | `parse_html.py` | Extract titles, H1s, meta, canonical, schema (utility) |
+| `sitemap_checker.py` | Sitemap discovery via robots.txt + first sitemap sanity |
+| `local_signals_checker.py` | LocalBusiness / tel / address signals on a URL |
+| `image_checker.py` | Image alt coverage from saved HTML |
 
 ---
 

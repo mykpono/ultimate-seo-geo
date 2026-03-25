@@ -2,7 +2,7 @@
 name: ultimate-seo-geo
 license: MIT
 metadata:
-  version: 1.1.1
+  version: 1.1.2
   author: Myk Pono
   website: https://lab.mykpono.com
   homepage: https://mykpono.com
@@ -35,7 +35,7 @@ description: >
   Universal SEO + GEO skill: scored full-site audits with fixes; technical SEO (CWV/INP,
   crawl, JS rendering); CORE-EEAT (80) + CITE domain (40) scoring; Schema.org JSON-LD;
   entity/KG/Wikidata signals; GEO for AI Overviews, AI Mode, ChatGPT, Perplexity; keywords,
-  links, images, hreflang, programmatic and local SEO, migrations, pruning. Includes 20
+  links, images, hreflang, programmatic and local SEO, migrations, pruning. Includes 23
   Python audit scripts. Use when the user mentions SEO, GEO, audit, schema, rankings,
   traffic drop, AI citations, backlinks, sitemap, crawl, robots, migration, hreflang,
   snippets, content strategy—or visibility or traffic-loss questions. Not for PPC/Ads,
@@ -146,7 +146,7 @@ review the output, confirm it resolves the original finding.
 
 ### Process
 
-**In a bash-capable environment**: Run `python scripts/generate_report.py https://example.com --output report.html` first — it runs the **bundled analysis pipeline** in `generate_report.py` (~15 checks per URL: robots, security headers, social meta, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, on-page parse, readability, article SEO, etc.). Then use `finding_verifier.py` to deduplicate at the end. Use **§21** for scripts not wired into that report (e.g. `validate_schema.py`, `indexnow_checker.py`).
+**In a bash-capable environment**: Run `python scripts/generate_report.py https://example.com --output report.html` first — it runs the **bundled analysis pipeline** in `generate_report.py` (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap discovery, local signals, IndexNow probe, on-page parse, readability, article SEO, JSON-LD validation, image alt coverage, etc.). Then use `finding_verifier.py` to deduplicate at the end. For any single dimension, run the matching script from **`references/audit-script-matrix.md`** or **§21**.
 
 1. **Fetch the site** — homepage + 5–10 representative pages (pillar pages, top posts, key landing pages).
 2. **Detect business type** from page signals:
@@ -992,7 +992,11 @@ For the complete step-by-step checklists, common mistakes, and post-migration mo
 
 ## 21. Script Toolbox — Automated Checks
 
-The `scripts/` directory contains 20 Python **audit/diagnostic** scripts (plus `check-plugin-sync.py` for maintainers only). They are **not** invoked via subagents in this skill file: the default path is **one shell process** — either `generate_report.py` (bundled pipeline) or targeted `python scripts/...` calls. **Optional:** In clients that expose a Task/subagent tool, you may delegate **independent** script runs in parallel **only when** you are **not** already running `generate_report.py` for the same URL (avoid duplicate work). Merge subagent outputs in the main thread before scoring.
+There are **23** Python **audit** scripts (plus `check-plugin-sync.py` for maintainers only). **Every major audit step maps to a script** — see `references/audit-script-matrix.md` for the full step ↔ script table and copy-paste CLI examples.
+
+They are **not** invoked via subagents in this skill file: the default path is **one shell process** — either `generate_report.py` (bundled pipeline, runs the URL + HTML checks below) or targeted `python scripts/... --json` calls. **Optional:** In clients that expose a Task/subagent tool, you may delegate **independent** script runs in parallel **only when** you are **not** already running `generate_report.py` for the same URL (avoid duplicate work). Merge subagent outputs in the main thread before scoring.
+
+**Run all individual URL checks in sequence (bash):** `bash scripts/run_individual_checks.sh https://example.com` (prints JSON from each tool; for a single HTML dashboard use `generate_report.py` instead).
 
 ### Environment Note
 
@@ -1013,21 +1017,24 @@ pip install requests beautifulsoup4 --break-system-packages -q
 python scripts/generate_report.py https://example.com --output seo-report.html
 ```
 
-Runs the bundled analysis pipeline (see §2), outputs a self-contained interactive HTML dashboard. Use at the start of any Mode 1 full audit.
+Runs the bundled analysis pipeline (see §2): URL-based scripts, homepage HTML for `validate_schema` + `image_checker`, plus dashboard sections for schema, images, sitemaps, local signals, and IndexNow probe. Use at the start of any Mode 1 full audit.
 
 ### Script Quick Reference
 
 | Script | Purpose | Audit Section |
 |---|---|---|
-| `generate_report.py` | Interactive HTML dashboard — runs all scripts | § 2 Full Audit |
+| `generate_report.py` | Interactive HTML dashboard — full bundled pipeline | § 2 Full Audit |
 | `pagespeed.py` | Core Web Vitals via PSI API ⚠️ requires external access | § 4 Technical |
 | `robots_checker.py` | robots.txt rules + AI crawler allow/block status | § 3 GEO, § 4 |
 | `security_headers.py` | HSTS, CSP, X-Frame-Options — weighted score | § 4 Technical |
 | `redirect_checker.py` | Full redirect chain — loops and mixed HTTP/HTTPS | § 4, § 20 |
-| `validate_schema.py` | Validates JSON-LD blocks — pure stdlib | § 5 Schema |
+| `validate_schema.py` | JSON-LD validation (`--json` for tools) | § 5 Schema |
 | `hreflang_checker.py` | All 8 hreflang rules + bidirectional return tags | § 14 International |
 | `llms_txt_checker.py` | llms.txt presence + format validation | § 3 GEO |
-| `indexnow_checker.py` | IndexNow key file validation | § 4 Technical |
+| `indexnow_checker.py` | IndexNow with `--key`; keyless `--probe` for reports | § 4 Technical |
+| `sitemap_checker.py` | Sitemap URLs from robots + first sitemap sanity | § 11 Crawl |
+| `local_signals_checker.py` | LocalBusiness JSON-LD, tel:, address signals | § 12 Local |
+| `image_checker.py` | Alt coverage on saved HTML (`--base-url`) | § 13 Images |
 | `entity_checker.py` | Wikidata, Wikipedia, sameAs — entity signals | § 3 GEO |
 | `broken_links.py` | 4xx/5xx broken links + 3xx redirect counts | § 9 Links |
 | `internal_links.py` | Link graph, orphan pages, anchor text, crawl depth | § 9 Links |
@@ -1043,8 +1050,8 @@ Runs the bundled analysis pipeline (see §2), outputs a self-contained interacti
 ### Targeted Usage
 
 ```bash
-# Validate schema after generating it
-python scripts/validate_schema.py page.html
+# Validate schema after generating it (machine-readable)
+python scripts/validate_schema.py page.html --json
 
 # Check AI crawler access
 python scripts/robots_checker.py https://example.com

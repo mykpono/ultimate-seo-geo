@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.2] - 2026-03-24
+
+### Added
+
+- `sitemap_checker.py`, `local_signals_checker.py`, `image_checker.py` — URL/HTML checks for crawl/sitemap, local surface signals, and image alt coverage.
+- `references/audit-script-matrix.md` — maps each audit step to its script and example CLI (plus **reference-only** rows where no script exists by design).
+- `scripts/run_individual_checks.sh` — runs each diagnostic sequentially (JSON samples); bundled beside audit scripts in the plugin tree.
+- `requirements.txt` — `requests` + `beautifulsoup4` for fetch/HTML scripts.
+
+### Changed
+
+- `RELEASE.md` §3 — points to the audit matrix and `run_individual_checks.sh` smoke path.
+- `generate_report.py` wired to schema JSON-LD validation, image alt, sitemap, local, and IndexNow **probe** (keyless) sections + scoring and dashboard blocks.
+- `validate_schema.py` supports `--json` for tooling; `indexnow_checker.py` supports `--probe` without `--key`.
+- Skill §21 + README updated for **23** audit scripts; README documents `requirements.txt` and PEP 668 venv use.
+
+### Fixed
+
+- `generate_report.py` — On-Page table no longer crashes when `canonical` is JSON `null`.
+
 ## [1.1.1] - 2026-03-24
 
 ### Changed
