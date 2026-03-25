@@ -1,0 +1,210 @@
+{
+  "skill_name": "ultimate-seo-geo",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a full SEO audit on psybear.co — it's a psilocybin mushroom strain guide and harm reduction blog. Our traffic has been flat for 6 months and we want to understand why. Give us a health score, top findings, and a prioritized action plan.",
+      "expected_output": "Mode 1 full audit with SEO Health Score (0-100), findings in Finding/Evidence/Impact/Fix/Confidence format, E-E-A-T assessment noting health/YMYL sensitivity, technical checks, schema assessment, and a prioritized Mode 2 action plan table with effort/impact columns.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "health-score-present",
+          "description": "Output includes a numeric SEO Health Score between 0 and 100",
+          "type": "contains_pattern",
+          "pattern": "\\b([0-9]{1,2}|100)/100\\b"
+        },
+        {
+          "id": "eeat-ymyl-flagged",
+          "description": "Output flags E-E-A-T or YMYL concerns given health/psilocybin content",
+          "type": "contains_any",
+          "values": ["E-E-A-T", "YMYL", "Your Money or Your Life", "health content", "author", "credentials", "expertise"]
+        },
+        {
+          "id": "finding-format-used",
+          "description": "Findings use the structured Finding/Evidence/Impact/Fix format",
+          "type": "contains_any",
+          "values": ["Finding:", "Evidence:", "Impact:", "Fix:", "**Finding**", "**Evidence**", "**Impact**", "**Fix**"]
+        },
+        {
+          "id": "action-plan-present",
+          "description": "Output includes a prioritized action plan or Mode 2 table",
+          "type": "contains_any",
+          "values": ["Action Plan", "Priority", "Phase 1", "Quick Win", "Effort", "| Fix", "| Action"]
+        },
+        {
+          "id": "schema-addressed",
+          "description": "Output mentions structured data or schema markup",
+          "type": "contains_any",
+          "values": ["schema", "JSON-LD", "structured data", "Schema.org", "rich result"]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I run a local HVAC company in Phoenix, AZ — Sonoran Air. Our website is sonoranair.com and we're not showing up when people search 'AC repair Phoenix' or 'HVAC company near me'. Can you do a quick SEO audit and tell me what schema markup I need?",
+      "expected_output": "Mode 1 audit + Mode 3 schema fix. Should identify LocalBusiness schema as critical gap, generate ready-to-deploy JSON-LD for LocalBusiness with address, telephone, geo, openingHours, serviceArea. Should also note GBP optimization, NAP consistency, local citations.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "localbusiness-schema-generated",
+          "description": "Output includes a LocalBusiness JSON-LD schema block",
+          "type": "contains_pattern",
+          "pattern": "\"@type\":\\s*\"LocalBusiness\""
+        },
+        {
+          "id": "gbp-mentioned",
+          "description": "Output mentions Google Business Profile (GBP) or Google My Business",
+          "type": "contains_any",
+          "values": ["Google Business Profile", "GBP", "Google My Business", "GMB"]
+        },
+        {
+          "id": "local-seo-signals",
+          "description": "Output addresses local-specific SEO factors (NAP, citations, reviews)",
+          "type": "contains_any",
+          "values": ["NAP", "citations", "review", "local", "near me", "service area", "geo"]
+        },
+        {
+          "id": "json-ld-valid-structure",
+          "description": "Generated schema includes @context and key LocalBusiness properties",
+          "type": "contains_all",
+          "values": ["@context", "@type", "address", "telephone"]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Can you generate the complete schema markup for my SaaS product page? It's called Docupilot — an AI document automation platform. The page URL is https://docupilot.app/. It has a 4.7/5 star rating from 890 reviews. Pricing starts at $29/month.",
+      "expected_output": "Mode 3 schema generation. Should produce SoftwareApplication or WebApplication JSON-LD with name, applicationCategory, aggregateRating (4.7, 890 reviews), offers with price $29, and Organization on homepage. Should use JSON-LD format in script tags.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "software-schema-type",
+          "description": "Output uses SoftwareApplication or WebApplication schema type",
+          "type": "contains_any",
+          "values": ["SoftwareApplication", "WebApplication"]
+        },
+        {
+          "id": "aggregate-rating-correct",
+          "description": "AggregateRating includes ratingValue 4.7 and reviewCount 890",
+          "type": "contains_all",
+          "values": ["4.7", "890", "AggregateRating"]
+        },
+        {
+          "id": "pricing-included",
+          "description": "Offers/pricing block includes $29",
+          "type": "contains_pattern",
+          "pattern": "29"
+        },
+        {
+          "id": "json-ld-format",
+          "description": "Schema is in JSON-LD format with script tag",
+          "type": "contains_any",
+          "values": ["application/ld+json", "@context", "schema.org"]
+        },
+        {
+          "id": "no-deprecated-types",
+          "description": "Output does not use deprecated HowTo, SpecialAnnouncement, or ClaimReview types",
+          "type": "not_contains_any",
+          "values": ["HowTo", "SpecialAnnouncement", "ClaimReview"]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "We're migrating our e-commerce site from Magento to Shopify next month — roughly 3,000 product pages and 200 category pages. What do we need to do for SEO before, during, and after the migration to avoid losing rankings?",
+      "expected_output": "Mode 1/2 migration guidance. Should cover pre-migration baseline crawl, redirect map with 301s, staging verification checklist, Change of Address tool for GSC, post-migration monitoring schedule. Should warn about common mistakes like 302s vs 301s, redirect chains, staging robots.txt, canonical conflicts.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "redirect-301-mentioned",
+          "description": "Output specifies 301 redirects (not 302)",
+          "type": "contains_any",
+          "values": ["301", "permanent redirect", "301 redirect"]
+        },
+        {
+          "id": "pre-migration-steps",
+          "description": "Output includes pre-migration steps (baseline, crawl, redirect map)",
+          "type": "contains_any",
+          "values": ["baseline", "crawl", "redirect map", "pre-migration", "before", "inventory"]
+        },
+        {
+          "id": "gsc-change-of-address",
+          "description": "Output mentions Google Search Console change of address or verification",
+          "type": "contains_any",
+          "values": ["Change of Address", "Search Console", "GSC", "verify", "sitemap"]
+        },
+        {
+          "id": "monitoring-schedule",
+          "description": "Output includes post-migration monitoring guidance",
+          "type": "contains_any",
+          "values": ["monitor", "post-migration", "after launch", "week", "month", "coverage report", "crawl"]
+        },
+        {
+          "id": "common-mistakes-addressed",
+          "description": "Output warns about migration mistakes like redirect chains or noindex",
+          "type": "contains_any",
+          "values": ["chain", "noindex", "robots.txt", "302", "staging", "mistake", "avoid"]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "How do I make my sourdough recipe blog posts rank higher on Google? I've been baking for 15 years and posting recipes weekly but getting almost no traffic.",
+      "expected_output": "This is a general SEO help request (not a specific audit). Should address E-E-A-T for food content (demonstrating 15 years experience), keyword targeting for recipe queries, recipe schema (though HowTo is deprecated — should use Article), image optimization, and content structure. Should not blindly generate a full audit report since no URL was provided.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "keyword-research-mentioned",
+          "description": "Output addresses keyword strategy for recipe content",
+          "type": "contains_any",
+          "values": ["keyword", "search intent", "long-tail", "query", "people search"]
+        },
+        {
+          "id": "eeat-experience-angle",
+          "description": "Output leverages the 15-year experience angle as an E-E-A-T opportunity",
+          "type": "contains_any",
+          "values": ["experience", "E-E-A-T", "expertise", "author", "15 year", "credibility", "first-hand"]
+        },
+        {
+          "id": "no-howto-schema-recommended",
+          "description": "Output does not recommend deprecated HowTo schema for rich results",
+          "type": "not_contains_pattern",
+          "pattern": "HowTo.*rich result|rich result.*HowTo|recommend.*HowTo|add HowTo"
+        },
+        {
+          "id": "actionable-advice",
+          "description": "Output includes concrete, actionable recommendations (not just theory)",
+          "type": "contains_any",
+          "values": ["add", "include", "write", "optimize", "update", "create", "use"]
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Help me set up a Google Ads campaign for my dental practice. I want to target people searching for 'dentist near me' and 'teeth whitening' in the Phoenix area. Budget is $2,000/month.",
+      "expected_output": "This is a NEGATIVE test — the skill should NOT trigger for PPC/Google Ads requests. The response should either decline (not an SEO task) or provide general advice without using SEO audit frameworks, health scores, or finding formats. No schema generation, no crawl checks, no GEO optimization.",
+      "files": [],
+      "is_negative": true,
+      "assertions": [
+        {
+          "id": "no-health-score",
+          "description": "Output should NOT include an SEO Health Score since this is a PPC request",
+          "type": "not_contains_pattern",
+          "pattern": "\\b[0-9]{1,2}/100\\b|SEO Health Score"
+        },
+        {
+          "id": "no-finding-format",
+          "description": "Output should NOT use the Finding/Evidence/Impact/Fix audit format",
+          "type": "not_contains_any",
+          "values": ["Finding:", "Evidence:", "Impact:", "Fix:", "Confidence: Confirmed"]
+        },
+        {
+          "id": "acknowledges-ppc-context",
+          "description": "Output should acknowledge this is a PPC/ads request, not organic SEO",
+          "type": "contains_any",
+          "values": ["Google Ads", "PPC", "paid", "ad campaign", "advertising", "pay-per-click", "ad spend", "cost per click"]
+        }
+      ]
+    }
+  ]
+}

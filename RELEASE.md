@@ -36,11 +36,13 @@ This verifies:
 
 - Root `SKILL.md` matches `plugins/ultimate-seo-geo/skills/ultimate-seo-geo/SKILL.md`
 - Root `references/` matches the plugin copy (filenames + contents)
+- Root `scripts/*.py` (except `check-plugin-sync.py`) matches `plugins/.../skills/.../scripts/`
+- Root `evals/` matches `plugins/.../skills/.../evals/`
 - `metadata.version`, both marketplace version fields, and `plugin.json` use one **identical** version string
 
 **Fix failures:** `bash setup-plugin.sh`, then re-run the script.
 
-CI fails if root skill/references disagree with the plugin tree or versions diverge.
+CI fails if root skill/references/scripts/evals disagree with the plugin tree or versions diverge.
 
 ---
 

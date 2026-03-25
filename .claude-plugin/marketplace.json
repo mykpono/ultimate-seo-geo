@@ -7,14 +7,14 @@
   "metadata": {
     "description": "SEO + GEO skills for Claude — full site audits, AI search optimization, schema generation, and 20 diagnostic scripts.",
     "homepage": "https://github.com/mykpono/ultimate-seo-geo",
-    "version": "1.1.0"
+    "version": "1.1.1"
   },
   "plugins": [
     {
       "name": "ultimate-seo-geo",
       "source": "./plugins/ultimate-seo-geo",
       "description": "The definitive SEO + GEO skill for Claude. Full site audits with scored findings (0–100), AI search optimization for Google AI Overviews, ChatGPT Search, and Perplexity, schema markup generation, E-E-A-T assessment, CORE-EEAT 80-item content audit, CITE domain authority rating, entity optimization, and 20 Python diagnostic scripts. Three modes: Audit → Plan → Execute.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": {
         "name": "Myk Pono",
         "url": "https://mykpono.com"

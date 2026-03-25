@@ -10,6 +10,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# Copied into the plugin bundle for end users; stays repo-only for CI.
+SCRIPT_EXCLUDE = frozenset({"check-plugin-sync.py"})
+
 
 def _read(p: Path) -> str:
     return p.read_text(encoding="utf-8")
@@ -60,6 +63,46 @@ def main() -> int:
             sys.exit(
                 f"references/{name} differs from plugin copy.\nFix: bash setup-plugin.sh"
             )
+
+    # Audit scripts: same .py set as repo scripts/ minus maintainer tooling.
+    scr_root = ROOT / "scripts"
+    scr_plugin = ROOT / "plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts"
+    if not scr_plugin.is_dir():
+        sys.exit(
+            "plugins/.../skills/.../scripts/ missing.\nFix: bash setup-plugin.sh"
+        )
+    root_py = sorted(
+        p.name for p in scr_root.glob("*.py") if p.name not in SCRIPT_EXCLUDE
+    )
+    plug_py = sorted(p.name for p in scr_plugin.glob("*.py"))
+    if root_py != plug_py:
+        sys.exit(
+            "scripts/*.py list mismatch vs plugin copy (audit scripts only).\n"
+            f"  root:   {root_py}\n"
+            f"  plugin: {plug_py}\n"
+            "Fix: bash setup-plugin.sh"
+        )
+    for name in root_py:
+        if _read(scr_root / name) != _read(scr_plugin / name):
+            sys.exit(
+                f"scripts/{name} differs from plugin copy.\nFix: bash setup-plugin.sh"
+            )
+
+    ev_root = ROOT / "evals"
+    ev_plugin = ROOT / "plugins/ultimate-seo-geo/skills/ultimate-seo-geo/evals"
+    if not ev_root.is_dir() or not ev_plugin.is_dir():
+        sys.exit("evals/ missing at root or under plugin skill path.\nFix: bash setup-plugin.sh")
+    ev_names = sorted(f.name for f in ev_root.iterdir() if f.is_file())
+    ev_plug = sorted(f.name for f in ev_plugin.iterdir() if f.is_file())
+    if ev_names != ev_plug:
+        sys.exit(
+            "evals/ filename mismatch vs plugin copy.\n"
+            f"  symmetric diff: {sorted(set(ev_names) ^ set(ev_plug))}\n"
+            "Fix: bash setup-plugin.sh"
+        )
+    for name in ev_names:
+        if _read(ev_root / name) != _read(ev_plugin / name):
+            sys.exit(f"evals/{name} differs from plugin copy.\nFix: bash setup-plugin.sh")
 
     market_path = ROOT / ".claude-plugin/marketplace.json"
     with open(market_path, encoding="utf-8") as f:

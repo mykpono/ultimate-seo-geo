@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](../../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.1-green.svg)](../../CHANGELOG.md)
 
 > The definitive SEO + GEO skill for Claude. Full site audits, AI search optimization, schema generation, E-E-A-T assessment, and 20 diagnostic scripts.
 
@@ -45,6 +45,8 @@ Give it a URL and it returns a scored audit, prioritized action plan, and execut
 | **Execute** | Produces the actual fixes + verifies them | JSON-LD, meta rewrites, redirect maps, robots.txt |
 
 Most requests run all three in sequence automatically.
+
+The bundled skill folder includes **`scripts/`** (audit tools) and **`evals/`** so instructions like `python scripts/generate_report.py …` work after a Claude Code plugin install—not only on a full repo checkout.
 
 ---
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1] - 2026-03-24
+
+### Changed
+
+- Skill YAML `description` tightened to stay within common 1024-character limits while preserving trigger terms.
+- Plugin bundle (`setup-plugin.sh`) now copies **`scripts/`** (all audit `.py` files except `check-plugin-sync.py`) and **`evals/`** into `plugins/.../skills/ultimate-seo-geo/` so Claude Code plugin installs can run `python scripts/...` as documented.
+
 ## [1.1.0] - 2026-03-24
 
 ### Added

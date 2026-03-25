@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.1-green.svg)](CHANGELOG.md)
 
 The definitive SEO and Generative Engine Optimization skill for Claude. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity).
 
@@ -142,7 +142,7 @@ ultimate-seo-geo/
 │   ├── crawl-indexation.md   Sitemaps, canonicals, crawl budget
 │   └── image-seo.md          Alt text, WebP, responsive images
 │
-├── scripts/               ← 20 Python diagnostic scripts
+├── scripts/               ← 20 audit Python scripts (+ check-plugin-sync.py for CI)
 │   ├── generate_report.py    Full-site HTML dashboard (runs all scripts)
 │   ├── validate_schema.py    JSON-LD validation
 │   ├── robots_checker.py     AI crawler access check
@@ -164,6 +164,8 @@ ultimate-seo-geo/
 
 This means a simple schema request loads SKILL.md + `references/schema-types.md` — not the full 5,300+ lines of domain knowledge.
 
+**Claude Code plugin install:** `bash setup-plugin.sh` mirrors `SKILL.md`, `references/`, `scripts/` (audit scripts only), and `evals/` into `plugins/.../skills/ultimate-seo-geo/` so `python scripts/...` paths work after marketplace install.
+
 ### Claude Code: why two `.claude-plugin/` folders?
 
 Do **not** merge them into one directory. This repo follows the layout Claude Code expects for a **GitHub marketplace** plus an **installable plugin**:
@@ -179,7 +181,7 @@ When someone runs `/plugin marketplace add mykpono/ultimate-seo-geo`, the tool r
 
 ## Scripts
 
-All 20 scripts require Python 3.8+ and install dependencies with:
+The **20 audit** Python scripts (excluding maintainer-only `check-plugin-sync.py`) require Python 3.8+ and install dependencies with:
 
 ```bash
 pip install requests beautifulsoup4 --break-system-packages -q

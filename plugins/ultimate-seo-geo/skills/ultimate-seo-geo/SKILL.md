@@ -2,7 +2,7 @@
 name: ultimate-seo-geo
 license: MIT
 metadata:
-  version: 1.1.0
+  version: 1.1.1
   author: Myk Pono
   website: https://lab.mykpono.com
   homepage: https://mykpono.com
@@ -32,21 +32,14 @@ metadata:
       author: aaron-he-zhu
       contribution: Princeton GEO research data, AI engine preference mapping, content type citation share data
 description: >
-  Universal SEO + GEO skill. Use for: full site audits with scored findings + fix
-  directives, technical SEO (Core Web Vitals/INP, crawlability, JS rendering),
-  content quality & E-E-A-T (80-item CORE-EEAT audit + 40-item CITE domain rating),
-  schema markup generation (all types, deprecation-aware), entity optimization
-  (47-signal checklist, Knowledge Graph, Wikidata),
-  AI search optimization (Google AI Overviews, AI Mode, ChatGPT, Perplexity), keyword
-  research, topic clusters, link building, image SEO, hreflang, programmatic SEO
-  (12 playbooks), local SEO, site migrations, and content pruning. Includes 20 Python
-  diagnostic scripts.
-  Invoke when user mentions: SEO, GEO, audit, schema, rankings, traffic drop, AI Overviews,
-  backlinks, sitemap, crawl, robots.txt, migration, hreflang, featured snippet, content
-  strategy, keyword research — or asks "why isn't my site showing up?", "how do I rank
-  higher?", "how do I get AI to cite me?", "our traffic dropped", or any visibility
-  or traffic question. Do NOT use for: PPC, Google Ads, social media management,
-  or general marketing strategy.
+  Universal SEO + GEO skill: scored full-site audits with fixes; technical SEO (CWV/INP,
+  crawl, JS rendering); CORE-EEAT (80) + CITE domain (40) scoring; Schema.org JSON-LD;
+  entity/KG/Wikidata signals; GEO for AI Overviews, AI Mode, ChatGPT, Perplexity; keywords,
+  links, images, hreflang, programmatic and local SEO, migrations, pruning. Includes 20
+  Python audit scripts. Use when the user mentions SEO, GEO, audit, schema, rankings,
+  traffic drop, AI citations, backlinks, sitemap, crawl, robots, migration, hreflang,
+  snippets, content strategy—or visibility or traffic-loss questions. Not for PPC/Ads,
+  social management, or generic marketing strategy.
 ---
 
 # Ultimate SEO + GEO — Universal Search Optimization Skill

@@ -56,7 +56,32 @@ else
   exit 1
 fi
 
-# ── 5. Validate JSON ────────────────────────────────────────────────────────
+# ── 5. Copy audit scripts + evals (exclude maintainer-only check-plugin-sync.py) ─
+mkdir -p plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts
+rm -f plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts/*.py 2>/dev/null || true
+SCRIPT_N=0
+for f in scripts/*.py; do
+  [ -f "$f" ] || continue
+  base=$(basename "$f")
+  if [ "$base" = "check-plugin-sync.py" ]; then
+    continue
+  fi
+  cp "$f" plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts/
+  SCRIPT_N=$((SCRIPT_N + 1))
+done
+echo "  scripts/ copied ($SCRIPT_N audit .py files) ✓"
+
+if [ -d "evals" ]; then
+  rm -rf plugins/ultimate-seo-geo/skills/ultimate-seo-geo/evals
+  cp -r evals/ plugins/ultimate-seo-geo/skills/ultimate-seo-geo/evals/
+  EVAL_N=$(find evals -type f | wc -l | tr -d ' ')
+  echo "  evals/ copied ($EVAL_N files) ✓"
+else
+  echo "  ERROR: evals/ directory not found at repo root."
+  exit 1
+fi
+
+# ── 6. Validate JSON ────────────────────────────────────────────────────────
 echo ""
 echo "Validating JSON..."
 python3 -c "
@@ -67,7 +92,7 @@ for path in ['.claude-plugin/marketplace.json', 'plugins/ultimate-seo-geo/.claud
     print(f'  {path} ✓')
 "
 
-# ── 6. Done ─────────────────────────────────────────────────────────────────
+# ── 7. Done ─────────────────────────────────────────────────────────────────
 echo ""
 echo "========================================================"
 echo "Plugin setup complete!"
@@ -77,6 +102,8 @@ echo "  .claude-plugin/marketplace.json"
 echo "  plugins/ultimate-seo-geo/.claude-plugin/plugin.json"
 echo "  plugins/ultimate-seo-geo/skills/ultimate-seo-geo/SKILL.md"
 echo "  plugins/ultimate-seo-geo/skills/ultimate-seo-geo/references/"
+echo "  plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts/"
+echo "  plugins/ultimate-seo-geo/skills/ultimate-seo-geo/evals/"
 echo "  plugins/ultimate-seo-geo/README.md"
 echo "  .github/workflows/validate-plugin.yml"
 echo ""

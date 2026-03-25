@@ -7,6 +7,9 @@ on:
       - 'plugins/**'
       - 'SKILL.md'
       - 'references/**'
+      - 'scripts/**'
+      - 'evals/**'
+      - 'setup-plugin.sh'
       - 'scripts/check-plugin-sync.py'
       - 'RELEASE.md'
       - '.github/workflows/validate-plugin.yml'
@@ -16,6 +19,9 @@ on:
       - 'plugins/**'
       - 'SKILL.md'
       - 'references/**'
+      - 'scripts/**'
+      - 'evals/**'
+      - 'setup-plugin.sh'
       - 'scripts/check-plugin-sync.py'
       - 'RELEASE.md'
       - '.github/workflows/validate-plugin.yml'
@@ -84,6 +90,20 @@ jobs:
             echo "ERROR: references directory not found at $REF_DIR"
             exit 1
           fi
+
+      - name: Check bundled scripts and evals
+        run: |
+          SD="plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts"
+          ED="plugins/ultimate-seo-geo/skills/ultimate-seo-geo/evals"
+          if [ ! -d "$SD" ] || [ -z "$(ls -A "$SD" 2>/dev/null)" ]; then
+            echo "ERROR: bundled scripts/ missing or empty at $SD"
+            exit 1
+          fi
+          if [ ! -d "$ED" ] || [ ! -f "$ED/evals.json" ]; then
+            echo "ERROR: bundled evals/ or evals.json missing at $ED"
+            exit 1
+          fi
+          echo "Bundled scripts/ and evals/ OK ✓"
 
       - name: Root vs plugin sync + version alignment
         run: python3 scripts/check-plugin-sync.py
