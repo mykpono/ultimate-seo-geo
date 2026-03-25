@@ -399,6 +399,75 @@ These provide ground-truth data that supplements the structural analysis. If not
 
 ---
 
+## Research-Backed GEO Techniques (Princeton, KDD 2024)
+
+Empirical data from Princeton's Generative Engine Optimization study on specific technique effectiveness:
+
+| Technique | AI Visibility Boost | How to Apply |
+|---|---|---|
+| **Cite authoritative sources** | +40% | Add references with links to studies, official docs |
+| **Add specific statistics** | +37% | Include precise numbers with named sources |
+| **Add expert quotations** | +30% | Expert quotes with name and title attribution |
+| **Use authoritative tone** | +25% | Write with demonstrated expertise; avoid hedging |
+| **Improve clarity** | +20% | Simplify complex concepts; short sentences |
+| **Use technical terminology** | +18% | Domain-specific terms used correctly |
+| **Increase vocabulary diversity** | +15% | Avoid repetitive phrasing; use varied language |
+| **Fluency optimization** | +15–30% | Improve readability and natural flow |
+| ~~Keyword stuffing~~ | **-10%** | **Actively hurts AI visibility** |
+
+**Best combination**: Fluency + Statistics = maximum visibility boost. Low-ranking sites benefit disproportionately — up to **115% visibility increase** when adding citations to previously uncited content.
+
+---
+
+## Content Type Citation Share
+
+Which content types get cited most by AI systems:
+
+| Content Type | Citation Share | Why AI Cites It |
+|---|---|---|
+| **Comparison articles** | ~33% | Structured, balanced, high-intent queries |
+| **Definitive guides** | ~15% | Comprehensive, authoritative single source |
+| **Original research/data** | ~12% | Unique, citable statistics unavailable elsewhere |
+| **Best-of / listicles** | ~10% | Clear structure, entity-rich, commercial intent |
+| **Product pages** | ~10% | Specific details AI can extract and attribute |
+| **How-to guides** | ~8% | Step-by-step structure matches procedural queries |
+| **Opinion / analysis** | ~10% | Expert perspective, quotable conclusions |
+
+**Implication**: If you only create one new content type for GEO, create a comparison article — they receive 1/3 of all AI citations.
+
+---
+
+## AI Visibility Monitoring Tools
+
+Track whether AI systems are citing your content:
+
+| Tool | Platform Coverage | Best For |
+|---|---|---|
+| **Otterly AI** | ChatGPT, Perplexity, Google AI Overviews | Share of AI voice tracking |
+| **Peec AI** | ChatGPT, Gemini, Perplexity, Claude, Copilot+ | Multi-platform monitoring at scale |
+| **ZipTie** | Google AI Overviews, ChatGPT, Perplexity | Brand mention + sentiment tracking |
+| **LLMrefs** | ChatGPT, Perplexity, AI Overviews, Gemini | SEO keyword → AI visibility mapping |
+
+**Manual monitoring**: Search 3–5 target keywords monthly in ChatGPT and Perplexity. Document which competitors get cited. Repeat quarterly to track improvement.
+
+---
+
+## AI Platform Source Selection (Factor-by-Factor)
+
+How each AI platform selects sources differently:
+
+| Factor | Google AI Overviews | ChatGPT | Perplexity | Claude |
+|---|---|---|---|---|
+| **Freshness bias** | High | Medium | Very high | N/A (training data) |
+| **Authority weight** | Very high | High | High | High |
+| **Structure importance** | High | Medium | Very high | Medium |
+| **Typical citation count** | 3–8 | 1–6 | 5–10 | N/A |
+| **Quotable focus** | High | Medium | Very high | High |
+| **Domain trust** | Very high | High | Medium | High |
+| **Factual density** | High | High | Very high | Very high |
+
+---
+
 ## GEO Error Handling
 
 | Scenario | Action |

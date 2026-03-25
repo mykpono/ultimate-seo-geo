@@ -200,6 +200,49 @@ Use this format for keyword research output:
 4. Identify: keywords they rank for that you don't
 5. Prioritize: topics where competitor content is shallow (opportunity to produce better content)
 
+### Keyword Opportunity Score Formula
+
+Quantitative prioritization for content calendar decisions:
+
+**Formula**: `Opportunity = (Volume × Intent Value) / Difficulty`
+
+**Intent Value weights**:
+
+| Search Intent | Value Multiplier | Rationale |
+|---|---|---|
+| Informational | 1× | High volume, low conversion |
+| Navigational | 1× | Brand-specific, limited opportunity |
+| Commercial | 2× | Research phase, high conversion potential |
+| Transactional | 3× | Highest conversion rate |
+
+**Opportunity Matrix** (for quick assessment):
+
+| Scenario | Volume | Difficulty | Intent | Priority |
+|---|---|---|---|---|
+| **Quick Win** | Low–Med | Low | Commercial/Transactional | Highest — do first |
+| **Growth** | High | Medium | Commercial | High — invest in quality |
+| **Long-term** | High | High | Transactional | Medium — requires authority |
+| **Research** | Low | Low | Informational | Low — good for topic clusters |
+
+**Priority Scoring** (weighted): Score each keyword 1–5 on these factors, then calculate `Σ(Factor Weight × Score) / 5`:
+
+| Factor | Weight |
+|---|---|
+| Business Relevance | 30% |
+| Keyword Difficulty (inverse) | 25% |
+| Search Volume | 20% |
+| Search Intent Match | 15% |
+| Trend Direction | 10% |
+
+| Priority | Score | Action |
+|---|---|---|
+| P0 — Must Target | 4.0–5.0 | Create content immediately |
+| P1 — High Value | 3.0–3.9 | Queue for next content sprint |
+| P2 — Opportunity | 2.0–2.9 | Plan for future calendar |
+| P3 — Monitor | 1.0–1.9 | Track but don't prioritize |
+
+---
+
 ### Competitive Advantage Framework
 
 | Advantage | How to Leverage |
