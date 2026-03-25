@@ -2,12 +2,12 @@
 name: ultimate-seo-geo
 license: MIT
 metadata:
-  version: 1.0.0
+  version: 1.1.0
   author: Myk Pono
   website: https://lab.mykpono.com
   homepage: https://mykpono.com
   linkedin: https://www.linkedin.com/in/mykolaponomarenko/
-  updated: 2026-03-23
+  updated: 2026-03-24
   credits:
     - name: Agentic-SEO-Skill
       author: Bhanunamikaze
@@ -17,13 +17,30 @@ metadata:
       author: AgriciDaniel
       url: https://github.com/AgriciDaniel/claude-seo
       contribution: GEO platform citation data, DataForSEO integration patterns, AI crawler detection tables, subagent delegation architecture
+    - name: CORE-EEAT Content Benchmark
+      author: aaron-he-zhu
+      url: https://github.com/aaron-he-zhu/core-eeat-content-benchmark
+      contribution: 80-item CORE-EEAT audit framework, content-type weight tables, GEO-First item mapping
+    - name: CITE Domain Rating
+      author: aaron-he-zhu
+      url: https://github.com/aaron-he-zhu/cite-domain-rating
+      contribution: 40-item CITE domain authority framework, domain-type weights, diagnosis matrix
+    - name: Entity Optimizer
+      author: aaron-he-zhu
+      contribution: 47-signal entity checklist, AI Entity Resolution Test protocol, Knowledge Graph optimization guide
+    - name: AI SEO / GEO Content Optimizer
+      author: aaron-he-zhu
+      contribution: Princeton GEO research data, AI engine preference mapping, content type citation share data
 description: >
   Universal SEO + GEO skill. Use for: full site audits with scored findings + fix
   directives, technical SEO (Core Web Vitals/INP, crawlability, JS rendering),
-  content quality & E-E-A-T, schema markup generation (all types, deprecation-aware),
+  content quality & E-E-A-T (80-item CORE-EEAT audit + 40-item CITE domain rating),
+  schema markup generation (all types, deprecation-aware), entity optimization
+  (47-signal checklist, Knowledge Graph, Wikidata),
   AI search optimization (Google AI Overviews, AI Mode, ChatGPT, Perplexity), keyword
-  research, topic clusters, link building, image SEO, hreflang, programmatic SEO,
-  local SEO, site migrations, and content pruning. Includes 20 Python diagnostic scripts.
+  research, topic clusters, link building, image SEO, hreflang, programmatic SEO
+  (12 playbooks), local SEO, site migrations, and content pruning. Includes 20 Python
+  diagnostic scripts.
   Invoke when user mentions: SEO, GEO, audit, schema, rankings, traffic drop, AI Overviews,
   backlinks, sitemap, crawl, robots.txt, migration, hreflang, featured snippet, content
   strategy, keyword research — or asks "why isn't my site showing up?", "how do I rank
@@ -109,12 +126,14 @@ review the output, confirm it resolves the original finding.
 | **GEO / AI Search** | "AI Overviews", "ChatGPT", "Perplexity", "AI citations", "GEO", "AI Mode" | § 3 |
 | **Technical SEO** | "crawl", "robots.txt", "Core Web Vitals", "speed", "indexing", "JS rendering" | § 4 |
 | **Schema / Structured Data** | "schema", "JSON-LD", "rich results", "structured data" | § 5 |
-| **Content / E-E-A-T** | "content quality", "E-E-A-T", "thin content", "helpful content" | § 6 |
+| **Content / E-E-A-T** | "content quality", "E-E-A-T", "thin content", "helpful content", "CORE-EEAT" | § 6 |
+| **Content Scoring** | "CORE-EEAT audit", "content score", "CITE audit", "domain authority score", "GEO score" | § 6 |
+| **Entity Optimization** | "entity", "knowledge graph", "knowledge panel", "Wikidata", "brand entity" | § 3 |
 | **Content Pruning / Refresh** | "old content", "content decay", "delete pages", "refresh", "consolidate" | § 6b |
 | **Keyword Research** | "keywords", "ranking opportunities", "content gaps", "what should I write" | § 7 |
 | **Topic Clusters** | "topic cluster", "content strategy", "pillar page" | § 7b |
 | **AEO / Featured Snippets** | "featured snippet", "PAA", "voice search", "knowledge panel", "speakable" | § 7c |
-| **Competitor Analysis** | "competitors", "benchmark", "compare to" | § 8 |
+| **Competitor Analysis** | "competitors", "benchmark", "compare to", "X vs Y page", "alternatives page" | § 8 |
 | **Link Building** | "backlinks", "internal links", "anchor text", "referring domains" | § 9 |
 | **Analytics / Reporting** | "GA4", "Search Console", "traffic drop", "CTR", "rank tracking" | § 10 |
 | **Crawl & Indexation** | "crawl budget", "sitemap", "canonical", "index bloat", "noindex" | § 11 |
@@ -370,7 +389,7 @@ Fix: Move the direct answer to the opening paragraph. Keep detail further down.
 Confidence: Confirmed | Severity: 🟠 High
 ```
 
-→ `references/ai-search-geo.md` (full platform data, brand correlation, Wikipedia/Wikidata setup, Passage Indexing) | `scripts/robots_checker.py` `scripts/entity_checker.py` `scripts/llms_txt_checker.py` `scripts/social_meta.py`
+→ `references/ai-search-geo.md` (full platform data, brand correlation, Wikipedia/Wikidata setup, Passage Indexing, Princeton GEO research techniques, content type citation share, AI monitoring tools, platform source selection factors) | `references/entity-optimization.md` (47-signal entity checklist, AI Entity Resolution Test, Knowledge Graph guide) | `scripts/robots_checker.py` `scripts/entity_checker.py` `scripts/llms_txt_checker.py` `scripts/social_meta.py`
 
 ---
 
@@ -488,7 +507,11 @@ For e-commerce schema additions (ProductGroup, Certification, OfferShippingDetai
 
 For the E-E-A-T scoring framework with factor weights, content quality minimums table, readability grade targets, and 2025 spam categories (expired domain abuse, site reputation abuse, scaled content abuse), see `references/eeat-framework.md` and `references/content-eeat.md`.
 
-→ `references/eeat-framework.md` `references/content-eeat.md` | `scripts/article_seo.py` `scripts/readability.py` `scripts/duplicate_content.py`
+For the full **80-item CORE-EEAT content audit** (8 dimensions, Pass/Partial/Fail scoring, content-type weight tables, 3 veto items, GEO Score vs. SEO Score), see `references/core-eeat-framework.md`. Use this for deep content quality assessments.
+
+For the **40-item CITE domain authority audit** (Citation/Identity/Trust/Eminence, domain-type weights, veto items that cap score at 39, Diagnosis Matrix for CITE × CORE-EEAT strategy), see `references/cite-domain-rating.md`. Use this for domain-level authority assessments.
+
+→ `references/eeat-framework.md` `references/content-eeat.md` `references/core-eeat-framework.md` `references/cite-domain-rating.md` | `scripts/article_seo.py` `scripts/readability.py` `scripts/duplicate_content.py`
 
 ---
 
@@ -527,7 +550,7 @@ For freshness thresholds by content type, see `references/content-eeat.md`.
 2. **Classify existing content by intent** — Informational / Commercial / Transactional / Navigational.
 3. **Identify funnel gaps** — Which stages (TOFU / MOFU / BOFU) have no content?
 4. **Prioritize missing content** — For each gap: target keyword, intent, format, difficulty.
-5. **Output a prioritized content plan** — Up to 10 recommended pages by: (volume × relevance) / competition.
+5. **Output a prioritized content plan** — Up to 10 recommended pages by Opportunity Score: `(Volume × Intent Value) / Difficulty` — see `references/keyword-strategy.md` for the full formula with intent-weighted values and priority scoring matrix.
 
 ### Keyword Selection: Good vs. Bad
 
@@ -645,7 +668,7 @@ For Knowledge Panel (sameAs schema), Sitelinks Searchbox (SearchAction code), Sp
 ## Recommended Comparison Pages to Create
 ```
 
-For "X vs Y" and "Alternatives to X" page content requirements, feature matrix structure, and nominative fair use guidance, see `references/link-building.md`.
+For "X vs Y" and "Alternatives to X" page content requirements, the 4-type comparison page playbook (title formulas, fairness guidelines, CTA placement rules), feature matrix structure, and nominative fair use guidance, see `references/link-building.md` → "Comparison & Alternatives Page Playbook" section.
 
 ---
 
@@ -868,7 +891,7 @@ Apply whenever the site is a local business, service area business, or has physi
 
 **Don't**: Approve city pages where only the city name changes — March 2024 Core Update target (60–80% traffic declines seen).
 
-→ `references/programmatic-seo.md`
+→ `references/programmatic-seo.md` (12 playbooks taxonomy, data-asset-to-playbook decision matrix, data defensibility hierarchy, Scaled Content Abuse enforcement timeline with dates, uniqueness calculation formula, progressive rollout strategy)
 
 ---
 

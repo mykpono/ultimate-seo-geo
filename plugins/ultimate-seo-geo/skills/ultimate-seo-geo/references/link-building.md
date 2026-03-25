@@ -263,6 +263,58 @@ Hi [Name],
 
 **Legal note (Nominative Fair Use)**: Using a competitor's brand name to describe their product is generally permitted. You may say "Compare [Brand] vs. [Competitor]." Do NOT: use their logo without permission, imply affiliation, make false factual claims, or misrepresent their pricing.
 
+## Comparison & Alternatives Page Playbook
+
+Four page types for competitive content, each with specific templates.
+
+### Page Type Taxonomy
+
+| Type | Target Keywords | Conversion Rate |
+|---|---|---|
+| **X vs Y** | "[Product A] vs [Product B]" | 4–7% (vs. 0.5–1.8% for typical blog posts) |
+| **Alternatives to X** | "[Product] alternatives", "best alternatives to [Product]" | 3–5% |
+| **Best Category Roundup** | "best [category] tools [year]", "top [category] software" | 2–4% |
+| **Comparison Table** | "[category] comparison", "[category] comparison chart" | 3–6% |
+
+### Title Tag Formulas
+
+| Page Type | Formula | Example |
+|---|---|---|
+| X vs Y | `[A] vs [B]: [Key Differentiator] ([Year])` | "Notion vs Coda: Which Is Better for Teams? (2026)" |
+| Alternatives | `[N] Best [A] Alternatives in [Year] (Free & Paid)` | "9 Best Slack Alternatives in 2026 (Free & Paid)" |
+| Roundup | `[N] Best [Category] Tools in [Year] — Compared & Ranked` | "12 Best Project Management Tools in 2026 — Compared" |
+
+### Fairness Guidelines (Non-Negotiable)
+
+| Guideline | Requirement |
+|---|---|
+| **Accuracy** | All competitor information must be verifiable from public sources |
+| **No defamation** | Never make false or misleading claims about competitors |
+| **Cite sources** | Link to competitor websites, review sites, or documentation |
+| **Timely updates** | Review and update when competitors release major changes |
+| **Disclose affiliation** | Clearly state which product is yours |
+| **Balanced presentation** | Acknowledge competitor strengths honestly |
+| **Pricing accuracy** | Include "as of [date]" disclaimers on all pricing data |
+| **Feature verification** | Test competitor features where possible, cite documentation otherwise |
+
+### CTA Placement Rules
+
+- **Above fold**: Brief comparison summary with primary CTA
+- **After comparison table**: "Try [Your Product] free" CTA
+- **Bottom of page**: Final recommendation with CTA
+- **Avoid** aggressive CTAs in competitor description sections — reduces trust and E-E-A-T signals
+
+### Content Requirements
+
+1. Feature matrix table comparing ALL relevant dimensions (not just where you win)
+2. Objective pros/cons — one-sided pages are penalized for E-E-A-T
+3. Pricing comparison (exact current prices or "pricing available on request")
+4. Named use-case recommendations ("Choose X if..., Choose Y if...")
+5. Publish date + last-updated date — buyers need current pricing
+6. FAQ section addressing common decision questions
+
+---
+
 ## CommonCrawl Backlink Discovery (Free, No API Key)
 
 ```
