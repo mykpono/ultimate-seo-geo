@@ -7,14 +7,14 @@
   "metadata": {
     "description": "SEO + GEO for Claude — audits, AI search (GEO), schema, 24 diagnostic scripts + preflight & eval tools.",
     "homepage": "https://github.com/mykpono/ultimate-seo-geo",
-    "version": "1.2.0"
+    "version": "1.2.1"
   },
   "plugins": [
     {
       "name": "ultimate-seo-geo",
       "source": "./plugins/ultimate-seo-geo",
       "description": "SEO + GEO for Claude: scored audits, AI Overviews/ChatGPT/Perplexity, schema, CORE-EEAT & CITE, entity signals. 24 diagnostic Python scripts + requirements-check + score_eval_transcript. Modes: Audit → Plan → Execute.",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "author": {
         "name": "Myk Pono",
         "url": "https://mykpono.com"
