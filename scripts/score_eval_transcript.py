@@ -6,6 +6,8 @@ Usage:
   python scripts/score_eval_transcript.py --eval-id 1 --text-file path/to/transcript.txt
   python scripts/score_eval_transcript.py --eval-id 1 --stdin < transcript.txt
   python scripts/score_eval_transcript.py --all-fixtures
+
+Example transcript (synthetic pass): evals/fixtures/eval1_pass.txt
 """
 
 from __future__ import annotations
@@ -147,7 +149,18 @@ def main() -> int:
     if args.stdin:
         text = sys.stdin.read()
     elif args.text_file:
-        text = args.text_file.read_text(encoding="utf-8")
+        tf = args.text_file.expanduser()
+        if not tf.is_file():
+            print(
+                f"Error: transcript file not found: {tf}\n"
+                "  Create it with your model reply, or try:\n"
+                "    python3 scripts/score_eval_transcript.py --eval-id 1 "
+                "--text-file evals/fixtures/eval1_pass.txt\n"
+                "  Or pipe: python3 scripts/score_eval_transcript.py --eval-id 1 --stdin < my.txt",
+                file=sys.stderr,
+            )
+            return 2
+        text = tf.read_text(encoding="utf-8")
     else:
         parser.error("Provide --text-file or --stdin")
 

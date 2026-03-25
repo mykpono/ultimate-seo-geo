@@ -19,6 +19,11 @@
 - **CI** (`.github/workflows/validate-plugin.yml`) — `py_compile` all `scripts/*.py` + eval fixture regression.
 - Marketplace + `plugin.json` descriptions and version **1.2.0**.
 
+### Fixed
+
+- `score_eval_transcript.py` — clear stderr + exit `2` when `--text-file` is missing (no traceback); docstring points at `evals/fixtures/eval1_pass.txt`.
+- `meta_lengths_checker.py` — JSON error includes `hint` to run `pip install -r requirements.txt` / `requirements-check.py`.
+
 ## [1.1.2] - 2026-03-24
 
 ### Added

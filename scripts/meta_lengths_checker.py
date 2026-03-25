@@ -17,7 +17,15 @@ from pathlib import Path
 try:
     from bs4 import BeautifulSoup
 except ImportError:
-    print(json.dumps({"error": "beautifulsoup4 required"}))
+    print(
+        json.dumps(
+            {
+                "error": "beautifulsoup4 required",
+                "hint": "pip install -r requirements.txt  "
+                "or: python3 scripts/requirements-check.py",
+            }
+        )
+    )
     sys.exit(1)
 
 try:
