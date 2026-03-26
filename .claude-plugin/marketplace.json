@@ -1,4 +1,5 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "ultimate-seo-geo",
   "description": "SEO + GEO for Claude — audits, AI search (GEO), schema, 24 diagnostic scripts + preflight & eval tools.",
   "owner": {

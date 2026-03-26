@@ -241,16 +241,57 @@ In **Claude Code**, use **chat slash commands** (not Terminal/zsh):
 ## 6. Ship
 
 ```bash
-git status
+git add -A && git commit -m "vX.Y.Z — summary"
+git tag vX.Y.Z
+git push origin main --tags
 ```
 
-Commit, push, and tag:
+### 6a. Create a GitHub Release (required for web app updates)
+
+Go to `https://github.com/mykpono/ultimate-seo-geo/releases/new`:
+1. Select the existing tag `vX.Y.Z` from the dropdown
+2. Set title: `vX.Y.Z — one-line summary`
+3. Add release notes (copy from CHANGELOG)
+4. Click **Publish release**
+
+**Why this is required:** The Claude.ai web app marketplace reads from GitHub Releases, not commits or tags alone. Without a published Release, the web app Update button will not fetch the new version.
+
+---
+
+## 7. Update instructions per surface
+
+### Claude.ai web app
+After publishing the GitHub Release, users must remove + re-add the plugin to get the update. The Update button triggers Anthropic's server-side cache refresh, which may take time.
+
+1. **Customize → Ultimate seo geo → `...` → Remove**
+2. **Marketplace → search `ultimate-seo-geo` → Add**
+3. Start a new chat
+
+### Claude Code (terminal)
+The `/plugin marketplace add` command registers the marketplace but does **not** clone the repo files. Users must run:
 
 ```bash
-git add -A && git commit -m "vX.Y.Z — summary" && git tag vX.Y.Z && git push origin main --tags
+# First time or after losing the local cache:
+git clone https://github.com/mykpono/ultimate-seo-geo.git \
+  ~/.claude/plugins/marketplaces/ultimate-seo-geo
+
+# To update an existing install:
+cd ~/.claude/plugins/marketplaces/ultimate-seo-geo && git pull
 ```
 
-Then create a **GitHub Release** for the tag at `https://github.com/mykpono/ultimate-seo-geo/releases/new` — select the existing tag, add release notes, and publish. **This step is required.** The Claude.ai web app marketplace reads from GitHub Releases, not commits or tags alone. Without a published Release, the web app Update button will not fetch the new version.
+Then inside Claude Code:
+```
+/plugin marketplace remove ultimate-seo-geo
+/plugin marketplace add mykpono/ultimate-seo-geo
+/plugin install ultimate-seo-geo@ultimate-seo-geo
+/reload-plugins
+```
+
+### Cursor IDE (local skills)
+```bash
+rsync -a --delete --exclude='.git/' \
+  "/path/to/ultimate-seo-geo/" ~/.claude/skills/seo/
+```
 
 ---
 
