@@ -1151,9 +1151,9 @@ Frameworks and sources this skill builds on:
 
 | Source | Credit |
 | --- | --- |
-| [Agentic-SEO-Skill](https://github.com/Bhanunamikaze/Agentic-SEO-Skill) | Bhanunamikaze — SEO toolkit architecture, specialist agents, technical SEO audit framework |
-| [claude-seo](https://github.com/AgriciDaniel/claude-seo) | AgriciDaniel — GEO / DataForSEO patterns, AI crawler tables, subagent delegation |
-| [core-eeat-content-benchmark](https://github.com/aaron-he-zhu/core-eeat-content-benchmark) | aaron-he-zhu — CORE-EEAT 80-item framework, weights, GEO-first mapping |
-| [cite-domain-rating](https://github.com/aaron-he-zhu/cite-domain-rating) | aaron-he-zhu — CITE 40-item domain authority, weights, diagnosis matrix |
-| Entity Optimizer | aaron-he-zhu — entity checklist, AI entity resolution, Knowledge Graph guide |
-| AI SEO / GEO Content Optimizer | aaron-he-zhu — Princeton GEO data, engine preference mapping, citation-share data |
+| Agentic-SEO-Skill (github.com/Bhanunamikaze) | Bhanunamikaze — SEO toolkit architecture, specialist agents, technical SEO audit framework |
+| claude-seo (github.com/AgriciDaniel) | AgriciDaniel — GEO / DataForSEO patterns, AI crawler tables, subagent delegation |
+| core-eeat-content-benchmark (github.com/aaron-he-zhu) | aaron-he-zhu — CORE-EEAT 80-item framework, weights, GEO-first mapping |
+| cite-domain-rating (github.com/aaron-he-zhu) | aaron-he-zhu — CITE 40-item domain authority, weights, diagnosis matrix |
+| Entity Optimizer (github.com/aaron-he-zhu) | aaron-he-zhu — entity checklist, AI entity resolution, Knowledge Graph guide |
+| AI SEO / GEO Content Optimizer (github.com/aaron-he-zhu) | aaron-he-zhu — Princeton GEO data, engine preference mapping, citation-share data |
