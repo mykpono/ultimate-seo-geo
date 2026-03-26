@@ -19,21 +19,6 @@ The definitive SEO and Generative Engine Optimization skill. Merges Google's off
 guidance, 2026 GEO research, and practitioner best practices into one universal framework.
 Every finding comes with a clear fix directive — not just diagnosis.
 
-### Attribution
-
-Frameworks and sources this skill builds on:
-
-| Source | Credit |
-| --- | --- |
-| [Agentic-SEO-Skill](https://github.com/Bhanunamikaze/Agentic-SEO-Skill) | Bhanunamikaze — SEO toolkit architecture, specialist agents, technical SEO audit framework |
-| [claude-seo](https://github.com/AgriciDaniel/claude-seo) | AgriciDaniel — GEO / DataForSEO patterns, AI crawler tables, subagent delegation |
-| [core-eeat-content-benchmark](https://github.com/aaron-he-zhu/core-eeat-content-benchmark) | aaron-he-zhu — CORE-EEAT 80-item framework, weights, GEO-first mapping |
-| [cite-domain-rating](https://github.com/aaron-he-zhu/cite-domain-rating) | aaron-he-zhu — CITE 40-item domain authority, weights, diagnosis matrix |
-| Entity Optimizer | aaron-he-zhu — entity checklist, AI entity resolution, Knowledge Graph guide |
-| AI SEO / GEO Content Optimizer | aaron-he-zhu — Princeton GEO data, engine preference mapping, citation-share data |
-
----
-
 ## 0. Before You Start
 
 ### Routing index (read only what you need)
@@ -1156,3 +1141,18 @@ python scripts/meta_lengths_checker.py --url https://example.com --json
 python scripts/score_eval_transcript.py --eval-id 1 --text-file my-transcript.txt
 python scripts/score_eval_transcript.py --all-fixtures   # bundled golden fixtures
 ```
+
+---
+
+### Attribution
+
+Frameworks and sources this skill builds on:
+
+| Source | Credit |
+| --- | --- |
+| [Agentic-SEO-Skill](https://github.com/Bhanunamikaze/Agentic-SEO-Skill) | Bhanunamikaze — SEO toolkit architecture, specialist agents, technical SEO audit framework |
+| [claude-seo](https://github.com/AgriciDaniel/claude-seo) | AgriciDaniel — GEO / DataForSEO patterns, AI crawler tables, subagent delegation |
+| [core-eeat-content-benchmark](https://github.com/aaron-he-zhu/core-eeat-content-benchmark) | aaron-he-zhu — CORE-EEAT 80-item framework, weights, GEO-first mapping |
+| [cite-domain-rating](https://github.com/aaron-he-zhu/cite-domain-rating) | aaron-he-zhu — CITE 40-item domain authority, weights, diagnosis matrix |
+| Entity Optimizer | aaron-he-zhu — entity checklist, AI entity resolution, Knowledge Graph guide |
+| AI SEO / GEO Content Optimizer | aaron-he-zhu — Princeton GEO data, engine preference mapping, citation-share data |
