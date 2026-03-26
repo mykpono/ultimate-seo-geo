@@ -1,7 +1,7 @@
 {
   "name": "ultimate-seo-geo",
   "description": "SEO + GEO for Claude: scored audits, AI search surfaces, schema, CORE-EEAT & CITE, entities. 24 diagnostic scripts + requirements-check + score_eval_transcript. Modes: Audit → Plan → Execute.",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "author": {
     "name": "Myk Pono",
     "url": "https://mykpono.com"

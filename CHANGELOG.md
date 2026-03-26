@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-03-26
+
+### Fixed
+
+- Remove `"skills"`, `"license"`, `"homepage"`, and `"repository"` fields from `plugin.json` that blocked skill discovery in Claude.ai web app and Claude Code.
+- Add `version` field to `SKILL.md` YAML frontmatter for Claude Code skill detection.
+- Fix Attribution table rendering in Claude.ai web app (plain-text URLs instead of object references).
+
 ## [1.4.0] - 2026-03-26
 
 ### Added
