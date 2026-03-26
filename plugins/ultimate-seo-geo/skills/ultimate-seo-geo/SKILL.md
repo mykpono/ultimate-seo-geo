@@ -1,14 +1,14 @@
 ---
 name: ultimate-seo-geo
 description: Universal SEO + GEO skill for scored full-site audits, technical SEO, CORE-EEAT and CITE scoring, Schema.org JSON-LD, entity optimization, and GEO for AI Overviews, ChatGPT, and Perplexity. Use when the user mentions SEO, GEO, audit, schema, rankings, traffic drop, AI citations, backlinks, sitemap, crawl, robots, migration, hreflang, or content strategy.
-version: 1.4.1
+version: 1.5.0
 ---
 
 # Ultimate SEO + GEO — Universal Search Optimization Skill
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.4.1 |
+| **Version** | 1.5.0 |
 | **Updated** | 2026-03-26 |
 | **License** | MIT |
 | **Author** | Myk Pono |
@@ -165,6 +165,7 @@ If the request matches **§ 0 “When not to run Mode 1”**, route to a **narro
 | Health Score /100 | Internal Mode + minimum 5 scripts ran with data |
 | Thin content finding | `readability.py` + `duplicate_content.py` both ran |
 | Schema errors or validation status | `validate_schema.py` ran against the page |
+| Schema "not found" on a CMS site | Confirmed via Rich Results Test or browser JS console — `web_fetch`/`curl`/raw HTML cannot detect JS-injected schema (Yoast, RankMath, AIOSEO inject via client-side JS) |
 
 **When data is absent:** replace the claim with `[metric] not measured — run [script] for actual data` or ask the user to provide it. If `pagespeed.py` failed, lacks an API key, or the environment blocks googleapis.com, say **performance data unavailable** and give checklist-level guidance (§ 4, `references/technical-checklist.md`) or ask the user to run PSI / WebPageTest manually.
 
@@ -504,7 +505,7 @@ Always use **JSON-LD** (`<script type="application/ld+json">`). Schema improves 
 
 ### Schema Audit — Step by Step
 
-1. **Check existing schema** — Fetch page source, search `application/ld+json`.
+1. **Check existing schema** — Fetch page source, search `application/ld+json`. **Caveat:** `web_fetch`, `curl`, and raw HTML cannot reliably detect schema on CMS sites — many plugins (Yoast, RankMath, AIOSEO) inject JSON-LD via client-side JavaScript that won't appear in static source. If raw HTML shows no schema on a CMS site, verify with Rich Results Test (renders JS) or browser console (`document.querySelectorAll('script[type="application/ld+json"]')`) before reporting "no schema found."
 2. **Validate** — Test at search.google.com/test/rich-results. Fix errors before adding new schema.
 3. **Identify missing schema** — Compare to Essential Schema table below.
 4. **Generate missing schema** — Use JSON-LD templates in `references/schema-types.md`.

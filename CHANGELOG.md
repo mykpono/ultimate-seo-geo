@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-03-26
+
+### Added
+
+- **Schema Detection Caveat** (§2 Evidence Integrity + §5 Schema Audit) — new Evidence Integrity row for "Schema not found on a CMS site" requires confirmation via Rich Results Test or browser JS console before reporting missing schema. Schema Audit step 1 expanded with caveat that `web_fetch`/`curl`/raw HTML cannot detect JS-injected schema from plugins like Yoast, RankMath, and AIOSEO.
+  WHY: Many CMS sites inject JSON-LD via client-side JavaScript. Static source fetch shows no schema, leading to false "no schema found" findings. This prevents misdiagnosis on WordPress/CMS sites.
+
+- **Expanded Competitor & Alternatives Page Playbook** (`references/link-building.md`) — four detailed page-structure templates: `[Competitor] Alternative (Singular)`, `[Competitor] Alternatives (Plural)`, `You vs [Competitor]`, and `[Competitor A] vs [Competitor B] (Third-Party)`. Each template includes URL patterns, target keywords, search intent, and 7-point content outlines. Added centralized competitor data architecture with update cadences and a 5-step competitor research process.
+  WHY: The existing playbook listed page types but lacked actionable structure. Practitioners needed concrete outlines for each format to produce consistently structured comparison/alternatives pages at scale.
+
+### Changed
+
+- SKILL.md version → **1.5.0**; updated date → 2026-03-26.
+
 ## [1.4.1] - 2026-03-26
 
 ### Fixed

@@ -313,6 +313,98 @@ Four page types for competitive content, each with specific templates.
 5. Publish date + last-updated date — buyers need current pricing
 6. FAQ section addressing common decision questions
 
+### Per-Format Page Structures
+
+#### Format 1: [Competitor] Alternative (Singular)
+
+**URL pattern**: `/alternatives/[competitor]` or `/[competitor]-alternative`
+**Target keywords**: "[Competitor] alternative", "alternative to [Competitor]", "switch from [Competitor]"
+**Search intent**: User is actively looking to switch from a specific competitor.
+
+**Page structure:**
+1. **Why people look for alternatives** — validate their pain; reference common complaints from G2/Capterra reviews
+2. **Summary: You as the alternative** — quick positioning (2-3 sentences, not a sales pitch)
+3. **Detailed comparison** — features, pricing, support, ease of use; use comparison table
+4. **Who should switch** — specific use cases where you're a better fit
+5. **Who should NOT switch** — be honest; builds trust and E-E-A-T
+6. **Migration path** — what transfers, what needs reconfiguration, support offered
+7. **Social proof from switchers** — testimonials from customers who made the move, with specifics
+
+#### Format 2: [Competitor] Alternatives (Plural)
+
+**URL pattern**: `/alternatives/[competitor]-alternatives`
+**Target keywords**: "[Competitor] alternatives", "best [Competitor] alternatives"
+**Search intent**: User researching options, earlier in journey.
+
+**Page structure:**
+1. **Why people look for alternatives** — common pain points driving the search
+2. **What to look for in an alternative** — criteria framework (features, pricing, support, integrations)
+3. **List of 4-7 real alternatives** — you first, but include genuine competitors; being helpful ranks better than being self-serving
+4. **Comparison summary table** — all alternatives side-by-side on key criteria
+5. **Detailed breakdown of each alternative** — 150-300 words per option with pros/cons
+6. **Recommendation by use case** — "Choose X if you need..., Choose Y if you need..."
+7. **CTA** — your offering with clear next step
+
+#### Format 3: You vs [Competitor]
+
+**URL pattern**: `/vs/[competitor]` or `/compare/[you]-vs-[competitor]`
+**Target keywords**: "[You] vs [Competitor]", "[Competitor] vs [You]"
+**Search intent**: User directly comparing two specific products.
+
+**Page structure:**
+1. **TL;DR summary** — key differences in 2-3 sentences (scanners read this only)
+2. **At-a-glance comparison table** — features, pricing, ratings side-by-side
+3. **Detailed comparison by category** — Features, Pricing, Support, Ease of Use, Integrations (paragraph per dimension, not just checkmarks)
+4. **Who [You] is best for** — specific personas and use cases
+5. **Who [Competitor] is best for** — be honest; one-sided pages lose trust and rankings
+6. **What customers say** — testimonials specifically from people who evaluated both
+7. **Migration support + CTA** — make switching easy
+
+#### Format 4: [Competitor A] vs [Competitor B] (Third-Party)
+
+**URL pattern**: `/compare/[competitor-a]-vs-[competitor-b]`
+**Target keywords**: "[A] vs [B]", "[B] vs [A]"
+**Search intent**: User comparing two competitors — not you directly.
+
+**Page structure:**
+1. **Overview of both products** — neutral, balanced descriptions
+2. **Comparison by category** — same dimensions as Format 3
+3. **Who each is best for** — genuine recommendations
+4. **The third option** — introduce yourself as an alternative worth considering (not the main pitch)
+5. **Three-way comparison table** — all three options side-by-side
+6. **CTA** — soft; you earned attention by being helpful, don't squander it
+
+### Centralized Competitor Data Architecture
+
+Maintain a single source of truth per competitor. Updates propagate to all comparison pages referencing that competitor.
+
+**Per-competitor data file** (YAML or Markdown):
+- Company name, founding year, headquarters
+- Target audience and positioning
+- Pricing (all tiers, what's included, hidden costs)
+- Feature ratings by category (1-5 scale with notes)
+- Strengths (3-5 genuine strengths)
+- Weaknesses (3-5, sourced from reviews)
+- Best for / not ideal for (specific personas)
+- Common complaints (themes from G2, Capterra, TrustRadius)
+- Migration notes (what transfers, what breaks)
+- Last verified date
+
+**Update cadence:**
+- **Quarterly**: Verify pricing, check for major feature changes
+- **When triggered**: Customer reports competitor change, or competitor announces major update
+- **Annually**: Full refresh of all competitor data files
+
+### Competitor Research Process
+
+For each competitor page, gather data from these sources before writing:
+
+1. **Product research** — sign up for free tier or trial; document features, UX, and limitations first-hand
+2. **Pricing research** — current pricing from their website; note what's included per tier, hidden costs (overages, add-ons)
+3. **Review mining** — G2, Capterra, TrustRadius for recurring praise and complaint themes; extract exact language customers use
+4. **Customer feedback** — talk to customers who switched (both to you and away from you); get specific quotes
+5. **Content research** — read their own comparison pages, positioning, and recent changelog
+
 ---
 
 ## CommonCrawl Backlink Discovery (Free, No API Key)
