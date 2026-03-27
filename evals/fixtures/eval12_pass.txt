@@ -1,0 +1,44 @@
+Since TaskForge already ranks well in traditional search, the focus here is purely on GEO — getting cited by AI assistants like Gemini and SearchGPT. Here's how to increase your AI visibility.
+
+## Why AI Assistants Aren't Citing TaskForge
+
+AI citation correlates more with brand mentions (0.664) than backlinks (0.218). If TaskForge has strong SEO but no AI citations, the likely gaps are:
+
+1. **Weak third-party brand signals** — AI engines weight mentions on Reddit, YouTube, Wikipedia, and review platforms
+2. **Content isn't structured for AI extraction** — no concise, quotable answer blocks
+3. **Missing llms.txt** — AI crawlers can't discover your key content efficiently
+4. **No entity presence** — Gemini and SearchGPT rely heavily on knowledge graph associations
+
+## GEO Optimization Plan
+
+### 1. llms.txt Setup
+Create `/llms.txt` at your root domain listing your key pages with descriptions. This helps AI crawlers understand your site structure. Also verify that OAI-SearchBot and Google-Extended are not blocked in robots.txt.
+
+### 2. Make Content AI-Quotable
+For each key page (homepage, features, pricing, comparison pages):
+- Add a concise 40-60 word answer to the page's target query in the first paragraph
+- Include structured Q&A sections with question-format headings
+- Add specific statistics with sources ("TaskForge reduces project delivery time by 23% according to our 2025 customer survey of 1,200 teams")
+- These quotable blocks are what AI engines extract as citations
+
+### 3. Build Brand Signals on Third-Party Platforms
+- **Reddit**: Participate authentically in r/projectmanagement, r/SaaS — mention TaskForge where genuinely relevant
+- **YouTube**: Create comparison videos ("TaskForge vs Asana for remote teams") and tutorials
+- **Review platforms**: Ensure active profiles on G2, Capterra with recent reviews
+- **Wikipedia/Wikidata**: If TaskForge meets notability guidelines, create a Wikidata entity with proper claims
+
+### 4. Entity Optimization
+Add Organization schema with `sameAs` linking to all official profiles. This helps AI engines connect your brand entity across platforms. Create an "About" page with structured company facts that AI can extract.
+
+### 5. Competitor Citation Analysis
+Search "best project management tools" and "project management software comparison" in ChatGPT and Perplexity. Note which competitors appear and analyze their content structure — replicate the patterns that earn citations.
+
+### 6. FAQ Schema for AI Extraction
+Add FAQPage schema to your comparison and feature pages. While FAQ rich results are less prominent in traditional search, FAQ schema significantly improves AI citation chances by providing structured Q&A pairs that AI engines can directly reference.
+
+## Priority Order
+1. llms.txt + robots.txt fixes (day 1)
+2. Quotable content blocks on top 5 pages (week 1)
+3. Reddit and YouTube presence (ongoing)
+4. Entity and schema optimization (week 2-3)
+5. Monitor citations monthly in ChatGPT and Perplexity

@@ -1,14 +1,14 @@
 ---
 name: ultimate-seo-geo
 description: Universal SEO + GEO skill for scored full-site audits, technical SEO, CORE-EEAT and CITE scoring, Schema.org JSON-LD, entity optimization, and GEO for AI Overviews, ChatGPT, and Perplexity. Use when the user mentions SEO, GEO, audit, schema, rankings, traffic drop, AI citations, backlinks, sitemap, crawl, robots, migration, hreflang, or content strategy.
-version: 1.5.0
+version: 1.5.1
 ---
 
 # Ultimate SEO + GEO — Universal Search Optimization Skill
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.5.0 |
+| **Version** | 1.5.1 |
 | **Updated** | 2026-03-26 |
 | **License** | MIT |
 | **Author** | Myk Pono |
@@ -118,34 +118,40 @@ review the output, confirm it resolves the original finding.
 
 If the request matches **§ 0 “When not to run Mode 1”**, route to a **narrow** answer or decline the SEO-audit template — even if generic “marketing” vocabulary appears.
 
+**Disambiguation:** When multiple rows match, prefer the most specific. If equally specific, use the first match. If nothing matches, fall back to § 0 Intake Checklist.
+
+This table routes by **topic**. For mode selection (Audit vs. Plan vs. Execute), see **§ 0 Mode Routing**.
+
 | Request Type | Trigger Keywords | Go To |
 |---|---|---|
-| **Full Audit** | "audit", "analyze my site", "full check", "site review" | § 2 |
-| **GEO / AI Search** | "AI Overviews", "ChatGPT", "Perplexity", "AI citations", "GEO", "AI Mode" | § 3 |
-| **Technical SEO** | "crawl", "robots.txt", "Core Web Vitals", "speed", "indexing", "JS rendering" | § 4 |
-| **Schema / Structured Data** | "schema", "JSON-LD", "rich results", "structured data" | § 5 |
-| **Content / E-E-A-T** | "content quality", "E-E-A-T", "thin content", "helpful content", "CORE-EEAT" | § 6 |
-| **Content Scoring** | "CORE-EEAT audit", "content score", "CITE audit", "domain authority score", "GEO score" | § 6 |
-| **Entity Optimization** | "entity", "knowledge graph", "knowledge panel", "Wikidata", "brand entity" | § 3 |
-| **Content Pruning / Refresh** | "old content", "content decay", "delete pages", "refresh", "consolidate" | § 6b |
-| **Keyword Research** | "keywords", "ranking opportunities", "content gaps", "what should I write" | § 7 |
-| **Topic Clusters** | "topic cluster", "content strategy", "pillar page" | § 7b |
-| **AEO / Featured Snippets** | "featured snippet", "PAA", "voice search", "knowledge panel", "speakable" | § 7c |
-| **Competitor Analysis** | "competitors", "benchmark", "compare to", "X vs Y page", "alternatives page" | § 8 |
-| **Link Building** | "backlinks", "internal links", "anchor text", "referring domains" | § 9 |
-| **Analytics / Reporting** | "GA4", "Search Console", "traffic drop", "CTR", "rank tracking" | § 10 |
-| **Crawl & Indexation** | "crawl budget", "sitemap", "canonical", "index bloat", "noindex" | § 11 |
-| **Local SEO** | "local", "Google Business Profile", "GBP", "map pack", "NAP" | § 12 |
-| **Image SEO** | "images", "alt text", "WebP", "image size" | § 13 |
-| **International SEO** | "hreflang", "multi-language", "international", "geo-targeting" | § 14 |
-| **Programmatic SEO** | "programmatic", "at scale", "templates", "city pages", "glossary pages" | § 15 |
-| **Strategy / Roadmap** | "SEO plan", "roadmap", "strategy", "what should I focus on" | § 16 |
-| **Monthly Maintenance** | "what should I check", "monthly SEO", "ongoing", "monitor" | § 17 |
-| **Site Migration** | "moving domains", "new URL structure", "CMS migration", "redirect map" | § 20 |
-| **Myths / Misconceptions** | "does X help SEO?", "is X a ranking factor?" | § 18 |
-| **Script Toolbox** | "run a check", "generate a report", "validate schema", "automated audit" | § 21 |
-| **Paid ads primary** | "Google Ads", "PPC campaign", "ad spend" without organic SEO ask | § 0 — paid scope, not Mode 1 |
-| **Scoped technical only** | "only robots.txt", "just the sitemap", "don’t audit content" | § 0 + § 4 / § 11 — stay in scope |
+| **Full Audit** | “audit”, “analyze my site”, “full check”, “site review” | § 2 Full Audit |
+| **Traffic Drop / Rankings Lost** | “traffic dropped”, “lost rankings”, “rankings fell”, “why did traffic drop”, “core update”, “algorithm update”, “rankings dropped” | § 10 Analytics first, then § 4 Technical / § 6 Content |
+| **GEO / AI Search** | “AI Overviews”, “ChatGPT”, “Perplexity”, “AI citations”, “GEO”, “AI Mode”, “SearchGPT”, “Gemini”, “llms.txt”, “AI search” | § 3 GEO |
+| **Technical SEO** | “crawl”, “robots.txt”, “Core Web Vitals”, “speed”, “indexing”, “JS rendering”, “mobile”, “mobile-friendly”, “HTTPS”, “security headers”, “redirect chain” | § 4 Technical |
+| **Schema / Structured Data** | “schema”, “JSON-LD”, “rich results”, “structured data” | § 5 Schema |
+| **Content / E-E-A-T** | “content quality”, “E-E-A-T”, “thin content”, “helpful content”, “CORE-EEAT” | § 6 Content |
+| **Content Scoring** | “CORE-EEAT audit”, “content score”, “CITE audit”, “domain authority score”, “GEO score” | § 6 Content |
+| **Entity Optimization** | “entity”, “knowledge graph”, “knowledge panel”, “Wikidata”, “brand entity” | § 3 GEO |
+| **Content Pruning / Refresh** | “old content”, “content decay”, “delete pages”, “refresh”, “consolidate” | § 6b Pruning |
+| **Keyword Research** | “keywords”, “ranking opportunities”, “content gaps”, “what should I write” | § 7 Keywords |
+| **Topic Clusters** | “topic cluster”, “content strategy”, “pillar page” | § 7b Clusters |
+| **AEO / Featured Snippets** | “featured snippet”, “PAA”, “voice search”, “knowledge panel”, “speakable” | § 7c AEO |
+| **Competitor Analysis** | “competitors”, “benchmark”, “compare to”, “X vs Y page”, “alternatives page” | § 8 Competitors |
+| **Link Building** | “backlinks”, “internal links”, “anchor text”, “referring domains” | § 9 Links |
+| **Analytics / Reporting** | “GA4”, “Search Console”, “CTR”, “rank tracking”, “penalty”, “manual action” | § 10 Analytics |
+| **Crawl & Indexation** | “crawl budget”, “sitemap”, “canonical”, “index bloat”, “noindex”, “duplicate content”, “content cannibalization” | § 11 Crawl |
+| **Local SEO** | “local”, “Google Business Profile”, “GBP”, “map pack”, “NAP” | § 12 Local |
+| **Image SEO** | “images”, “alt text”, “WebP”, “image size” | § 13 Images |
+| **International SEO** | “hreflang”, “multi-language”, “international”, “geo-targeting” | § 14 International |
+| **Programmatic SEO** | “programmatic”, “at scale”, “templates”, “city pages”, “glossary pages” | § 15 Programmatic |
+| **Strategy / Roadmap** | “SEO plan”, “roadmap”, “strategy”, “what should I focus on” | § 16 Strategy |
+| **Monthly Maintenance** | “what should I check”, “monthly SEO”, “ongoing”, “monitor” | § 17 Maintenance |
+| **Site Migration** | “moving domains”, “new URL structure”, “CMS migration”, “redirect map” | § 20 Migration |
+| **Myths / Misconceptions** | “does X help SEO?”, “is X a ranking factor?” | § 18 Myths |
+| **Script Toolbox** | “run a check”, “generate a report”, “validate schema”, “automated audit” | § 21 Scripts |
+| **No clear match** | Query doesn’t match any row above | § 0 Intake Checklist |
+| **Paid ads primary** | “Google Ads”, “PPC campaign”, “ad spend” without organic SEO ask | § 0 — paid scope, not Mode 1 |
+| **Scoped technical only** | “only robots.txt”, “just the sitemap”, “don’t audit content” | § 0 + § 4 / § 11 — stay in scope |
 
 ---
 

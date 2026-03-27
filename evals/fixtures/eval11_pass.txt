@@ -1,0 +1,44 @@
+A 40% traffic drop after a core update strongly suggests a content quality reassessment by Google. Let me start with Search Console diagnosis and then work through recovery.
+
+## Step 1: GSC / Analytics Diagnosis
+
+First, check Google Search Console Performance report for the last 3 months:
+- Filter by pages to identify which URLs lost the most impressions and clicks
+- Check if the drop is site-wide or concentrated in specific sections
+- Look at the traffic data before vs. after the March core update date
+
+In GA4, compare sessions by landing page for the same period to confirm the pattern.
+
+## Step 2: Core Update Impact Assessment
+
+The March core update typically targets content quality signals. For a gardening blog like plantwise.com, common triggers include:
+
+- **Thin content**: Posts that rehash generic advice without first-hand gardening experience
+- **E-E-A-T gaps**: Missing author bios, no credentials shown, no demonstration of hands-on expertise
+- **Content decay**: Older posts with outdated growing zone info, deprecated product recommendations, or broken images
+
+## Step 3: Content Quality Audit
+
+Review the hardest-hit pages against Google's helpful content guidelines:
+- Does each post demonstrate first-hand experience (photos of your garden, specific results)?
+- Are author credentials visible (Master Gardener certification, years of experience)?
+- Is the content substantially different from what 10 other gardening sites say?
+
+## Step 4: Recovery Action Plan
+
+**Immediate (Week 1-2):**
+- Add author bios with gardening credentials to all posts
+- Update the 20 highest-traffic pages with fresh, experience-based content
+- Prune or consolidate thin pages that cover the same topic
+
+**Short-term (Month 1-2):**
+- Rewrite generic posts to include personal growing results, photos, and specific data
+- Improve internal linking between related plant guides
+- Add structured FAQ sections to top posts
+
+**Medium-term (Month 2-4):**
+- Build topical authority through comprehensive topic clusters
+- Consolidate overlapping content (e.g., merge 5 thin "tomato" posts into 1 definitive guide)
+- Monitor GSC weekly for recovery signals — core update recoveries typically take 1-3 update cycles
+
+The key principle: core update recovery requires demonstrating genuine expertise and first-hand experience, not just technical fixes.

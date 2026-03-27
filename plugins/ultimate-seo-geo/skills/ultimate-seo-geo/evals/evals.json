@@ -315,6 +315,82 @@
           "values": ["keyword", "content", "launch", "staging", "pillar", "topic", "brief"]
         }
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "Our organic traffic dropped 40% last month after the March core update. The site is plantwise.com, a gardening advice blog. What happened and how do we recover?",
+      "expected_output": "Routes via Traffic Drop row. Should start with analytics/GSC diagnosis (not a generic full audit), address algorithm update as likely cause, check for E-E-A-T and content quality issues typical of core update impacts, and provide a recovery action plan. Should NOT jump straight to schema or migration.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "analytics-first",
+          "description": "Starts with analytics or Search Console diagnosis, not schema or migration",
+          "type": "contains_any",
+          "values": ["Search Console", "GSC", "GA4", "analytics", "impressions", "clicks", "traffic data", "performance report"]
+        },
+        {
+          "id": "core-update-addressed",
+          "description": "Addresses the core update as a factor in the traffic drop",
+          "type": "contains_any",
+          "values": ["core update", "algorithm", "Google update", "quality update", "broad core"]
+        },
+        {
+          "id": "eeat-content-check",
+          "description": "Checks E-E-A-T or content quality as core update recovery steps",
+          "type": "contains_any",
+          "values": ["E-E-A-T", "content quality", "helpful content", "expertise", "author", "thin content", "EEAT"]
+        },
+        {
+          "id": "recovery-actions",
+          "description": "Provides concrete recovery actions, not just diagnosis",
+          "type": "contains_any",
+          "values": ["recover", "improve", "update", "rewrite", "consolidate", "prune", "action plan", "fix"]
+        },
+        {
+          "id": "no-schema-first",
+          "description": "Does not lead with schema generation as the primary response to a traffic drop",
+          "type": "not_contains_pattern",
+          "pattern": "^\\s*(?:<script|\\{\\s*\"@context)"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "How do I get my SaaS product cited by Gemini and SearchGPT? We're already ranking well in traditional Google search but AI assistants never mention us. The product is TaskForge, a project management tool at taskforge.io.",
+      "expected_output": "Routes via GEO row (triggered by Gemini, SearchGPT). Should focus on AI citation optimization: llms.txt, structured content for AI extraction, brand signals on third-party platforms, entity optimization. Should NOT produce a full technical crawl audit since traditional rankings are fine.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "geo-focused",
+          "description": "Focuses on GEO/AI citation strategies, not traditional SEO audit",
+          "type": "contains_any",
+          "values": ["GEO", "AI citation", "AI search", "cited", "AI visibility", "generative", "AI Overviews"]
+        },
+        {
+          "id": "platform-specific",
+          "description": "Addresses the specific platforms mentioned (Gemini, SearchGPT)",
+          "type": "contains_any",
+          "values": ["Gemini", "SearchGPT", "ChatGPT", "AI assistants", "AI engines"]
+        },
+        {
+          "id": "brand-signals",
+          "description": "Mentions brand signals, third-party presence, or entity optimization",
+          "type": "contains_any",
+          "values": ["brand", "entity", "Wikipedia", "Wikidata", "Reddit", "YouTube", "third-party", "mentions", "llms.txt"]
+        },
+        {
+          "id": "citability-tactics",
+          "description": "Includes concrete citability optimization tactics",
+          "type": "contains_any",
+          "values": ["quotable", "structured", "FAQ", "statistics", "data", "snippet", "answer", "concise", "first paragraph"]
+        },
+        {
+          "id": "no-full-crawl-audit",
+          "description": "Does not produce a full technical SEO audit since traditional rankings are fine",
+          "type": "not_contains_pattern",
+          "pattern": "SEO Health Score|\\b[0-9]{1,2}/100\\b"
+        }
+      ]
     }
   ]
 }

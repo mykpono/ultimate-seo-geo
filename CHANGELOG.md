@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-03-26
+
+### Changed
+
+- **Routing table (§ 1) — improved coverage and precision.**
+  - Added disambiguation rule above the table: most specific match wins; first match breaks ties; no-match falls back to § 0 Intake Checklist.
+  - Added cross-reference linking § 1 (topic routing) to § 0 Mode Routing to clarify the two-level dispatch.
+  - Added section labels to every "Go To" cell (e.g., "§ 3 GEO" instead of bare "§ 3") for self-documenting routing.
+  - New **Traffic Drop / Rankings Lost** row — triggers on "traffic dropped", "lost rankings", "rankings fell", "core update", "algorithm update", "rankings dropped"; routes to § 10 Analytics first, then § 4 / § 6.
+  - Expanded GEO trigger keywords: added "SearchGPT", "Gemini", "llms.txt", "AI search".
+  - Expanded Technical SEO trigger keywords: added "mobile", "mobile-friendly", "HTTPS", "security headers", "redirect chain".
+  - Expanded Analytics / Reporting trigger keywords: added "penalty", "manual action" (removed "traffic drop" — now has its own dedicated row).
+  - Expanded Crawl & Indexation trigger keywords: added "duplicate content", "content cannibalization".
+  - New **No clear match** fallback row at bottom of main table.
+
+### Added
+
+- **Eval 11** — traffic drop routing test: verifies analytics-first response to core update traffic loss; asserts no schema-first or migration routing.
+- **Eval 12** — GEO platform routing test: verifies GEO-focused response to Gemini/SearchGPT citation request; asserts no health score or full crawl audit.
+- All 12 evals pass (0 regressions).
+
 ## [1.5.0] - 2026-03-26
 
 ### Added
