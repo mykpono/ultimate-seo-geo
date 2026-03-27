@@ -56,14 +56,22 @@ else
   exit 1
 fi
 
-# ── 5. Copy audit scripts + evals (exclude maintainer-only check-plugin-sync.py) ─
+# ── 5. Copy audit scripts + evals (exclude maintainer-only scripts) ─────────
+# check-plugin-sync.py   — CI/repo health tool, not useful to plugin users
+# check_github_release.py — requires gh CLI + network; maintainer deployment tool
+SCRIPT_EXCLUDE_LIST="check-plugin-sync.py check_github_release.py"
+
 mkdir -p plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts
 rm -f plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts/*.py 2>/dev/null || true
 SCRIPT_N=0
 for f in scripts/*.py; do
   [ -f "$f" ] || continue
   base=$(basename "$f")
-  if [ "$base" = "check-plugin-sync.py" ]; then
+  excluded=0
+  for ex in $SCRIPT_EXCLUDE_LIST; do
+    [ "$base" = "$ex" ] && excluded=1 && break
+  done
+  if [ "$excluded" = "1" ]; then
     continue
   fi
   cp "$f" plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts/

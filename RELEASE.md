@@ -96,6 +96,12 @@ Same expectations as CI:
 python3 scripts/check-plugin-sync.py
 ```
 
+After pushing and creating the GitHub Release, also run:
+
+```bash
+python3 scripts/check_github_release.py
+```
+
 This verifies:
 
 - Root `SKILL.md` matches `plugins/ultimate-seo-geo/skills/ultimate-seo-geo/SKILL.md`
@@ -322,15 +328,42 @@ echo "✓ Claude terminal plugin updated — restart claude to reload"
 
 Then restart Claude Code (type `exit`, reopen terminal, run `claude`).
 
+### 6b. Verify GitHub Marketplace Release (required check)
+
+Run this immediately after pushing to confirm the Marketplace is up to date:
+
+```bash
+python3 scripts/check_github_release.py
+```
+
+- **Exit 0** = GitHub Release is published → Marketplace is live.
+- **Exit 1** = No published Release for this version → **do not skip step 6c**.
+
+This script reads the version from `plugin.json`, queries the GitHub API, and tells you whether the Claude.ai web app will serve the new version. It also prints the exact `gh release create` command to fix a missing release in one step.
+
 ### 6c. Create a GitHub Release (required for web app updates)
 
-Go to `https://github.com/mykpono/ultimate-seo-geo/releases/new`:
+**Via CLI (recommended — fastest):**
+
+```bash
+gh release create vX.Y.Z \
+  --title "vX.Y.Z — one-line summary" \
+  --notes "$(sed -n '/^## \[X\.Y\.Z\]/,/^## \[/{ /^## \[X\.Y\.Z\]/d; /^## \[/d; p }' CHANGELOG.md)"
+```
+
+Or manually at `https://github.com/mykpono/ultimate-seo-geo/releases/new`:
 1. Select the existing tag `vX.Y.Z` from the dropdown
 2. Set title: `vX.Y.Z — one-line summary`
 3. Add release notes (copy from CHANGELOG)
 4. Click **Publish release**
 
-**Why this is required:** The Claude.ai web app marketplace reads from GitHub Releases, not commits or tags alone. Without a published Release, the web app Update button will not fetch the new version.
+**Then verify:**
+
+```bash
+python3 scripts/check_github_release.py
+```
+
+**Why this is required:** The Claude.ai web app marketplace reads from GitHub Releases, not commits or tags alone. Without a published Release, the web app Update button will not fetch the new version. CI will warn (not fail) if this step is skipped.
 
 ---
 

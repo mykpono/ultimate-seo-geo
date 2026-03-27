@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [1.5.5] - 2026-03-27
+
+### Added
+
+- **`scripts/check_github_release.py`** — pre-deployment check that verifies the current plugin version has a published GitHub Release on the Marketplace. Reads version from `plugin.json`, queries GitHub public API, exits 1 if the release is missing or a draft. Prints the exact `gh release create` fix command. Run after `git push` to confirm the Marketplace is live.
+- **CI Marketplace check** — `validate-plugin.yml` now includes a "Check GitHub Marketplace Release" step that runs `check_github_release.py --warn` on every push. Warns without blocking CI so you're alerted if a GitHub Release was never published.
+- **RELEASE.md step 6b** — new required verification step after `git push`, plus updated step 6c with the `gh release create` one-liner.
+
+### Changed
+
+- `setup-plugin.sh` — added `check_github_release.py` to the maintainer-script exclusion list so it is never bundled into the plugin for end users.
+- `scripts/check-plugin-sync.py` — `SCRIPT_EXCLUDE` updated to include `check_github_release.py`.
+
 ## [1.5.4] - 2026-03-27
 
 ### Added

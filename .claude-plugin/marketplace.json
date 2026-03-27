@@ -10,7 +10,7 @@
     {
       "name": "ultimate-seo-geo",
       "description": "SEO + GEO for Claude: scored audits, AI Overviews/ChatGPT/Perplexity, schema, CORE-EEAT & CITE, entity signals. 24 diagnostic Python scripts + requirements-check + score_eval_transcript. Modes: Audit \u2192 Plan \u2192 Execute.",
-      "version": "1.5.4",
+      "version": "1.5.5",
       "author": {
         "name": "Myk Pono",
         "url": "https://mykpono.com"

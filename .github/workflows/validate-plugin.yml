@@ -114,6 +114,14 @@ jobs:
           for f in scripts/*.py; do python3 -m py_compile "$f"; done
           python3 scripts/score_eval_transcript.py --all-fixtures
 
+      - name: Check GitHub Marketplace Release
+        run: |
+          echo "Checking whether a GitHub Release exists for the current version..."
+          python3 scripts/check_github_release.py --warn
+        env:
+          # No token needed for public repos; set GITHUB_TOKEN if repo is private.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Summary
         run: |
           echo ""

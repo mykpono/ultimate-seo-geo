@@ -1,14 +1,14 @@
 ---
 name: ultimate-seo-geo
 description: Universal SEO + GEO skill for scored full-site audits, technical SEO, CORE-EEAT and CITE scoring, Schema.org JSON-LD, entity optimization, and GEO for AI Overviews, ChatGPT, and Perplexity. Make sure to use this skill whenever the user mentions SEO, GEO, audit, schema, rankings, traffic drop, AI citations, backlinks, sitemap, crawl, robots, migration, hreflang, content strategy, site speed, Core Web Vitals, structured data, rich results, indexing issues, or anything related to search engine visibility — even if they don't explicitly say "SEO."
-version: 1.5.4
+version: 1.5.5
 ---
 
 # Ultimate SEO + GEO — Universal Search Optimization Skill
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.5.4 |
+| **Version** | 1.5.5 |
 | **Updated** | 2026-03-27 |
 | **License** | MIT |
 | **Author** | Myk Pono |
