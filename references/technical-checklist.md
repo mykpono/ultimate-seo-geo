@@ -113,11 +113,19 @@ Each metric has distinct causes and fixes. Diagnose first, then apply the most i
 
 ### 2. Indexability
 
-**Canonical Tags**
-- [ ] Every page has a self-referencing canonical
-- [ ] No conflicts between canonical and noindex
-- [ ] www and non-www redirect to single canonical domain
-- [ ] HTTPS enforced (no canonical pointing to HTTP version)
+**Canonical Tags** — run `scripts/canonical_checker.py URL` or `--crawl` for site-wide
+- [ ] Every indexable page has a self-referencing canonical tag
+- [ ] Canonical is absolute URL (includes protocol + domain)
+- [ ] Canonical uses HTTPS (no HTTP canonical on HTTPS page)
+- [ ] No www/non-www mismatch between page URL and canonical
+- [ ] Trailing slash consistent between page URL and canonical
+- [ ] Canonical target resolves to HTTP 200 (not 404, not redirect)
+- [ ] Canonical target has self-referencing canonical (no canonical chain)
+- [ ] No conflicts between canonical and noindex — never both on same page
+- [ ] Only one `<link rel="canonical">` tag per page (no duplicates)
+- [ ] HTTP Link header canonical (if present) matches HTML canonical
+- [ ] www and non-www redirect to single canonical domain (301)
+- [ ] HTTPS enforced — HTTP 301 redirects to HTTPS
 
 **Duplicate Content**
 - [ ] Pagination handled properly (noindex on paged archives, or proper canonical)
@@ -126,8 +134,11 @@ Each metric has distinct causes and fixes. Diagnose first, then apply the most i
 
 **Index Bloat**
 - [ ] No unnecessary pages consuming crawl budget (thin tag pages, infinite scroll artifacts, faceted navigation pages)
-- [ ] 404 errors addressed
-- [ ] Soft 404s addressed — pages returning HTTP 200 status but showing "not found" or empty content (detect via Google Search Console Coverage report: "Crawled - currently not indexed")
+- [ ] 404 errors addressed — run `scripts/sitemap_checker.py --sample 50` to catch sitemap URLs returning 404 before GSC flags them
+- [ ] Soft 404s addressed — run `scripts/broken_links.py` to detect pages returning HTTP 200 but showing "not found" in title (also check GSC Coverage: "Crawled - currently not indexed")
+- [ ] No search result URLs in sitemap or index — URLs with `?q=`, `?search=`, `{search_term_string}` must have noindex and be excluded from sitemap
+- [ ] No template/placeholder URLs in sitemap — URLs containing `{variable}` patterns removed
+- [ ] Site-wide broken internal link scan — run `scripts/broken_links.py --crawl` or `scripts/internal_links.py` to find internal pages returning 404/5xx
 
 **Hreflang** (multi-language/region sites)
 - [ ] hreflang tags correct if site serves multiple languages/regions
@@ -348,6 +359,8 @@ IndexNow notifies **Bing, Yandex, Naver, and Seznam** of URL updates — enablin
 | No HTTPS / mixed content | Browser security indicator | Force HTTPS via 301; fix mixed assets |
 | Missing canonical tags | Crawl or view source | Add `<link rel="canonical">` to every indexable page |
 | Redirect chains (>1 hop) | Screaming Frog redirect report | Collapse to 1 hop |
+| Internal links to redirect URLs | `scripts/internal_links.py` detects redirected pages | Update href to final destination URL |
+| Alternate page (wrong canonical) | `scripts/canonical_checker.py --crawl` | Fix canonical to self-referencing if unique content |
 | Orphan pages | Crawl + compare to sitemap | Add 1+ internal link from related indexed page |
 | Soft 404s | GSC Coverage → "Crawled - currently not indexed" | Return real 404 or add genuine content |
 | Missing OG / Twitter Card | View source: no `og:title` | Add to `<head>` on all shareable pages |

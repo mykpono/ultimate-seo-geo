@@ -254,12 +254,103 @@ def build_environment_fixes(data: dict) -> list:
         )
 
     broken_count = bl.get("summary", {}).get("broken", 0)
+    soft_404_count = bl.get("summary", {}).get("soft_404s", 0)
     if broken_count > 0:
         add(
             "critical" if broken_count >= 5 else "warning",
             f"{broken_count} broken links detected",
             "Broken internal links hurt crawl flow and user trust.",
             _platform_hint(platform, "links"),
+        )
+    if soft_404_count > 0:
+        add(
+            "warning",
+            f"{soft_404_count} soft 404(s) detected",
+            "Pages returning 200 but showing 'not found' content waste crawl budget.",
+            "Return a real 404/410 status code for pages that don't exist. Update internal links to remove references to these pages.",
+        )
+
+    sm = data["sections"].get("sitemap", {})
+    sm_health = sm.get("url_health", {})
+    sm_404s = len(sm_health.get("not_found_404", []))
+    sm_soft = len(sm_health.get("soft_404s", []))
+    sm_patterns = sm.get("url_patterns", {})
+    sm_templates = len(sm_patterns.get("template_urls", []))
+    sm_search = len(sm_patterns.get("search_urls", []))
+    if sm_404s > 0:
+        add(
+            "critical",
+            f"{sm_404s} sitemap URL(s) return 404",
+            "Sitemap URLs returning 404 waste crawl budget and appear as errors in Google Search Console.",
+            "Remove 404 URLs from sitemap. If content moved, add 301 redirects. Fix internal links pointing to dead pages.",
+        )
+    if sm_soft > 0:
+        add(
+            "warning",
+            f"{sm_soft} sitemap URL(s) are soft 404s",
+            "Pages in sitemap returning 200 but showing 'not found' content confuse search engines.",
+            "Return real 404/410 status codes for dead pages, or restore genuine content.",
+        )
+    if sm_templates > 0 or sm_search > 0:
+        add(
+            "critical" if sm_templates > 0 else "warning",
+            f"Problematic URLs in sitemap ({'template placeholders' if sm_templates else 'search result pages'})",
+            "Search result and template URLs should never be in sitemaps — they waste crawl budget and dilute indexation.",
+            "Remove search/template URLs from sitemap. Add noindex to search result pages. Block via robots.txt if needed.",
+        )
+
+    can = data["sections"].get("canonical", {})
+    can_issues = can.get("issues", []) if isinstance(can.get("issues"), list) else []
+    can_critical = sum(1 for i in can_issues if isinstance(i, dict) and i.get("severity") in ("critical", "high"))
+    if can_critical > 0:
+        add(
+            "critical",
+            f"{can_critical} canonical tag issue(s) detected",
+            "Canonical tag problems cause 'Google chose different canonical' errors in Search Console.",
+            "Ensure every page has a single, absolute, self-referencing canonical with consistent protocol (HTTPS) and domain (www vs non-www). Fix any canonical pointing to a redirect or 404.",
+        )
+    elif not can.get("canonical") and not can.get("error"):
+        add(
+            "warning",
+            "Missing canonical tag",
+            "Without a canonical tag, Google decides which URL to index — often choosing wrong.",
+            "Add <link rel=\"canonical\" href=\"[absolute-self-url]\"> to every indexable page.",
+        )
+
+    il = data["sections"].get("internal_links", {})
+    il_redirected = len(il.get("redirected_pages", []))
+    if il_redirected > 0:
+        add(
+            "warning" if il_redirected < 5 else "critical",
+            f"{il_redirected} internal link(s) point to redirect URLs",
+            "GSC reports these as 'Page with redirect'. Stale links waste crawl budget and dilute link equity.",
+            "Update all internal links to point to the final destination URL. Remove redirect URLs from sitemap.",
+        )
+
+    can_alt = can.get("summary", {}).get("alternate_pages", 0) if isinstance(can.get("summary"), dict) else 0
+    if can_alt > 0:
+        add(
+            "warning" if can_alt < 10 else "critical",
+            f"{can_alt} page(s) flagged as 'Alternate page with proper canonical'",
+            "These pages have non-self-referencing canonicals — Google won't index them.",
+            "If pages have unique content, change canonical to self-referencing. If true duplicates, consider 301 redirect to canonical target.",
+        )
+
+    il_broken = len(il.get("broken_internal_pages", []))
+    il_soft = len(il.get("soft_404_pages", []))
+    if il_broken > 0:
+        add(
+            "critical",
+            f"{il_broken} internal page(s) return 404 during crawl",
+            "Internal pages returning 404 break user journeys and waste link equity.",
+            _platform_hint(platform, "links"),
+        )
+    if il_soft > 0:
+        add(
+            "warning",
+            f"{il_soft} internal page(s) are soft 404s",
+            "Soft 404 pages look broken to search engines despite returning HTTP 200.",
+            "Return real 404/410 status codes or restore genuine content on these pages.",
         )
 
     og_missing = soc.get("og_missing", [])
@@ -359,6 +450,7 @@ def collect_data(url: str) -> dict:
         ("hreflang", "hreflang_checker.py", [url]),
         ("duplicate_content", "duplicate_content.py", [url]),
         ("sitemap", "sitemap_checker.py", [url]),
+        ("canonical", "canonical_checker.py", [url]),
         ("local_signals", "local_signals_checker.py", [url]),
         ("indexnow_probe", "indexnow_checker.py", [url, "--probe"]),
     ]
@@ -421,6 +513,7 @@ def calculate_overall_score(data: dict) -> dict:
         "duplicate_content": 5,
         "schema_validation": 5,
         "image_seo": 3,
+        "canonical": 7,
         "sitemap": 3,
         "local_signals": 3,
         "indexnow_probe": 2,
@@ -459,17 +552,23 @@ def calculate_overall_score(data: dict) -> dict:
     else:
         scores["article"] = 0
 
-    # Broken links score
+    # Broken links score (includes soft 404s)
     bl = data["sections"].get("broken_links", {})
     summary = bl.get("summary", {})
     total = summary.get("total", 1) or 1
     broken = summary.get("broken", 0)
-    scores["broken_links"] = max(0, 100 - int((broken / total) * 300))
+    soft_404s = summary.get("soft_404s", 0)
+    scores["broken_links"] = max(0, 100 - int(((broken + soft_404s) / total) * 300))
 
-    # Internal links score
+    # Internal links score (penalize broken/soft-404/redirect pages)
     il = data["sections"].get("internal_links", {})
     il_issues = len(il.get("issues", []))
-    scores["internal_links"] = max(0, 100 - il_issues * 20)
+    il_broken_pages = len(il.get("broken_internal_pages", []))
+    il_soft_404_pages = len(il.get("soft_404_pages", []))
+    il_redirected_pages = len(il.get("redirected_pages", []))
+    il_penalty = (il_issues * 10 + il_broken_pages * 15
+                  + il_soft_404_pages * 10 + il_redirected_pages * 5)
+    scores["internal_links"] = max(0, 100 - il_penalty)
 
     # Redirects score
     red = data["sections"].get("redirects", {})
@@ -583,6 +682,13 @@ def calculate_overall_score(data: dict) -> dict:
         scores["sitemap"] = int(sm.get("score", 0))
     else:
         scores["sitemap"] = 0
+
+    # Canonical
+    can = data["sections"].get("canonical", {})
+    if can and not can.get("error"):
+        scores["canonical"] = int(can.get("score", 0))
+    else:
+        scores["canonical"] = 50
 
     # Local signals
     loc = data["sections"].get("local_signals", {})
@@ -708,6 +814,7 @@ def render_all_recommendations(data: dict) -> str:
         "article": "📄 Article SEO", "entity": "🏛️ Entity SEO",
         "link_profile": "🔗 Link Profile", "hreflang": "🌍 Hreflang",
         "duplicate_content": "📋 Content Uniqueness",
+        "canonical": "🔗 Canonical Tags",
         "schema_validation": "🧩 JSON-LD",
         "image_seo": "🖼️ Image SEO",
         "sitemap": "🗺️ Sitemaps",
@@ -807,6 +914,7 @@ def generate_html(data: dict, scores: dict) -> str:
     sch = data["sections"].get("schema_validation", {})
     imgsec = data["sections"].get("image_seo", {})
     smap = data["sections"].get("sitemap", {})
+    cansec = data["sections"].get("canonical", {})
     lsig = data["sections"].get("local_signals", {})
     inxp = data["sections"].get("indexnow_probe", {})
     env = data.get("environment", {})
@@ -845,6 +953,7 @@ def generate_html(data: dict, scores: dict) -> str:
         "link_profile": ("🔗", "Link Profile"),
         "hreflang": ("🌍", "Hreflang"),
         "duplicate_content": ("📋", "Content Uniqueness"),
+        "canonical": ("🔗", "Canonical Tags"),
         "schema_validation": ("🧩", "JSON-LD"),
         "image_seo": ("🖼️", "Image SEO"),
         "sitemap": ("🗺️", "Sitemaps"),
@@ -1291,13 +1400,14 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
     <!-- Broken Links -->
     <div class="section" id="section-broken_links">
         <div class="section-header" onclick="toggleSection('broken_links')">
-            <h2>🔗 Broken Links <span class="badge {"pass" if bl_broken == 0 else "critical"}">{bl_broken} broken / {bl_total} total</span></h2>
+            <h2>🔗 Broken Links <span class="badge {"pass" if bl_broken == 0 and bl_summary.get("soft_404s", 0) == 0 else "critical" if bl_broken > 0 else "warning"}">{bl_broken} broken{f" / {bl_summary.get('soft_404s', 0)} soft 404" if bl_summary.get('soft_404s', 0) > 0 else ""} / {bl_total} total</span></h2>
             <span class="chevron" id="chevron-broken_links">▼</span>
         </div>
         <div class="section-body" id="body-broken_links">
             <div class="summary-row">
                 <div class="summary-item"><div class="val" style="color:var(--green)">{bl_healthy}</div><div class="lbl">Healthy</div></div>
                 <div class="summary-item"><div class="val" style="color:var(--red)">{bl_broken}</div><div class="lbl">Broken</div></div>
+                <div class="summary-item"><div class="val" style="color:var(--orange)">{bl_summary.get("soft_404s", 0)}</div><div class="lbl">Soft 404s</div></div>
                 <div class="summary-item"><div class="val" style="color:var(--yellow)">{bl_summary.get("redirected", 0)}</div><div class="lbl">Redirected</div></div>
                 <div class="summary-item"><div class="val" style="color:var(--orange)">{bl_summary.get("timeout", 0)}</div><div class="lbl">Timeout</div></div>
             </div>
@@ -1540,7 +1650,7 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
     <!-- Sitemaps -->
     <div class="section" id="section-sitemap">
         <div class="section-header" onclick="toggleSection('sitemap')">
-            <h2>🗺️ Sitemaps <span class="badge {"pass" if scores["categories"].get("sitemap",0) >= 70 else "warning"}">{scores["categories"].get("sitemap",0)}/100</span></h2>
+            <h2>🗺️ Sitemaps <span class="badge {"pass" if scores["categories"].get("sitemap",0) >= 70 else "warning" if scores["categories"].get("sitemap",0) >= 40 else "critical"}">{scores["categories"].get("sitemap",0)}/100</span></h2>
             <span class="chevron" id="chevron-sitemap">▼</span>
         </div>
         <div class="section-body" id="body-sitemap">
@@ -1548,9 +1658,29 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
                 <div class="summary-item"><div class="val">{len(smap.get("sitemap_urls", [])) if smap and not smap.get("error") else "—"}</div><div class="lbl">Sitemaps listed</div></div>
                 <div class="summary-item"><div class="val">{smap.get("primary_status", "—") if smap and not smap.get("error") else "—"}</div><div class="lbl">Primary HTTP</div></div>
                 <div class="summary-item"><div class="val">{smap.get("url_count_estimate", "—") if smap and not smap.get("error") else "—"}</div><div class="lbl">URLs (1st)</div></div>
+                <div class="summary-item"><div class="val" style="color:{'var(--green)' if len(smap.get('url_health', {}).get('not_found_404', [])) == 0 else 'var(--red)'}">{smap.get("url_health", {}).get("checked", "—")}</div><div class="lbl">URLs Checked</div></div>
             </div>
+            {"<h3 style='margin:16px 0 8px;font-size:0.95rem;'>URL Health Check</h3><div class='summary-row'><div class='summary-item'><div class='val' style='color:var(--green)'>" + str(smap.get("url_health", {}).get("healthy", 0)) + "</div><div class='lbl'>Healthy</div></div><div class='summary-item'><div class='val' style='color:var(--red)'>" + str(len(smap.get("url_health", {}).get("not_found_404", []))) + "</div><div class='lbl'>404 Not Found</div></div><div class='summary-item'><div class='val' style='color:var(--orange)'>" + str(len(smap.get("url_health", {}).get("soft_404s", []))) + "</div><div class='lbl'>Soft 404s</div></div><div class='summary-item'><div class='val' style='color:var(--red)'>" + str(len(smap.get("url_health", {}).get("server_errors_5xx", []))) + "</div><div class='lbl'>5xx Errors</div></div></div>" if smap.get("url_health", {}).get("checked", 0) > 0 else ""}
             {f'<p style="color:var(--red)">{html_lib.escape(str(smap.get("error","")))}</p>' if smap.get("error") else ""}
             {render_recommendations(smap) if smap and not smap.get("error") else ""}
+        </div>
+    </div>
+
+    <!-- Canonical Tags -->
+    <div class="section" id="section-canonical">
+        <div class="section-header" onclick="toggleSection('canonical')">
+            <h2>🔗 Canonical Tags <span class="badge {"pass" if scores["categories"].get("canonical",0) >= 70 else "warning" if scores["categories"].get("canonical",0) >= 40 else "critical"}">{scores["categories"].get("canonical",0)}/100</span></h2>
+            <span class="chevron" id="chevron-canonical">▼</span>
+        </div>
+        <div class="section-body" id="body-canonical">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">{'✅' if cansec.get('canonical') else '❌'}</div><div class="lbl">Canonical</div></div>
+                <div class="summary-item"><div class="val">{'✅' if cansec.get('is_self_referencing') else '❌' if cansec.get('is_self_referencing') is False else '—'}</div><div class="lbl">Self-Ref</div></div>
+                <div class="summary-item"><div class="val">{cansec.get('canonical_status', '—')}</div><div class="lbl">Target HTTP</div></div>
+                <div class="summary-item"><div class="val">{cansec.get('score', '—')}</div><div class="lbl">Score</div></div>
+            </div>
+            {f'<p style="color:var(--red)">{html_lib.escape(str(cansec.get("error","")))}</p>' if cansec.get("error") else ""}
+            {render_recommendations(cansec) if cansec and not cansec.get("error") else ""}
         </div>
     </div>
 

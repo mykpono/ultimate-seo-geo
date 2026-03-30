@@ -161,6 +161,36 @@ Is this the primary URL for this content?
 - **Noindex + Canonical conflict**: If a page has `noindex` AND a canonical pointing to another page — Google may still not index the target. Fix: use canonical only, remove noindex.
 - **Redirect chain canonicals**: Canonical pointing to a URL that 301 redirects elsewhere — Google follows the chain but it wastes budget. Canonical should point to the final destination.
 - **JS-injected vs. HTML canonical mismatch**: If raw HTML canonical ≠ JS-injected canonical, Google may use either. Always match them (see technical-checklist.md for full JS guidance).
+- **Canonical chain (A → B → C)**: Page A canonicalizes to B, but B canonicalizes to C. Google follows the chain and may choose C, overriding your intent. Always have canonical targets use self-referencing canonicals.
+
+### "Google Chose Different Canonical" — Diagnosis & Fix
+
+When GSC reports "Duplicate, Google chose different canonical than user" (Page Indexing report):
+
+**Automated detection**: Run `scripts/canonical_checker.py URL` for the affected page, or `--crawl` for site-wide audit.
+
+**Step 1: Check the affected URL**
+- Fetch the page and inspect its `<link rel="canonical">` tag
+- Check if the canonical URL actually resolves to 200 (not 404, not redirect)
+- Check if the canonical target's own canonical is self-referencing
+
+**Step 2: Check common causes**
+
+| Cause | How to Detect | Fix |
+|---|---|---|
+| www and non-www both accessible | Access both `www.site.com/page` and `site.com/page` — both return 200 | 301 redirect one to the other; update canonical to match |
+| HTTP and HTTPS both accessible | Access both `http://` and `https://` — both return 200 | 301 redirect HTTP → HTTPS; add HSTS |
+| Trailing slash variant exists | Both `/page` and `/page/` return 200 with same content | Pick one, 301 redirect the other |
+| Canonical URL redirects | HEAD request on canonical URL shows 3xx | Update canonical to the final destination |
+| Canonical URL returns 404 | HEAD request on canonical URL shows 404 | Fix the target page or update canonical |
+| Near-duplicate page exists | Run `duplicate_content.py` — high similarity pair found | Differentiate content or use canonical + 301 redirect |
+| Multiple canonical tags | View source — two or more `<link rel="canonical">` | Remove duplicates, keep one |
+| Internal links favor different URL | Most internal links point to a different URL than the canonical | Align internal links with the canonical URL |
+
+**Step 3: Validate the fix**
+- After fixing, use GSC URL Inspection → "Request Indexing" on the affected URL
+- Click "Validate Fix" in the GSC Page Indexing report
+- Monitor for 7-28 days until validation completes
 
 ---
 
@@ -217,8 +247,13 @@ Server logs reveal what Googlebot *actually* crawled — not what you think it c
 
 1. **Site command check**: `site:yourdomain.com` in Google — gives rough estimate (not precise)
 2. **GSC Coverage report**: Track Valid, Errors, Warnings, Excluded counts month-over-month
-3. **Sitemap submitted vs. indexed ratio**: > 20% gap between submitted and indexed = quality issue
-4. **"Crawled - not indexed" cluster**: Group by page type — if blog posts dominate, content quality audit needed
+3. **GSC "Not found (404)" report**: Check Page Indexing → "Not found (404)" for pages Google tried to index but got 404. Cross-reference with sitemap — any 404 URL in sitemap is a critical fix.
+4. **Sitemap URL health check**: Run `scripts/sitemap_checker.py --sample 50` (or `--check-all` for smaller sites). Validates that sitemap URLs actually return HTTP 200. Catches 404s, soft 404s, 5xx errors, and redirects before they appear in GSC.
+5. **GSC "Page with redirect"**: Run `scripts/internal_links.py` to find internal links that point to URLs returning 3xx. These stale links waste crawl budget. Fix: update all internal links to point to the final destination URL and remove redirect URLs from sitemap.
+6. **GSC "Alternate page with proper canonical"**: Run `scripts/canonical_checker.py --crawl` to find pages where the canonical tag points to a different URL. Google treats these as duplicates. If the page has unique content, change canonical to self-referencing. If truly duplicate, 301 redirect.
+7. **Sitemap submitted vs. indexed ratio**: > 20% gap between submitted and indexed = quality issue
+6. **"Crawled - not indexed" cluster**: Group by page type — if blog posts dominate, content quality audit needed
+7. **Search/template URL hygiene**: Check sitemap for search result URLs (`?q=`, `?search=`, `{search_term_string}`) and faceted/filtered URLs. These must be removed from sitemap and marked noindex.
 
 ### Indexation Ratio Benchmarks
 
@@ -228,6 +263,90 @@ Server logs reveal what Googlebot *actually* crawled — not what you think it c
 | 70-90% | Acceptable; investigate excluded pages |
 | 50-70% | Content quality or technical issue |
 | < 50% | Significant indexation problem — prioritize |
+
+### GSC "Not Found (404)" Remediation Playbook
+
+When Google Search Console reports pages as "Not found (404)" under Page Indexing:
+
+**Step 1: Categorize each 404 URL**
+
+| URL Pattern | Category | Example |
+|---|---|---|
+| Product/content page | Deleted or moved content | `/brands/some-brand`, `/buy/product-name` |
+| Location/directory page | Removed listing | `/churches/state/church-name` |
+| Search result URL | Indexation hygiene issue | `/search?q={search_term_string}` |
+| Parameter URL | Faceted/filtered page | `/products?color=red&size=M` |
+| Unknown/typo URL | External link with wrong URL | `/misspelled-page-name` |
+
+**Step 2: Apply the correct fix per category**
+
+| Category | Fix | Priority |
+|---|---|---|
+| **Content moved** | 301 redirect to new URL; update sitemap; fix internal links | Critical |
+| **Content deleted** | Return 404 or 410; remove from sitemap; remove all internal links to it | High |
+| **Search/template URL** | Remove from sitemap; add `<meta name="robots" content="noindex">` to all search result pages; add `Disallow: /search` to robots.txt | Critical |
+| **Faceted URL** | Remove from sitemap; canonical → master category; consider noindex | High |
+| **External link typo** | If high-authority link, 301 redirect to correct page; otherwise let 404 stand | Medium |
+| **Page should exist** | Fix the application bug; restore the page; ensure 200 response | Critical |
+
+**Step 3: Validate the fix**
+- Use URL Inspection tool in GSC to request re-crawl of fixed URLs
+- After fixing, click "Validate Fix" in GSC → Page Indexing → "Not found (404)"
+- Monitor: validation takes 7-28 days; re-check after validation completes
+
+### GSC "Page with redirect" Remediation Playbook
+
+When GSC reports pages as "Page with redirect" under Page Indexing, these URLs return 3xx when crawled. Google won't index them.
+
+**Automated detection:** `scripts/internal_links.py` finds internal links to redirect URLs during crawl, with source-page tracing. `scripts/sitemap_checker.py --sample 50` catches redirect URLs in the sitemap.
+
+**Step 1: Identify sources of stale links**
+- Internal links still pointing to old URLs that now redirect
+- Sitemap entries listing redirect URLs instead of final destinations
+- Hard-coded URLs in navigation, footer, or content that haven't been updated
+
+**Step 2: Apply fixes**
+
+| Cause | Fix | Priority |
+|---|---|---|
+| **Internal links to old URL** | Update href to the final destination URL site-wide | Critical |
+| **Sitemap contains redirect URL** | Replace with final destination URL in sitemap | Critical |
+| **URL structure migration** | Ensure redirects are 301 (permanent); update all internal links to new structure | High |
+| **HTTP → HTTPS redirect** | Change all internal links to `https://`; update sitemap | High |
+| **Non-www → www redirect (or vice versa)** | Standardize all internal links to the preferred domain version | High |
+
+**Step 3: Validate**
+- Request re-crawl via URL Inspection in GSC
+- Click "Validate Fix" in GSC → Page Indexing → "Page with redirect"
+- Monitor: 7-28 days for validation to complete
+
+### GSC "Alternate page with proper canonical tag" Remediation Playbook
+
+When GSC reports pages as "Alternate page with proper canonical tag" under Page Indexing, these pages have a canonical tag pointing to a different URL. Google recognizes the canonical and doesn't index the alternate.
+
+**Automated detection:** `scripts/canonical_checker.py --crawl` finds all non-self-referencing canonicals with aggregate statistics. `scripts/duplicate_content.py` identifies near-duplicate content with canonical cross-referencing.
+
+**Step 1: Determine if the alternate status is intentional**
+
+| Scenario | Expected? | Action |
+|---|---|---|
+| Paginated series (`/blog/page/2` → `/blog`) | Yes | Normal behavior — no fix |
+| AMP page canonicalizing to desktop | Yes | Normal behavior — no fix |
+| Parameter variant (`?ref=source` → base) | Usually yes | Verify canonical target has best content |
+| Unique content page misconfigured | No | Fix canonical to self-referencing |
+| CMS defaulting all pages to homepage canonical | No | Fix CMS canonical logic — each page should self-canonical |
+| Near-duplicate pages both should exist | Depends | Differentiate content or consolidate into one page |
+
+**Step 2: Apply fixes for unintentional alternates**
+- Change canonical to self-referencing on pages with unique content
+- Differentiate content if pages are too similar (>85% similarity)
+- Fix CMS/theme canonical configuration if mass-misconfigured
+- If page is truly duplicate: 301 redirect to canonical target (stronger signal)
+
+**Step 3: Validate**
+- Request re-crawl via URL Inspection in GSC
+- Click "Validate Fix" in GSC → Page Indexing → "Alternate page with proper canonical tag"
+- Monitor: 14-28 days — canonical changes take longer to process than redirect fixes
 
 ### Recovery Playbook: Sudden Indexation Drop
 

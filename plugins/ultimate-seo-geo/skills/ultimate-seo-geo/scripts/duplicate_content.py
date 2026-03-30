@@ -128,10 +128,22 @@ def exact_hash(text: str) -> str:
 # Crawl
 # ---------------------------------------------------------------------------
 
+def extract_canonical(html: str, base_url: str) -> str | None:
+    """Extract canonical URL from HTML."""
+    soup = BeautifulSoup(html, "html.parser")
+    link = soup.find("link", rel="canonical")
+    if link and link.get("href"):
+        href = link["href"].strip()
+        if not urlparse(href).scheme:
+            href = urljoin(base_url, href)
+        return href
+    return None
+
+
 def crawl_site(start_url: str, max_pages: int = 50, depth: int = 2) -> dict:
     """
     Crawl a site starting from start_url.
-    Returns {url: {"text": str, "word_count": int, "html": str}}.
+    Returns {url: {"text": str, "word_count": int, "canonical": str|None}}.
     """
     visited = {}
     queue = [(start_url, 0)]
@@ -147,10 +159,12 @@ def crawl_site(start_url: str, max_pages: int = 50, depth: int = 2) -> dict:
 
         text = extract_text(html)
         word_count = len(re.findall(r"\b\w+\b", text))
+        canonical = extract_canonical(html, url)
 
         visited[url] = {
             "text": text,
             "word_count": word_count,
+            "canonical": canonical,
         }
 
         if d < depth:
@@ -243,15 +257,80 @@ def detect_duplicates(pages: dict, similarity_threshold: float = 0.85) -> dict:
                 "fix": f"Expand content to at least {threshold} words of substantive, unique content, or noindex if low-value.",
             })
 
+    # Step 4: Canonical conflict detection
+    canonical_issues = []
+
+    # Check near-duplicates for missing canonical resolution
+    for pair in near_dupes:
+        url_a = pair["url_a"]
+        url_b = pair["url_b"]
+        canon_a = pages.get(url_a, {}).get("canonical")
+        canon_b = pages.get(url_b, {}).get("canonical")
+
+        def _normalize(u):
+            p = urlparse(u)
+            return f"{p.scheme}://{p.netloc.lower()}{p.path}".rstrip("/")
+
+        if canon_a and canon_b:
+            norm_a = _normalize(canon_a)
+            norm_b = _normalize(canon_b)
+            norm_url_a = _normalize(url_a)
+            norm_url_b = _normalize(url_b)
+            # Both self-canonical but content is near-duplicate
+            if norm_a == norm_url_a and norm_b == norm_url_b:
+                canonical_issues.append({
+                    "type": "duplicate_both_self_canonical",
+                    "severity": "High",
+                    "url_a": url_a,
+                    "url_b": url_b,
+                    "similarity": pair["similarity"],
+                    "finding": (
+                        f"Near-duplicate pages ({pair['similarity']:.0%} similar) both have "
+                        f"self-referencing canonicals. Google will choose one as canonical "
+                        f"and may ignore the other."
+                    ),
+                    "fix": (
+                        "Pick one as the canonical. Set the other's canonical to "
+                        "point to the primary page. Or differentiate the content."
+                    ),
+                })
+
+    # Check for pages with same canonical (canonical consolidation)
+    canonical_groups = defaultdict(list)
+    for url, data in pages.items():
+        canon = data.get("canonical")
+        if canon:
+            p = urlparse(canon)
+            norm_canon = f"{p.scheme}://{p.netloc.lower()}{p.path}".rstrip("/")
+            canonical_groups[norm_canon].append(url)
+
+    for canon_url, page_urls in canonical_groups.items():
+        if len(page_urls) > 1:
+            # Multiple pages pointing canonical to the same URL — expected for dupes
+            non_self = [u for u in page_urls
+                        if urlparse(u).path.rstrip("/") != urlparse(canon_url).path.rstrip("/")]
+            if len(non_self) > 0 and len(page_urls) > 2:
+                canonical_issues.append({
+                    "type": "many_pages_same_canonical",
+                    "severity": "Warning",
+                    "canonical_target": canon_url,
+                    "pages": page_urls[:5],
+                    "finding": f"{len(page_urls)} pages point canonical to {canon_url}.",
+                    "fix": "Review whether all these pages should be consolidated. "
+                           "Consider 301 redirects instead of canonical if content is identical.",
+                })
+
     return {
         "pages_analyzed": len(pages),
         "exact_duplicates": exact_dupes,
         "near_duplicates": near_dupes,
         "thin_content": thin_pages,
+        "canonical_issues": canonical_issues,
         "summary": {
             "exact_duplicate_groups": len(exact_dupes),
             "near_duplicate_pairs": len(near_dupes),
             "thin_pages": len(thin_pages),
+            "canonical_issues": len(canonical_issues),
             "avg_word_count": round(
                 sum(p["word_count"] for p in pages.values()) / max(1, len(pages))
             ),
@@ -312,8 +391,16 @@ def main():
             icon = "🔴" if page["severity"] == "Critical" else "⚠️"
             print(f"  {icon} {page['url']} — {page['word_count']} words (min: {page['threshold']})")
 
-    if not report["exact_duplicates"] and not report["near_duplicates"] and not report["thin_content"]:
-        print("\n✅ No duplicate or thin content issues detected.")
+    if report.get("canonical_issues"):
+        print(f"\nCanonical Issues ({len(report['canonical_issues'])}):")
+        for issue in report["canonical_issues"]:
+            icon = "🔴" if issue["severity"] in ("Critical", "High") else "⚠️"
+            print(f"  {icon} {issue['finding']}")
+            print(f"     Fix: {issue['fix']}")
+
+    if (not report["exact_duplicates"] and not report["near_duplicates"]
+            and not report["thin_content"] and not report.get("canonical_issues")):
+        print("\n✅ No duplicate, thin content, or canonical issues detected.")
 
 
 if __name__ == "__main__":

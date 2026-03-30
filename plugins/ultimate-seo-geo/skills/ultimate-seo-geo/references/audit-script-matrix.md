@@ -12,14 +12,16 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Open Graph / Twitter | §4 | `social_meta.py` | `python scripts/social_meta.py URL --json` |
 | Redirect chains | §4, §20 | `redirect_checker.py` | `python scripts/redirect_checker.py URL --json` |
 | llms.txt | §3 | `llms_txt_checker.py` | `python scripts/llms_txt_checker.py URL --json` |
-| Broken links | §9 | `broken_links.py` | `python scripts/broken_links.py URL --json` |
-| Internal links / orphans | §9 | `internal_links.py` | `python scripts/internal_links.py URL --depth 1 --json` |
+| Broken links (single page) | §9 | `broken_links.py` | `python scripts/broken_links.py URL --json` |
+| Broken links (site-wide) | §9, §11 | `broken_links.py` | `python scripts/broken_links.py URL --crawl --depth 2 --json` |
+| Internal links / orphans / redirects | §9, §11 | `internal_links.py` | `python scripts/internal_links.py URL --depth 1 --json` |
 | Core Web Vitals (PSI) | §4 | `pagespeed.py` | `python scripts/pagespeed.py URL --strategy mobile --json` |
 | Entity / Wikidata | §3 | `entity_checker.py` | `python scripts/entity_checker.py URL --json` |
 | Link equity / graph | §9 | `link_profile.py` | `python scripts/link_profile.py URL --json` |
 | Hreflang | §14 | `hreflang_checker.py` | `python scripts/hreflang_checker.py URL --json` |
-| Near-duplicate / thin | §6 | `duplicate_content.py` | `python scripts/duplicate_content.py URL --json` |
-| Sitemap discovery | §11 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --json` |
+| Near-duplicate / thin + canonical | §6, §11 | `duplicate_content.py` | `python scripts/duplicate_content.py URL --json` |
+| Canonical validation + alternate detection | §4, §11 | `canonical_checker.py` | `python scripts/canonical_checker.py URL --json` (single) / `--crawl --json` (site-wide, detects alternate pages) |
+| Sitemap + URL health | §11 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --sample 50 --json` |
 | Local surface signals | §12 | `local_signals_checker.py` | `python scripts/local_signals_checker.py URL --json` |
 | IndexNow (full key validation) | §4 | `indexnow_checker.py` | `python scripts/indexnow_checker.py URL --key KEY --json` |
 | IndexNow (probe, no key) | §4 | `indexnow_checker.py` | `python scripts/indexnow_checker.py URL --probe --json` |
