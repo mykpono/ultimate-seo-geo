@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # Copied into the plugin bundle for end users; stays repo-only for CI/maintainer use.
-SCRIPT_EXCLUDE = frozenset({"check-plugin-sync.py", "check_github_release.py"})
+SCRIPT_EXCLUDE = frozenset({"check-plugin-sync.py", "check_github_release.py", "check_version_sync.py"})
 
 
 def _read(p: Path) -> str:

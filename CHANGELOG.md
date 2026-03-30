@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-03-30
+
+### Fixed
+
+- **CI: `check_version_sync.py` excluded from plugin bundle sync check** — Added `check_version_sync.py` to `SCRIPT_EXCLUDE` in `scripts/check-plugin-sync.py` and to `SCRIPT_EXCLUDE_LIST` in `setup-plugin.sh`. This maintainer-only CI script was incorrectly being compared against the plugin bundle, causing the "scripts/*.py list mismatch" CI failure introduced in v1.6.0.
+
 ## [1.5.6] - 2026-03-27
 
 ### Added
