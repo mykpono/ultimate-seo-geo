@@ -53,10 +53,10 @@ When a section points to a reference file, read only what you need for the curre
 | Local SEO | `references/local-seo.md` | `local_signals_checker.py` |
 | Images | `references/image-seo.md` | `image_checker.py` |
 | International / hreflang | `references/international-seo.md` | `hreflang_checker.py` |
-| Programmatic SEO | `references/programmatic-seo.md` | — |
+| Programmatic SEO | `references/programmatic-seo.md` | `programmatic_seo_auditor.py` |
 | Migration | `references/site-migration.md` | `redirect_checker.py` |
 | Analytics / myths | `references/analytics-reporting.md` | — |
-| Crawl / indexation | `references/crawl-indexation.md` | `sitemap_checker.py`, `duplicate_content.py` |
+| Crawl / indexation | `references/crawl-indexation.md` | `sitemap_checker.py`, `duplicate_content.py`, `canonical_checker.py`, `broken_links.py`, `internal_links.py` |
 
 ### When *not* to run Mode 1 (full audit)
 
@@ -988,6 +988,8 @@ For review benchmarks (≥ 4.3 stars, ≥ 50 reviews, ≤ 30 days recency) and c
 | <40% differentiation | Flag as thin content risk |
 
 **Don't**: Approve city pages where only the city name changes — March 2024 Core Update target (60–80% traffic declines seen).
+
+**Automated audit**: Run `scripts/programmatic_seo_auditor.py URL --depth 2 --max-pages 100 --json` to auto-detect template URL patterns and audit each group for boilerplate ratio, content uniqueness, title/description/H1 duplication, and cross-linking health. The script flags pages below the 30% uniqueness hard stop (scaled content abuse) and 40% warning threshold.
 
 → See `references/programmatic-seo.md` (12 playbooks taxonomy, data-asset-to-playbook decision matrix, data defensibility hierarchy, Scaled Content Abuse enforcement timeline with dates, uniqueness calculation formula, progressive rollout strategy)
 

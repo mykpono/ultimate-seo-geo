@@ -327,6 +327,26 @@ def build_environment_fixes(data: dict) -> list:
             "Update all internal links to point to the final destination URL. Remove redirect URLs from sitemap.",
         )
 
+    # Programmatic SEO issues
+    pseo = data["sections"].get("programmatic_seo", {})
+    if pseo and not pseo.get("error") and pseo.get("pattern_groups_found", 0) > 0:
+        pseo_crit = pseo.get("total_critical_issues", 0)
+        pseo_warn = pseo.get("total_warnings", 0)
+        if pseo_crit > 0:
+            add(
+                "critical",
+                f"{pseo_crit} critical programmatic SEO issue(s) detected",
+                "Template pages have scaled content abuse risk (low uniqueness, duplicate titles, thin content).",
+                "Add genuinely unique per-page content. Each page needs ≥40% unique content and unique title/H1/meta.",
+            )
+        elif pseo_warn > 2:
+            add(
+                "warning",
+                f"{pseo_warn} programmatic SEO warnings",
+                "Template pages have quality concerns that could trigger Google's Helpful Content system.",
+                "Review template pages for content differentiation and internal linking.",
+            )
+
     can_alt = can.get("summary", {}).get("alternate_pages", 0) if isinstance(can.get("summary"), dict) else 0
     if can_alt > 0:
         add(
@@ -451,6 +471,7 @@ def collect_data(url: str) -> dict:
         ("duplicate_content", "duplicate_content.py", [url]),
         ("sitemap", "sitemap_checker.py", [url]),
         ("canonical", "canonical_checker.py", [url]),
+        ("programmatic_seo", "programmatic_seo_auditor.py", [url, "--max-pages", "80"]),
         ("local_signals", "local_signals_checker.py", [url]),
         ("indexnow_probe", "indexnow_checker.py", [url, "--probe"]),
     ]
@@ -511,6 +532,7 @@ def calculate_overall_score(data: dict) -> dict:
         "link_profile": 7,
         "hreflang": 5,
         "duplicate_content": 5,
+        "programmatic_seo": 4,
         "schema_validation": 5,
         "image_seo": 3,
         "canonical": 7,
@@ -661,6 +683,16 @@ def calculate_overall_score(data: dict) -> dict:
         scores["duplicate_content"] = max(0, min(100, dc_score))
     else:
         scores["duplicate_content"] = 0
+
+    # Programmatic SEO score
+    pseo = data["sections"].get("programmatic_seo", {})
+    if pseo and not pseo.get("error") and pseo.get("pattern_groups_found", 0) > 0:
+        pseo_crit = pseo.get("total_critical_issues", 0)
+        pseo_warn = pseo.get("total_warnings", 0)
+        pseo_score = 100 - pseo_crit * 25 - pseo_warn * 8
+        scores["programmatic_seo"] = max(0, min(100, pseo_score))
+    else:
+        scores["programmatic_seo"] = None
 
     # JSON-LD validation (validate_schema.py --json)
     sch = data["sections"].get("schema_validation", {})
@@ -814,6 +846,7 @@ def render_all_recommendations(data: dict) -> str:
         "article": "📄 Article SEO", "entity": "🏛️ Entity SEO",
         "link_profile": "🔗 Link Profile", "hreflang": "🌍 Hreflang",
         "duplicate_content": "📋 Content Uniqueness",
+        "programmatic_seo": "🏭 Programmatic SEO",
         "canonical": "🔗 Canonical Tags",
         "schema_validation": "🧩 JSON-LD",
         "image_seo": "🖼️ Image SEO",
@@ -953,6 +986,7 @@ def generate_html(data: dict, scores: dict) -> str:
         "link_profile": ("🔗", "Link Profile"),
         "hreflang": ("🌍", "Hreflang"),
         "duplicate_content": ("📋", "Content Uniqueness"),
+        "programmatic_seo": ("🏭", "Programmatic SEO"),
         "canonical": ("🔗", "Canonical Tags"),
         "schema_validation": ("🧩", "JSON-LD"),
         "image_seo": ("🖼️", "Image SEO"),

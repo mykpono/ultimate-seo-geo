@@ -31,6 +31,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Article / CMS patterns | §6 | `article_seo.py` | `python scripts/article_seo.py URL --json` |
 | JSON-LD validation | §5 | `validate_schema.py` | `python scripts/validate_schema.py file.html --json` |
 | Image alt coverage | §13 | `image_checker.py` | `python scripts/image_checker.py page.html --base-url URL --json` |
+| Programmatic SEO audit | §15 | `programmatic_seo_auditor.py` | `python scripts/programmatic_seo_auditor.py URL --depth 2 --max-pages 100 --json` |
 | Finding deduplication | §2 | `finding_verifier.py` | `python scripts/finding_verifier.py --findings-json references/finding-verifier-example.json --json` (see `references/finding-verifier-context-example.json` for optional `--context-json`) |
 
 ## Utilities (supporting tools)
@@ -48,7 +49,6 @@ LLM + checklist work uses these references; there is **no separate script** by d
 
 | Area | SKILL § | Reference |
 |------|---------|-----------|
-| Programmatic SEO gates | §15 | `references/programmatic-seo.md` |
 | Keyword / topic strategy | §7 | `references/keyword-strategy.md` |
 | Analytics / GSC / GA4 | §10 | `references/analytics-reporting.md` |
 | AI search narrative / GEO | §3 | `references/ai-search-geo.md` |
