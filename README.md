@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.2.1-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.1-green.svg)](CHANGELOG.md)
 
 The definitive SEO and Generative Engine Optimization skill for Claude. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity).
 
@@ -129,7 +129,7 @@ Copy the folder into your skills directory:
 ~/.claude/skills/ultimate-seo-geo/
 ├── SKILL.md
 ├── references/    (guides + audit matrix + finding_verifier examples)
-├── scripts/       (26 bundled .py; check-plugin-sync.py CI-only at repo root)
+├── scripts/       (audit scripts + utilities; 3 CI-only excluded from plugin)
 └── evals/         (evals.json + fixtures/)
 ```
 
@@ -181,7 +181,7 @@ ultimate-seo-geo/
 │   ├── crawl-indexation.md   Sitemaps, canonicals, crawl budget
 │   └── image-seo.md          Alt text, WebP, responsive images
 │
-├── scripts/               ← 24 bundled Python scripts (+ check-plugin-sync.py CI-only at repo root)
+├── scripts/               ← 25 bundled Python scripts (+ check-plugin-sync.py and 2 CI-only at repo root)
 │   ├── generate_report.py    Full-site HTML dashboard (runs all scripts)
 │   ├── validate_schema.py    JSON-LD validation
 │   ├── robots_checker.py     AI crawler access check
@@ -192,7 +192,7 @@ ultimate-seo-geo/
 │   ├── readability.py        Flesch-Kincaid scoring
 │   ├── ...and 12 more
 │
-└── evals/                 ← 12 scenarios, 49 assertions + golden fixtures
+└── evals/                 ← 14 scenarios, 57 assertions + golden fixtures
     ├── evals.json
     └── fixtures/          ← eval*_pass.txt (used by score_eval_transcript.py)
 ```
@@ -221,7 +221,7 @@ When someone runs `/plugin marketplace add mykpono/ultimate-seo-geo`, the tool r
 
 ## Scripts
 
-**Bundled in the plugin:** **24** URL/HTML diagnostic scripts, plus **`requirements-check.py`** (preflight), **`score_eval_transcript.py`** (eval regression), and **`meta_lengths_checker.py`**. **`check-plugin-sync.py`** is repo-only for CI. Python 3.8+; install dependencies with:
+**Bundled in the plugin:** **25** URL/HTML diagnostic scripts, plus **`requirements-check.py`** (preflight), **`score_eval_transcript.py`** (eval regression), and **`meta_lengths_checker.py`**. **`check-plugin-sync.py`**, **`check_github_release.py`**, and **`check_version_sync.py`** are repo-only for CI. Python 3.8+; install dependencies with:
 
 ```bash
 pip install -r requirements.txt
@@ -272,7 +272,7 @@ python scripts/generate_report.py https://example.com --output seo-report.html
 
 ## Eval Results
 
-Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **12** prompts, **49** assertions):
+Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **14** prompts, **57** assertions):
 
 | Metric | With Skill | Without Skill | Delta |
 |---|---|---|---|
@@ -282,7 +282,7 @@ Benchmarked against baseline (no skill) across multiple scenarios (see `evals/ev
 
 The skill adds ~50 seconds and ~19K tokens per task, but achieves 100% on structured output requirements (finding format, correct schema types, health scoring) where the baseline misses.
 
-**Test scenarios include:** YMYL publisher audit, local HVAC + schema, SaaS schema, migration plan, recipe content (no URL), negative PPC, news/paywall, scoped robots+sitemap-only, international hreflang, pre-launch strategy (no live site). **Automated check:** `python scripts/score_eval_transcript.py --all-fixtures`.
+**Test scenarios include:** YMYL publisher audit, local HVAC + schema, SaaS schema, migration plan, recipe content (no URL), negative PPC, news/paywall, scoped robots+sitemap-only, international hreflang, pre-launch strategy (no live site), traffic drop routing, GEO platform routing, execute mode risk gate (robots.txt), evaluator-optimizer fabrication check. **Automated check:** `python scripts/score_eval_transcript.py --all-fixtures`.
 
 ---
 

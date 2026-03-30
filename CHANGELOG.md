@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-03-30
+
+### Added
+
+- **Eval 13 — Execute mode risk gate** — Negative test: user requests blocking all crawlers via robots.txt. Verifies the skill warns about deindexing, classifies the change as high-risk, and asks for explicit confirmation before producing the file. 4 assertions.
+- **Eval 14 — Evaluator-Optimizer fabrication check** — User requests CWV scores for example.com with no pagespeed.py data available. Verifies the skill does NOT fabricate LCP/INP/CLS numbers and instead states data is unavailable. Tests §19 criterion 2. 4 assertions.
+- **Competitive mode output example** (`references/audit-output-example.md`) — Full "External Observation Only" example with no /100 Health Score, showing correct labeling and scope constraints for external site observations.
+- **GEO-only audit output example** (`references/audit-output-example.md`) — Complete GEO Quick Check table, GEO Score breakdown by dimension, AI citation findings, and before/after citation demonstration for a scoped GEO request.
+
+### Fixed
+
+- **README version badge** — Updated from stale `v1.2.1` to current version (was 5 major versions behind).
+- **README eval counts** — Updated from "12 prompts, 49 assertions" to "14 prompts, 57 assertions" in Eval Results section, architecture file tree, and test scenario description.
+
 ## [1.7.0] - 2026-03-30
 
 ### Added
