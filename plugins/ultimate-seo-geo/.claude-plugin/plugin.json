@@ -1,7 +1,7 @@
 {
   "name": "ultimate-seo-geo",
   "description": "Scored SEO audits, technical health checks, Schema.org JSON-LD, E-E-A-T content scoring, domain authority rating, and GEO for AI Overviews, ChatGPT, and Perplexity. 24 diagnostic scripts. Modes: Audit \u2192 Plan \u2192 Execute.",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "author": {
     "name": "Myk Pono",
     "url": "https://mykpono.com"

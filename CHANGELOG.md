@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-03-31
+
+### Changed
+
+- **SKILL.md** — Strengthen robots.txt High-Risk gate: withhold file/code until user confirms. Add context-budget awareness section to § 0 (graceful degradation for fast models). Add Quality Gate criterion 11 for High-Risk deliverable withholding check.
+- **Evals** — 3 new discriminating GEO assertions (eval 12), 5 assertion fixes across evals (regex precision, subtype broadening, hyphenated deindex variant). Total: 14 prompts, 60 assertions.
+
+### Fixed
+
+- **README** — Version badge updated to 1.7.2; eval assertion count corrected to 60.
+
 ## [1.7.1] - 2026-03-30
 
 ### Added

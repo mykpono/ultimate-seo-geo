@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.7.1-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.2-green.svg)](CHANGELOG.md)
 
 The definitive SEO and Generative Engine Optimization skill for Claude. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity).
 
@@ -272,7 +272,7 @@ python scripts/generate_report.py https://example.com --output seo-report.html
 
 ## Eval Results
 
-Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **14** prompts, **57** assertions):
+Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **14** prompts, **60** assertions):
 
 | Metric | With Skill | Without Skill | Delta |
 |---|---|---|---|
