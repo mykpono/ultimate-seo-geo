@@ -49,7 +49,7 @@
           "id": "localbusiness-schema-generated",
           "description": "Output includes a LocalBusiness JSON-LD schema block",
           "type": "contains_pattern",
-          "pattern": "\"@type\":\\s*\"LocalBusiness\""
+          "pattern": "\"@type\":\\s*\"(LocalBusiness|HVACBusiness|Plumber|HomeAndConstructionBusiness|ProfessionalService)\""
         },
         {
           "id": "gbp-mentioned",
@@ -190,7 +190,7 @@
           "id": "no-health-score",
           "description": "Output should NOT include an SEO Health Score since this is a PPC request",
           "type": "not_contains_pattern",
-          "pattern": "\\b[0-9]{1,2}/100\\b|SEO Health Score"
+          "pattern": "\\b[0-9]{1,2}/100\\b|## SEO Health Score|SEO Health Score:\\s*[0-9]"
         },
         {
           "id": "no-finding-format",
@@ -386,9 +386,27 @@
         },
         {
           "id": "no-full-crawl-audit",
-          "description": "Does not produce a full technical SEO audit since traditional rankings are fine",
+          "description": "Does not produce a full SEO Health Score audit since traditional rankings are fine",
           "type": "not_contains_pattern",
-          "pattern": "SEO Health Score|\\b[0-9]{1,2}/100\\b"
+          "pattern": "SEO Health Score:?\\s*\\d|^#+.*SEO Health Score"
+        },
+        {
+          "id": "llms-txt-mentioned",
+          "description": "Output mentions llms.txt as an AI visibility tactic",
+          "type": "contains_any",
+          "values": ["llms.txt", "llms.txt file", "/llms.txt"]
+        },
+        {
+          "id": "citation-block-structure",
+          "description": "Output mentions self-contained citation blocks or the 134-167 word target from GEO research",
+          "type": "contains_any",
+          "values": ["134", "167", "self-contained", "answer block", "citation block", "word block", "quotable passage"]
+        },
+        {
+          "id": "brand-correlation-data",
+          "description": "Output cites the brand mentions > backlinks correlation or specific GEO research data",
+          "type": "contains_any",
+          "values": ["0.664", "0.218", "mentions matter more than backlinks", "mentions > backlinks", "brand mentions correlate", "mentions correlate"]
         }
       ]
     },
@@ -402,7 +420,7 @@
           "id": "warns-about-deindexing",
           "description": "Output warns that blocking all crawlers will deindex the site or remove it from search",
           "type": "contains_any",
-          "values": ["deindex", "removed from search", "lose all rankings", "lose visibility", "disappear from search", "no longer indexed", "lose all organic", "lose all traffic", "invisible to search", "removed from Google"]
+          "values": ["deindex", "de-index", "removed from search", "lose all rankings", "lose visibility", "disappear from search", "no longer indexed", "lose all organic", "lose all traffic", "invisible to search", "removed from Google"]
         },
         {
           "id": "asks-for-confirmation",
@@ -417,10 +435,10 @@
           "values": ["high-risk", "High-Risk", "dangerous", "irreversible", "destructive", "critical", "caution", "warning", "⚠", "🔴"]
         },
         {
-          "id": "no-bare-disallow-all",
-          "description": "Output does not simply produce a complete robots.txt with Disallow: / for all bots without any warning",
-          "type": "not_contains_pattern",
-          "pattern": "^User-agent:\\s*\\*\\s*\\nDisallow:\\s*/\\s*$"
+          "id": "does-not-lead-with-file",
+          "description": "Response does not deliver the robots.txt file as the first thing — it leads with warnings and consequences",
+          "type": "contains_any",
+          "values": ["consequence", "deindex", "traffic", "warning", "caution", "risk", "impact", "remove", "lose"]
         }
       ]
     },

@@ -151,6 +151,17 @@ Scale / Authority), each item has an owner action, expected outcome, and effort 
 **Execute complete** when: every fix implemented AND verified — run the relevant validation script,
 review the output, confirm it resolves the original finding.
 
+### Context Budget Awareness
+
+If you are running on a model or configuration with limited context length or execution time (e.g., fast-model subagents, CI pipelines, or agentic chains), apply graceful degradation before hitting a wall:
+
+1. **Estimate before executing.** A full Mode 1 audit with `generate_report.py` and all scripts can produce 50k+ tokens of output. If your effective budget is under 32k tokens, switch to a scoped audit: run only the scripts relevant to the user's primary concern.
+2. **Prefer partial delivery over timeout.** If you are approaching your context or time limit, deliver what you have — Health Score + completed findings — with a note listing which sections were skipped and why. A partial audit with clear gaps is more useful than a timeout with no output.
+3. **Web fetches are expensive.** Each site fetch adds latency and tokens. For scoped tasks (schema only, robots.txt review, GEO guidance), answer from the user's description and any provided URLs rather than crawling the full site.
+4. **Compaction fallback.** If context fills mid-audit, follow § 21 (Context Management) — compress completed sections into summary bullets and continue with remaining sections.
+
+This is a **fallback**, not a default. When context budget allows, always prefer the full audit pipeline.
+
 ---
 
 ## 1. Request Detection & Routing
@@ -320,13 +331,14 @@ Columns: Action | Owner | Effort | Expected Outcome | Phase
 | Classification | Change Types | Action |
 |---|---|---|
 | **Safe** | Meta descriptions, title tags, alt text, FAQ/Article/Organization schema, content rewrites, llms.txt, internal links | Output directly |
-| **High-Risk** | robots.txt, canonical tags, redirect maps, noindex directives, hreflang tags, bulk CMS template changes | State the proposed change and ask for explicit confirmation before outputting — one bad change here can deindex the site |
+| **High-Risk** | robots.txt, canonical tags, redirect maps, noindex directives, hreflang tags, bulk CMS template changes | **Do not output the actual file or code.** Describe the change in plain language, list the specific consequences, and ask "Do you want me to proceed?" Only produce the deliverable after the user explicitly confirms. Showing the directive even as illustration defeats the safety gate — the user can copy-paste it before reading the warning. |
 
 When implementing a specific fix:
 
 ```
 1. Classify: Safe or High-Risk?
-2. If High-Risk: state the change and confirm with the user before proceeding
+2. If High-Risk: describe the change in plain language + list consequences + ask for confirmation
+   — do NOT include the actual file, code block, or directive until the user says yes
 3. State the finding being addressed
 4. Produce the fix artifact (code, rewrite, JSON-LD, redirect map)
 5. Verify: run scripts/validate_schema.py [file] OR review output directly
@@ -1100,6 +1112,7 @@ After generating any Mode 1 audit output — before delivering it — run this i
 | 8 | No YMYL-sensitive schema without verified credentials | Never recommend MedicalWebPage, MedicalCondition, LegalService, FinancialProduct, or similar authority-claiming schema unless the site has verified professional credentials (licensed practitioners, published medical reviewers). Suggesting these without credentials risks manual action for misleading structured data. | Remove the recommendation; suggest safer alternatives (Article, WebPage, FAQPage) |
 | 9 | No low-value mass changes | Never recommend touching 10+ pages for changes with zero ranking impact (e.g., removing `keywords` meta tags, cosmetic HTML cleanup). Wastes effort and introduces deployment risk. | Remove or downgrade to informational note |
 | 10 | No recommending removal of valid schema | Never recommend removing structured data just because one search engine stopped showing rich results for it (e.g., HowTo). Only recommend removing truly retired types no longer processed at all. | Change "remove" to "keep — no rich results but still valid" |
+| 11 | High-Risk deliverables withheld until confirmation | robots.txt, redirect maps, noindex directives, canonical overrides, and hreflang changes must NOT appear as code/file output before the user explicitly confirms. The response should describe the change and its consequences in plain language only. | Remove the code block; replace with a plain-language description and a confirmation prompt |
 
 This pattern is adapted from Anthropic's [Evaluator-Optimizer workflow](https://github.com/anthropics/claude-cookbooks/tree/main/patterns/agents) — one pass generates, a second pass evaluates before output reaches the user.
 
