@@ -340,7 +340,28 @@ echo "✓ Claude terminal plugin updated — restart claude to reload"
 
 Then restart Claude Code (type `exit`, reopen terminal, run `claude`).
 
-### 6c. Verify release
+### 6c. Reinstall marketplace cache (always do this)
+
+The Claude Code marketplace cache is a local git clone. It does **not** auto-pull — you must update it manually after every push:
+
+```bash
+cd ~/.claude/plugins/marketplaces/ultimate-seo-geo && \
+  git fetch origin && git reset --hard origin/main && \
+  echo "✓ Marketplace cache updated to $(git log --oneline -1)"
+```
+
+Then restart Claude Code to reload the plugin.
+
+**Verify version matches:**
+```bash
+python3 -c "
+import json
+p = json.load(open('plugins/ultimate-seo-geo/.claude-plugin/plugin.json'))
+print(f'Marketplace cache version: {p[\"version\"]}')
+"
+```
+
+### 6d. Verify release
 
 ```bash
 python3 scripts/check_github_release.py
