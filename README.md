@@ -222,7 +222,7 @@ ultimate-seo-geo/
 
 For Claude Code and Cursor, `SKILL.md` is loaded natively as a skill. For all other platforms, `AGENTS.md` provides enough context to route and execute, with pointers to load `SKILL.md` sections when full detail is needed.
 
-**Claude Code plugin install:** `bash setup-plugin.sh` mirrors `SKILL.md`, `references/`, `scripts/` (audit scripts only), and `evals/` into `plugins/.../skills/ultimate-seo-geo/` so `python scripts/...` paths work after marketplace install.
+**Claude Code plugin install:** `bash setup-plugin.sh` mirrors `SKILL.md`, `AGENTS.md`, `GEMINI.md`, `references/`, `scripts/` (audit scripts only), and `evals/` into `plugins/.../skills/ultimate-seo-geo/` so `python scripts/...` paths work after marketplace install.
 
 ### Claude Code: why two `.claude-plugin/` folders?
 
