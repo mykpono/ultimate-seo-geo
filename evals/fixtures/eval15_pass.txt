@@ -1,0 +1,33 @@
+Great question — and an important distinction to make.
+
+## Signup and Login Pages Are Functional Pages — Not Content Pages
+
+The `/signup` and `/login` pages are **task-completion UI pages**. Their purpose is to help users complete a specific action (create an account or authenticate), not to rank for informational queries or demonstrate editorial expertise. Low word count on these pages is **intentional and correct by design**.
+
+**Leave the copy on `/signup` and `/login` exactly as it is.** These pages are not thin content — they are functional pages, and the thin-content standard does not apply to them.
+
+---
+
+## What to Check on Functional Pages Instead
+
+For signup, login, and other task-completion pages (register, checkout, account dashboard, forgot password), the relevant checks are:
+
+| Check | What to Look For |
+|---|---|
+| **Page title** | Clear, descriptive — "Sign Up – [Product Name]" |
+| **Meta description** | Explains what users are signing up for (helps paid/social traffic) |
+| **Form labels** | All inputs have visible, descriptive labels (accessibility + usability) |
+| **Trust signals** | SSL indicator, privacy policy link, "No credit card required" if applicable |
+| **Schema markup** | `WebPage` schema; `BreadcrumbList` if navigation is present |
+| **Error messages** | Clear, actionable inline validation |
+| **Conversion friction** | Number of fields, social login options, CTA clarity |
+
+---
+
+## What to Avoid
+
+- Keyword-stuffed paragraphs added purely to hit a word count target
+- Marketing copy that distracts from the primary action
+- Flagging these pages in an audit as "thin content" requiring a fix
+
+The correct benchmark for these pages is **conversion rate and usability**, not content depth or E-E-A-T signals.

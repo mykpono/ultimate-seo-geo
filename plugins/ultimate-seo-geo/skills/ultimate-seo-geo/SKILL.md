@@ -1,14 +1,14 @@
 ---
 name: ultimate-seo-geo
 description: Audits and optimizes websites for search engine visibility (SEO) and AI search citation (GEO), covering technical health, E-E-A-T content scoring, domain authority, structured data, rich results, and entity signals. Use when running SEO audits, diagnosing traffic drops or ranking losses, generating Schema.org JSON-LD, checking Core Web Vitals, crawlability, robots.txt, sitemaps, hreflang, backlinks, planning content strategy or site migrations, fixing indexing issues, or optimizing for AI Overviews, ChatGPT, and Perplexity. NOT for paid ads (PPC/SEM), social media strategy, email marketing, or general web development unrelated to search.
-version: 1.8.0
+version: 1.8.1
 ---
 
 # Ultimate SEO + GEO — LLM-Agnostic SEO Agent
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.8.0 |
+| **Version** | 1.8.1 |
 | **Updated** | 2026-04-01 |
 | **License** | MIT |
 | **Author** | Myk Pono |
@@ -541,6 +541,20 @@ For e-commerce schema additions (ProductGroup, Certification, OfferShippingDetai
 | **AI content quality** | September 2025 QRG | AI content acceptable if genuine E-E-A-T; penalized without unique value |
 | **Helpful Content System merged** | March 2024 | Merged into core algorithm — helpfulness weighted continuously |
 | **Google AI Mode** | May 2025 | Available in 180+ countries; delivers **zero blue links** — AI citation is the only visibility mechanism; traditional rankings do not appear |
+
+### Functional Page Exemption (check before auditing content)
+
+**Before applying any content-quality or thin-content checks, classify the page type.** Functional pages have a task-completion purpose — minimal copy is correct design, not a content problem.
+
+| Page type | Examples | Content audit rule |
+|---|---|---|
+| **Functional / task UI** | Sign up, Sign in, Log in, Register, Create account, Forgot password, Reset password, Join, Membership enroll, Checkout, Cart, Account dashboard, Profile settings | **Skip word-count checks entirely. Do NOT flag as thin content. Do NOT recommend adding more copy.** |
+| **Landing / marketing** | Pricing, Features, About, Blog, Service pages | Apply full content audit below |
+| **Content** | Blog posts, guides, case studies | Apply full content audit below |
+
+**For functional pages, relevant checks are:** page title accuracy, meta description clarity, form label quality, error message usability, trust signals (SSL badge, privacy link), and schema (`WebPage`, `BreadcrumbList`). Never flag low word count.
+
+---
 
 ### Content Audit — Step by Step
 

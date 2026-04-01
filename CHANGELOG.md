@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-04-01
+
+### Added
+
+- **Functional page exemption** — Sign up, sign in, log in, register, create account, forgot/reset password, membership enroll, checkout, cart, account dashboard, profile settings pages are now explicitly excluded from thin-content checks and word-count floors. Audit rule table added to `SKILL.md` § 6 and `AGENTS.md` § 6. Relevant checks for these pages: title accuracy, meta description, form labels, trust signals, schema.
+- **Eval 15** — Regression test: auditing `/signup` and `/login` pages must not flag thin content or recommend adding copy. 3 assertions.
+
+### Changed
+
+- **`SKILL.md` § 6** — Added "Functional Page Exemption" table before the Content Audit step-by-step. Classifies functional pages (task UI), landing/marketing pages, and content pages with clear audit rules per type.
+- **`AGENTS.md` § 6** — Prepended functional page exemption notice with page-type list and applicable checks.
+
 ## [1.8.0] - 2026-04-01
 
 ### Added

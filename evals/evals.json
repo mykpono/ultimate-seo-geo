@@ -473,6 +473,32 @@
           "values": ["not measured", "unavailable", "not available", "could not retrieve", "run PageSpeed", "pagespeed.web.dev", "PageSpeed Insights", "no CWV data", "no performance data", "unable to measure", "cannot measure", "need to run"]
         }
       ]
+    },
+    {
+      "id": 15,
+      "prompt": "I'm auditing our SaaS product site. The /signup page and /login page are flagged as having thin content. Should I add more text to these pages?",
+      "expected_output": "The skill must recognise signup and login pages as functional/task-completion UI pages and explicitly state they should NOT be treated as thin content. It must NOT recommend adding more copy or increasing word count on these pages. It may suggest relevant checks (title, meta description, form labels, trust signals, schema) but must make clear that low word count is expected and correct for functional pages.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "no-add-content-recommendation",
+          "description": "Does NOT recommend adding more content, text, or copy to the signup/login pages",
+          "type": "not_contains_any",
+          "values": ["add more content", "add more text", "increase word count", "add more copy", "expand the content", "add content to", "more content on", "bulk up", "flesh out", "more text to the"]
+        },
+        {
+          "id": "functional-page-exemption-applied",
+          "description": "Recognises signup/login as functional pages exempt from thin content rules",
+          "type": "contains_any",
+          "values": ["functional", "task-completion", "task completion", "utility page", "UI page", "not thin content", "not a thin", "exempt", "by design", "intentionally minimal", "expected to be short", "form page", "authentication page", "these pages are not"]
+        },
+        {
+          "id": "relevant-checks-suggested",
+          "description": "Suggests at least one check that IS relevant for functional pages",
+          "type": "contains_any",
+          "values": ["title", "meta description", "form label", "trust signal", "schema", "SSL", "privacy", "usability", "UX", "accessibility", "conversion"]
+        }
+      ]
     }
   ]
 }

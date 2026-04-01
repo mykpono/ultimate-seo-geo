@@ -8,8 +8,8 @@
   "plugins": [
     {
       "name": "ultimate-seo-geo",
-      "description": "Scored SEO audits, technical health checks, Schema.org JSON-LD, E-E-A-T content scoring, backlink analysis, domain authority rating, and GEO for AI Overviews, ChatGPT, and Perplexity. 27 diagnostic scripts. Excel export. Modes: Audit \u2192 Plan \u2192 Execute.",
-      "version": "1.8.0",
+      "description": "Scored SEO audits, technical health checks, Schema.org JSON-LD, E-E-A-T content scoring, backlink analysis, domain authority rating, and GEO for AI Overviews, ChatGPT, and Perplexity. 27 diagnostic scripts. Excel export. Modes: Audit → Plan → Execute.",
+      "version": "1.8.1",
       "author": {
         "name": "Myk Pono",
         "url": "https://lab.mykpono.com"
@@ -19,7 +19,15 @@
       "homepage": "https://github.com/mykpono/ultimate-seo-geo",
       "repository": "https://github.com/mykpono/ultimate-seo-geo",
       "license": "MIT",
-      "keywords": ["seo", "geo", "audit", "schema", "e-e-a-t", "ai-search", "structured-data"]
+      "keywords": [
+        "seo",
+        "geo",
+        "audit",
+        "schema",
+        "e-e-a-t",
+        "ai-search",
+        "structured-data"
+      ]
     }
   ]
 }

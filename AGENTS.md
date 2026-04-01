@@ -310,7 +310,9 @@ Script: `validate_schema.py`
 
 E-E-A-T is universal for all competitive queries (December 2025). AI content acceptable if genuine E-E-A-T; penalized without unique value. Google AI Mode (180+ countries) delivers zero blue links — AI citation is the only visibility.
 
-Key checks: Named author with credentials? First-hand experience signals? Word count floors (blog 1,500+, service 800+, homepage 500+) — but thoroughness matters more than count. Thin content signals: copied definitions, no original research, no author bio.
+**Functional page exemption:** Sign up, sign in, log in, register, create account, forgot/reset password, membership enroll, checkout, cart, account dashboard, profile settings — these are task-completion UI pages. Do NOT flag them as thin content. Do NOT recommend adding more copy. Applicable checks: title accuracy, meta description, form labels, trust signals, schema.
+
+Key checks (content/marketing pages only): Named author with credentials? First-hand experience signals? Word count floors (blog 1,500+, service 800+, homepage 500+) — but thoroughness matters more than count. Thin content signals: copied definitions, no original research, no author bio.
 
 For the full E-E-A-T scoring framework, CORE-EEAT 80-item benchmark, and CITE domain rating → read `SKILL.md` § 6 and `references/eeat-framework.md`, `references/core-eeat-framework.md`, `references/cite-domain-rating.md`.
 
