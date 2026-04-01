@@ -2,6 +2,28 @@
 
 Use this before tagging or publishing a new version. Run everything from the **repository root** (where `SKILL.md` and `setup-plugin.sh` live).
 
+> **Quick order:** Bump version → Sync bundle → Validate → Commit + Push → **Create GitHub Release** → Verify release
+
+---
+
+## ⚠️ REQUIRED: GitHub Release must be created every time
+
+The Claude Code Marketplace reads from **GitHub Releases**, not commits. If you push code without creating a release, users will not receive the update.
+
+**Never skip this command:**
+```bash
+gh release create vX.Y.Z \
+  --title "vX.Y.Z — short summary" \
+  --notes "release notes" \
+  --target main
+```
+
+**Verify immediately after:**
+```bash
+python3 scripts/check_github_release.py   # must exit 0
+gh release list --limit 3                 # v1.8.0 must appear as Latest
+```
+
 ---
 
 ## 1. Bump the version (same value everywhere)
@@ -325,7 +347,13 @@ gh release create vX.Y.Z \
   --target main
 ```
 
-Then verify: `python3 scripts/check_github_release.py` (must exit 0).
+**Verify immediately (must exit 0):**
+```bash
+python3 scripts/check_github_release.py
+gh release list --limit 3   # confirm vX.Y.Z appears as Latest
+```
+
+> If you pushed and forgot the release: run the `gh release create` command above now. The Marketplace will pick it up within minutes.
 
 ### 6b. Push update to local Claude terminal install (always do this)
 
