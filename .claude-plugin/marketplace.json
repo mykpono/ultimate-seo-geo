@@ -5,6 +5,9 @@
   "owner": {
     "name": "Myk Pono"
   },
+  "metadata": {
+    "version": "1.8.4"
+  },
   "plugins": [
     {
       "name": "ultimate-seo-geo",

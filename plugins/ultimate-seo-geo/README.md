@@ -32,6 +32,33 @@ These are **slash commands** for **Claude Code**’s chat input—not for Termin
 /plugin install https://github.com/mykpono/ultimate-seo-geo.git
 ```
 
+### Still seeing an old version (e.g. 1.8.2)?
+
+GitHub **main** and release **v1.8.4** already declare `"version": "1.8.4"` in `plugins/ultimate-seo-geo/.claude-plugin/plugin.json`. If the UI shows something older, the marketplace **git clone under your home directory is stale** (it does not auto-pull), or the Claude.ai web cache needs a refresh.
+
+**Check what is on disk (run in Terminal, not inside Claude chat):**
+
+```bash
+grep '"version"' ~/.claude/plugins/marketplaces/ultimate-seo-geo/plugins/ultimate-seo-geo/.claude-plugin/plugin.json
+```
+
+**Pull latest `main` into that clone:**
+
+```bash
+cd ~/.claude/plugins/marketplaces/ultimate-seo-geo && git fetch origin && git reset --hard origin/main
+```
+
+**Then in Claude Code (slash commands in chat):**
+
+```text
+/plugin marketplace add mykpono/ultimate-seo-geo
+/plugin install ultimate-seo-geo@ultimate-seo-geo
+```
+
+Restart Claude Code after that. **Nuclear option** if the version line is still wrong: `rm -rf ~/.claude/plugins/marketplaces/ultimate-seo-geo` and run `/plugin marketplace add mykpono/ultimate-seo-geo` again (re-clones from GitHub).
+
+**Claude.ai (web):** Customize → remove the plugin → Marketplace → add **ultimate-seo-geo** again → new chat.
+
 ---
 
 ## What It Does

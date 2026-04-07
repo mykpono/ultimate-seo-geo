@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`.claude-plugin/marketplace.json`** — Added `metadata.version` (aligned with `plugins[0].version`) so hosts that read the catalog-level field stay in sync with `check_version_sync.py`.
+- **`plugins/ultimate-seo-geo/README.md`** — Troubleshooting: stale marketplace git clone / Claude.ai cache when the UI shows an old plugin version.
+
 ## [1.8.4] - 2026-04-06
 
 ### Added
