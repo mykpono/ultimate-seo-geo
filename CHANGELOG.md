@@ -2,10 +2,20 @@
 
 ## [Unreleased]
 
+## [1.8.5] - 2026-04-11
+
+### Added
+
+- **`scripts/generate_report.py`** — `--crawl-deep`, `--crawl-max-pages`, `--crawl-depth` to run multi-page `broken_links` and `canonical_checker` crawls (capped; longer script timeouts).
+- **`scripts/parse_html.py`** — `og:description` fallback with `meta_description_source`; duplicate `<title>`, duplicate `meta name="description"`, and duplicate `rel=canonical` findings; multi-H1 info note; canonical `rel` parsing when `rel` is a list.
+- **HTML report** — Raw-HTML disclaimer for Next.js/Nuxt/JS-heavy stacks; on-page canonical filled from canonical audit when HTML has no `<link rel="canonical">`; labels for og-description fallback and audit-filled canonical.
+
 ### Changed
 
-- **`.claude-plugin/marketplace.json`** — Added `metadata.version` (aligned with `plugins[0].version`) so hosts that read the catalog-level field stay in sync with `check_version_sync.py`.
-- **`plugins/ultimate-seo-geo/README.md`** — Troubleshooting: stale marketplace git clone / Claude.ai cache when the UI shows an old plugin version.
+- **`scripts/canonical_checker.py`** — Treat canonical sent only via HTTP `Link: ...; rel="canonical"` as present (with warning to add HTML `<link>` for parity).
+- **`AGENTS.md`** — GEO vs traditional robots.txt: scope “remove Disallow” to AI crawlers; do not recommend removing Googlebot facet/category disallows unless the user asks for crawl-budget review.
+- **`SKILL.md`** — Routing row for content relevance + GEO (procedures 03 + 06, `article_seo`, `readability`, `internal_links`).
+- **`README.md`**, **`.claude-plugin/marketplace.json`**, **`plugin.json`** — Audience, default vs deep crawl scope, marketplace descriptions.
 
 ## [1.8.4] - 2026-04-06
 

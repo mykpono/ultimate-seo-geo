@@ -2,7 +2,7 @@
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.8.4 |
+| **Version** | 1.8.5 |
 | **Updated** | 2026-04-06 |
 | **License** | MIT |
 | **Author** | Myk Pono |
@@ -232,11 +232,17 @@ GEO = getting content cited by AI engines: Google AI Overviews, AI Mode, ChatGPT
 
 | # | Question | If No → Fix |
 |---|---|---|
-| 1 | AI crawlers (OAI-SearchBot, PerplexityBot) allowed in robots.txt? | Remove Disallow rules |
+| 1 | AI crawlers (OAI-SearchBot, PerplexityBot) allowed in robots.txt? | Remove **only** Disallow rules (or `*` blocks) that block those AI crawlers — see scoped rule below |
 | 2 | Page answers target query in first 60 words? | Move answer to opening paragraph |
 | 3 | Content in raw HTML (not JS-only)? | Implement SSR |
 | 4 | Named author with credentials + publication date? | Add author bio + date |
 | 5 | Brand mentioned on YouTube or Reddit? | Start presence on missing platform |
+
+### robots.txt: GEO vs traditional crawl directives
+
+- **GEO guidance applies to AI-named crawlers** (e.g. OAI-SearchBot, PerplexityBot, GPTBot, ClaudeBot) and to `User-agent: *` rules that effectively block them from important content.
+- **Do not** recommend removing **Googlebot/Bingbot** `Disallow` rules used for facets (`/*?`), filtered URLs, pagination, category/author paths, or other intentional crawl hygiene **unless** the user explicitly asks for a crawl-budget or indexation review of those rules.
+- `robots_checker.py` focuses on AI crawler status; it does **not** flag facet or low-value-path disallows as errors — do not over-generalize GEO fixes into “remove all Disallow.”
 
 ### GEO Score Components
 

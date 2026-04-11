@@ -1,7 +1,7 @@
 {
   "name": "ultimate-seo-geo",
-  "description": "Scored SEO audits, technical health checks, Schema.org JSON-LD, E-E-A-T content scoring, backlink analysis, domain authority rating, and GEO for AI Overviews, ChatGPT, and Perplexity. 31 bundled scripts. HTML, Excel, optional PDF. Parallel audit workers (agents/PARALLEL-AUDIT.md). Optional MCP (Firecrawl, DataForSEO): references/optional-extensions-mcp.md. Modes: Audit → Plan → Execute.",
-  "version": "1.8.4",
+  "description": "Scored SEO audits for developers and marketers using AI agents: technical health, Schema.org JSON-LD, E-E-A-T, backlinks, domain signals, GEO (AI Overviews, ChatGPT, Perplexity). 31 bundled scripts; HTML/Excel/PDF reports. Default reports use seed-URL and capped crawls — use generate_report.py --crawl-deep for deeper link/canonical scans. Optional MCP (Firecrawl, DataForSEO): references/optional-extensions-mcp.md. Modes: Audit → Plan → Execute.",
+  "version": "1.8.5",
   "author": {
     "name": "Myk Pono",
     "url": "https://lab.mykpono.com"

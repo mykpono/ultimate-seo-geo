@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![AGENTS.md](https://img.shields.io/badge/AGENTS.md-compatible-blue)](https://agents.md)
-[![Version](https://img.shields.io/badge/version-1.8.4-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.5-green.svg)](CHANGELOG.md)
 [![LLM-Agnostic](https://img.shields.io/badge/LLM--Agnostic-7%2B%20platforms-purple.svg)](#platform-compatibility)
 
 The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML and Excel reports.
@@ -26,6 +26,10 @@ Give it a URL and it returns a scored audit, prioritized action plan, and execut
 | **Execute** | Produces the actual fixes + verifies them | JSON-LD, meta rewrites, redirect maps, robots.txt |
 
 Most requests run all three in sequence. Skip to Mode 2 if you already have audit findings; skip to Mode 3 if you know exactly what to fix.
+
+### Who it’s for and what the bundled report does
+
+Built for **developers, founders, and marketers using AI coding agents** who want scripted checks plus guided fixes. `python scripts/generate_report.py <url>` aggregates many diagnostics in one HTML/Excel export; **by default** several checks use the **seed URL and modest crawl limits** (not a full-site Screaming Frog–style crawl). For broader link and canonical coverage, use `--crawl-deep` (capped depth/pages; slower and more load on the target host). For JS-rendered sites or very large audits, optional extensions (Firecrawl, DataForSEO) are documented in `references/optional-extensions-mcp.md`. Setup: `pip install -r requirements.txt` (optional API keys for PageSpeed and extensions).
 
 ---
 

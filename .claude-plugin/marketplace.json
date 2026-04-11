@@ -1,18 +1,18 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "ultimate-seo-geo",
-  "description": "Full-site SEO audits with health scores, technical SEO, Schema.org structured data, and Generative Engine Optimization (GEO) for AI search. 31 bundled diagnostic scripts; HTML/XLSX/PDF reports; parallel audit workers (agents/PARALLEL-AUDIT.md); optional MCP (Firecrawl, DataForSEO). Progressive disclosure: compact SKILL routing shell plus procedures in references/procedures/. LLM-agnostic.",
+  "description": "SEO + GEO audits for AI coding agents: health scores, technical checks, Schema.org, E-E-A-T, AI search visibility. 31 scripts; HTML/XLSX/PDF. Default reports use seed URL + capped crawls; generate_report.py --crawl-deep for broader link/canonical scans. Optional MCP (Firecrawl, DataForSEO). Progressive disclosure via SKILL + references/procedures/. LLM-agnostic.",
   "owner": {
     "name": "Myk Pono"
   },
   "metadata": {
-    "version": "1.8.4"
+    "version": "1.8.5"
   },
   "plugins": [
     {
       "name": "ultimate-seo-geo",
-      "description": "Scored SEO audits, technical health checks, Schema.org JSON-LD, E-E-A-T content scoring, backlink analysis, domain authority rating, and GEO for AI Overviews, ChatGPT, and Perplexity. 31 bundled scripts. HTML, Excel, and optional PDF reports. Parallel audit scopes in agents/PARALLEL-AUDIT.md. Optional MCP (Firecrawl, DataForSEO) via references/optional-extensions-mcp.md. Modes: Audit → Plan → Execute.",
-      "version": "1.8.4",
+      "description": "Scored SEO audits for developers/marketers using AI agents: technical health, JSON-LD, E-E-A-T, backlinks, GEO (AI Overviews, ChatGPT, Perplexity). 31 scripts; HTML/Excel/PDF. Default capped crawl scope; --crawl-deep for multi-page broken links + canonical. Optional MCP (Firecrawl, DataForSEO). Parallel workers: agents/PARALLEL-AUDIT.md. Modes: Audit → Plan → Execute.",
+      "version": "1.8.5",
       "author": {
         "name": "Myk Pono",
         "url": "https://lab.mykpono.com"

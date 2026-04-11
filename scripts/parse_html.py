@@ -22,6 +22,27 @@ except ImportError:
     sys.exit(1)
 
 
+def _link_rel_has_canonical(rel) -> bool:
+    if rel is None:
+        return False
+    if isinstance(rel, list):
+        rel_s = " ".join(rel).lower()
+    else:
+        rel_s = str(rel).lower()
+    return "canonical" in rel_s.split()
+
+
+def _canonical_hrefs(soup: BeautifulSoup) -> list:
+    hrefs = []
+    for link in soup.find_all("link"):
+        if not _link_rel_has_canonical(link.get("rel")):
+            continue
+        h = (link.get("href") or "").strip()
+        if h:
+            hrefs.append(h)
+    return hrefs
+
+
 def parse_html(html: str, base_url: Optional[str] = None) -> dict:
     """
     Parse HTML and extract SEO-relevant elements.
@@ -38,6 +59,7 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
     result = {
         "title": None,
         "meta_description": None,
+        "meta_description_source": None,
         "meta_robots": None,
         "canonical": None,
         "h1": [],
@@ -53,21 +75,33 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
         "twitter_card": {},
         "word_count": 0,
         "hreflang": [],
+        "issues": [],
     }
 
     # Title
-    title_tag = soup.find("title")
-    if title_tag:
-        result["title"] = title_tag.get_text(strip=True)
+    title_tags = soup.find_all("title")
+    if title_tags:
+        result["title"] = title_tags[0].get_text(strip=True)
+    if len(title_tags) > 1:
+        result["issues"].append({
+            "severity": "critical",
+            "finding": f"Multiple <title> tags in HTML ({len(title_tags)}).",
+            "fix": "Keep a single <title> per document; remove duplicates from templates or injected fragments.",
+        })
 
     # Meta tags
+    meta_desc_count = 0
     for meta in soup.find_all("meta"):
         name = meta.get("name", "").lower()
         property_attr = meta.get("property", "").lower()
         content = meta.get("content", "")
 
         if name == "description":
-            result["meta_description"] = content
+            meta_desc_count += 1
+            if str(content).strip() and (
+                result["meta_description"] is None or not str(result["meta_description"]).strip()
+            ):
+                result["meta_description"] = content
         elif name == "robots":
             result["meta_robots"] = content
 
@@ -79,10 +113,36 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
         if name.startswith("twitter:"):
             result["twitter_card"][name] = content
 
+    if meta_desc_count > 1:
+        result["issues"].append({
+            "severity": "critical",
+            "finding": f"Multiple meta name=\"description\" tags ({meta_desc_count}).",
+            "fix": "Use exactly one meta description; search engines may pick unpredictably among duplicates.",
+        })
+
+    if result["meta_description"] is not None and str(result["meta_description"]).strip():
+        result["meta_description_source"] = "name"
+    else:
+        og_desc = (result["open_graph"].get("og:description") or "").strip()
+        if og_desc:
+            result["meta_description"] = og_desc
+            result["meta_description_source"] = "og_fallback"
+            result["issues"].append({
+                "severity": "info",
+                "finding": "No meta name=\"description\"; using og:description as fallback for audit display.",
+                "fix": "Add a dedicated meta name=\"description\" for SERP control; og:description is primarily for social previews.",
+            })
+
     # Canonical
-    canonical = soup.find("link", rel="canonical")
-    if canonical:
-        result["canonical"] = canonical.get("href")
+    canon_hrefs = _canonical_hrefs(soup)
+    if len(canon_hrefs) > 1:
+        result["issues"].append({
+            "severity": "critical",
+            "finding": f"Multiple rel=canonical link tags ({len(canon_hrefs)}).",
+            "fix": "Keep exactly one canonical URL per page.",
+        })
+    if canon_hrefs:
+        result["canonical"] = canon_hrefs[0]
 
     # Hreflang
     for link in soup.find_all("link", rel="alternate"):
@@ -99,6 +159,13 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
             text = heading.get_text(strip=True)
             if text:
                 result[tag].append(text)
+
+    if len(result["h1"]) > 1:
+        result["issues"].append({
+            "severity": "info",
+            "finding": f"Multiple H1 elements in raw HTML ({len(result['h1'])}).",
+            "fix": "Confirm the live rendered page has one primary H1 (DevTools); demote extras to H2 if needed.",
+        })
 
     # Images
     for img in soup.find_all("img"):

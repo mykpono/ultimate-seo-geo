@@ -154,17 +154,30 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
                    "should exist per page.",
         })
 
-    if not data["canonical_tags"]:
+    tags = data["canonical_tags"]
+    http_c = (data.get("http_canonical") or "").strip()
+
+    raw_canonical = None
+    if tags:
+        raw_canonical = tags[0]
+    elif http_c:
+        raw_canonical = http_c
+        result["warnings"].append({
+            "type": "canonical_header_only",
+            "detail": (
+                "Canonical is declared only via HTTP Link header (no HTML <link rel=\"canonical\">). "
+                "Add a matching tag in <head> for consistency with crawlers and auditing tools."
+            ),
+        })
+
+    if raw_canonical is None:
         result["issues"].append({
             "severity": "high",
-            "finding": "No canonical tag found on page.",
-            "fix": "Add <link rel=\"canonical\" href=\"[absolute-self-url]\"> to <head>.",
+            "finding": "No canonical URL in HTML or HTTP Link header.",
+            "fix": "Add <link rel=\"canonical\" href=\"[absolute-self-url]\"> to <head> or send an equivalent Link rel=canonical header.",
         })
         result["canonical"] = None
     else:
-        raw_canonical = data["canonical_tags"][0]
-        result["canonical"] = raw_canonical
-
         # --- Relative URL check ---
         canon_parsed = urlparse(raw_canonical)
         if not canon_parsed.scheme or not canon_parsed.netloc:
@@ -326,6 +339,8 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
                 "type": "canonical_unreachable",
                 "detail": f"Could not reach canonical URL: {raw_canonical}",
             })
+
+        result["canonical"] = raw_canonical
 
     # --- Score ---
     score = 100

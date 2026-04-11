@@ -9,11 +9,15 @@ Optionally exports to Excel (.xlsx) or PDF for offline sharing.
 Usage:
     python generate_report.py https://example.com
     python generate_report.py https://example.com --output my-report.html
+    python generate_report.py https://example.com --crawl-deep --crawl-max-pages 40
     python generate_report.py https://example.com --format xlsx --output report.xlsx
     python generate_report.py https://example.com --format pdf --output report.pdf
     python generate_report.py https://example.com --format all --output report
 
 PDF requires optional WeasyPrint (see requirements.txt). Without it, use HTML + browser Print → Save as PDF.
+
+`--crawl-deep` runs broken_links and canonical_checker in multi-page crawl mode (capped); slower and
+more load on the target host than the default single-URL checks.
 """
 
 import argparse
@@ -37,6 +41,15 @@ import urllib.request
 _MAX_PARALLEL_SCRIPTS = 8
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_SCRIPT_TIMEOUT_DEFAULT = 120
+_SCRIPT_TIMEOUT_CRAWL = 300
+
+
+def _needs_raw_html_disclaimer(env: dict) -> bool:
+    """True when the stack often injects title/meta/canonical client-side."""
+    p = (env or {}).get("primary", "")
+    r = str((env or {}).get("runtime", ""))
+    return p in ("Next.js", "Nuxt") or "JavaScript" in r
 
 
 def run_script(script_name: str, args: list, timeout: int = 120) -> dict:
@@ -445,14 +458,28 @@ def render_environment_fixes(fixes: list) -> str:
     return html
 
 
-def collect_data(url: str) -> dict:
+def collect_data(
+    url: str,
+    *,
+    crawl_deep: bool = False,
+    crawl_max_pages: int = 30,
+    crawl_depth: int = 2,
+) -> dict:
     """Run all analysis scripts and collect results."""
     print(f"🔍 Analyzing {url}...")
+    if crawl_deep:
+        print(
+            f"  📎 --crawl-deep: broken links + canonical checks use multi-page crawl "
+            f"(depth={crawl_depth}, max_pages={crawl_max_pages}); slower and more server load."
+        )
     data = {
         "url": url,
         "domain": urlparse(url).netloc,
         "timestamp": datetime.now().isoformat(),
         "sections": {},
+        "crawl_deep": crawl_deep,
+        "crawl_max_pages": crawl_max_pages,
+        "crawl_depth": crawl_depth,
     }
 
     # Fetch page for parse_html and readability
@@ -467,13 +494,25 @@ def collect_data(url: str) -> dict:
             page_html = ""
     data["environment"] = detect_environment(page_html, url)
 
+    broken_args = [url, "--workers", "5", "--timeout", "8"]
+    if crawl_deep:
+        broken_args.extend(
+            ["--crawl", "--depth", str(crawl_depth), "--max-pages", str(crawl_max_pages)]
+        )
+
+    canonical_args = [url]
+    if crawl_deep:
+        canonical_args.extend(
+            ["--crawl", "--depth", str(crawl_depth), "--max-pages", str(crawl_max_pages)]
+        )
+
     analyses = [
         ("robots", "robots_checker.py", [url]),
         ("security", "security_headers.py", [url]),
         ("social", "social_meta.py", [url]),
         ("redirects", "redirect_checker.py", [url]),
         ("llms_txt", "llms_txt_checker.py", [url]),
-        ("broken_links", "broken_links.py", [url, "--workers", "5", "--timeout", "8"]),
+        ("broken_links", "broken_links.py", broken_args),
         ("internal_links", "internal_links.py", [url, "--depth", "1", "--max-pages", "15"]),
         ("pagespeed", "pagespeed.py", [url, "--strategy", "mobile"]),
         # New analysis scripts (supplementary — failures don't block report)
@@ -482,7 +521,7 @@ def collect_data(url: str) -> dict:
         ("hreflang", "hreflang_checker.py", [url]),
         ("duplicate_content", "duplicate_content.py", [url]),
         ("sitemap", "sitemap_checker.py", [url]),
-        ("canonical", "canonical_checker.py", [url]),
+        ("canonical", "canonical_checker.py", canonical_args),
         ("programmatic_seo", "programmatic_seo_auditor.py", [url, "--max-pages", "80"]),
         ("local_signals", "local_signals_checker.py", [url]),
         ("indexnow_probe", "indexnow_checker.py", [url, "--probe"]),
@@ -504,7 +543,12 @@ def collect_data(url: str) -> dict:
     def _run_one(item: tuple) -> tuple:
         name, script, args = item
         start = time.time()
-        result = run_script(script, args)
+        timeout = (
+            _SCRIPT_TIMEOUT_CRAWL
+            if crawl_deep and name in ("broken_links", "canonical")
+            else _SCRIPT_TIMEOUT_DEFAULT
+        )
+        result = run_script(script, args, timeout=timeout)
         elapsed = round(time.time() - start, 1)
         return name, script, result, elapsed
 
@@ -516,6 +560,17 @@ def collect_data(url: str) -> dict:
             data["sections"][name] = result
             status = "⚠️ error" if "error" in result and result.get("error") else "✅"
             print(f"  {status} {script} ({elapsed}s)")
+
+    # Prefer canonical_checker URL when raw HTML had no <link rel="canonical">
+    op = data["sections"].get("onpage", {})
+    cansec = data["sections"].get("canonical", {})
+    if isinstance(op, dict) and not op.get("error") and not (op.get("canonical") or "").strip():
+        c = cansec.get("canonical") if isinstance(cansec, dict) else None
+        if c:
+            op = dict(op)
+            op["canonical"] = c
+            op["canonical_from_audit"] = True
+            data["sections"]["onpage"] = op
 
     # Cleanup temp file
     if html_path and os.path.exists(html_path):
@@ -1535,6 +1590,7 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
             <span class="chevron" id="chevron-onpage">▼</span>
         </div>
         <div class="section-body" id="body-onpage">
+            {f'<div class="issue-item info"><span class="issue-badge">NOTE</span> <div><strong>Raw HTML snapshot</strong> — title, meta description, canonical, and H1 are read from the initial response body. On {html_lib.escape(env.get("primary") or "this stack", quote=True)} / JS-heavy sites, tags may be injected client-side; confirm in DevTools or Google Rich Results Test if this section disagrees with what you see in the browser.</div></div>' if _needs_raw_html_disclaimer(env) else ''}
             <div class="summary-row">
                 <div class="summary-item"><div class="val">{'✅' if op.get('title') else '❌'}</div><div class="lbl">Title Tag</div></div>
                 <div class="summary-item"><div class="val">{'✅' if op.get('meta_description') else '❌'}</div><div class="lbl">Meta Desc</div></div>
@@ -1545,9 +1601,9 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
                 <thead><tr><th>Element</th><th>Value</th><th>Length</th></tr></thead>
                 <tbody>
                     <tr><td>Title</td><td>{(op.get('title','') or '—')[:70]}</td><td>{len(op.get('title','') or '')}</td></tr>
-                    <tr><td>Meta Description</td><td>{(op.get('meta_description','') or '—')[:100]}</td><td>{len(op.get('meta_description','') or '')}</td></tr>
+                    <tr><td>Meta Description</td><td>{(op.get('meta_description','') or '—')[:100]}</td><td>{len(op.get('meta_description','') or '')}{' <span style="color:var(--text-muted)">(og:description fallback)</span>' if op.get('meta_description_source') == 'og_fallback' else ''}</td></tr>
                     <tr><td>H1</td><td>{(op.get('h1',[''])[0] if isinstance(op.get('h1'), list) and op.get('h1') else op.get('h1','') or '—')[:70]}</td><td>—</td></tr>
-                    <tr><td>Canonical</td><td class="link-url">{(op.get('canonical') or '—')[:80]}</td><td>—</td></tr>
+                    <tr><td>Canonical</td><td class="link-url">{(op.get('canonical') or '—')[:80]}{' <span style="color:var(--text-muted)">(from canonical audit)</span>' if op.get('canonical_from_audit') else ''}</td><td>—</td></tr>
                 </tbody>
             </table>
             {render_recommendations(op)}
@@ -2027,11 +2083,35 @@ def main():
         choices=["html", "xlsx", "pdf", "all"],
         help="Output format: html (default), xlsx (Excel), pdf (WeasyPrint), all (HTML + XLSX)",
     )
+    parser.add_argument(
+        "--crawl-deep",
+        action="store_true",
+        help="Multi-page crawl for broken_links + canonical_checker (capped; slower, more server load)",
+    )
+    parser.add_argument(
+        "--crawl-max-pages",
+        type=int,
+        default=30,
+        metavar="N",
+        help="With --crawl-deep: max pages per crawl (default: 30)",
+    )
+    parser.add_argument(
+        "--crawl-depth",
+        type=int,
+        default=2,
+        metavar="D",
+        help="With --crawl-deep: BFS depth (default: 2)",
+    )
 
     args = parser.parse_args()
     domain = urlparse(args.url).netloc.replace(".", "_")
 
-    data = collect_data(args.url)
+    data = collect_data(
+        args.url,
+        crawl_deep=args.crawl_deep,
+        crawl_max_pages=max(1, args.crawl_max_pages),
+        crawl_depth=max(1, args.crawl_depth),
+    )
     scores = calculate_overall_score(data)
 
     formats = ["html", "xlsx"] if args.fmt == "all" else [args.fmt]
