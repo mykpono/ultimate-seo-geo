@@ -8,17 +8,17 @@ Usage:
 """
 
 import argparse
-import ipaddress
-import socket
 import sys
-from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urljoin
 
 try:
     import requests
 except ImportError:
     print("Error: requests library required. Install with: pip install requests")
     sys.exit(1)
+
+from render_page import render_url, should_render
+from url_safety import validate_url
 
 
 DEFAULT_HEADERS = {
@@ -35,6 +35,7 @@ def fetch_page(
     timeout: int = 30,
     follow_redirects: bool = True,
     max_redirects: int = 5,
+    render: str = "never",
 ) -> dict:
     """
     Fetch a web page and return response details.
@@ -52,6 +53,7 @@ def fetch_page(
             - content: Response body
             - headers: Response headers
             - redirect_chain: List of redirect URLs
+            - rendered: Whether Playwright rendering supplied the content
             - error: Error message if failed
     """
     result = {
@@ -60,48 +62,69 @@ def fetch_page(
         "content": None,
         "headers": {},
         "redirect_chain": [],
+        "rendered": False,
+        "render_mode": render,
         "error": None,
     }
 
-    # Validate URL
-    parsed = urlparse(url)
-    if not parsed.scheme:
-        url = f"https://{url}"
-        parsed = urlparse(url)
-
-    if parsed.scheme not in ("http", "https"):
-        result["error"] = f"Invalid URL scheme: {parsed.scheme}"
+    if render not in {"never", "auto", "always"}:
+        result["error"] = f"Invalid render mode: {render}"
         return result
 
-    # SSRF prevention: block private/internal IPs
-    try:
-        resolved_ip = socket.gethostbyname(parsed.hostname)
-        ip = ipaddress.ip_address(resolved_ip)
-        if ip.is_private or ip.is_loopback or ip.is_reserved:
-            result["error"] = f"Blocked: URL resolves to private/internal IP ({resolved_ip})"
-            return result
-    except (socket.gaierror, ValueError):
-        pass  # DNS resolution failure handled by requests below
+    safe = validate_url(url)
+    if not safe.ok:
+        result["error"] = f"URL safety check failed: {safe.reason}"
+        return result
+
+    current_url = safe.normalized_url
 
     try:
         session = requests.Session()
-        session.max_redirects = max_redirects
+        response = None
+        for redirect_count in range(max_redirects + 1):
+            safe_current = validate_url(current_url)
+            if not safe_current.ok:
+                result["error"] = f"URL safety check failed: {safe_current.reason}"
+                return result
 
-        response = session.get(
-            url,
-            headers=DEFAULT_HEADERS,
-            timeout=timeout,
-            allow_redirects=follow_redirects,
-        )
+            response = session.get(
+                safe_current.normalized_url,
+                headers=DEFAULT_HEADERS,
+                timeout=timeout,
+                allow_redirects=False,
+            )
+
+            if not follow_redirects or not response.is_redirect:
+                break
+
+            location = response.headers.get("Location")
+            if not location:
+                break
+            result["redirect_chain"].append(response.url)
+            current_url = urljoin(response.url, location)
+            if redirect_count == max_redirects:
+                result["error"] = f"Too many redirects (max {max_redirects})"
+                return result
+
+        if response is None:
+            result["error"] = "No response returned"
+            return result
 
         result["url"] = response.url
         result["status_code"] = response.status_code
         result["content"] = response.text
         result["headers"] = dict(response.headers)
 
-        # Track redirect chain
-        if response.history:
-            result["redirect_chain"] = [r.url for r in response.history]
+        if render == "always" or (render == "auto" and should_render(response.text)):
+            rendered = render_url(response.url, timeout=timeout)
+            if rendered.error:
+                result["error"] = rendered.error
+                return result
+            result["url"] = rendered.final_url
+            result["status_code"] = rendered.status_code
+            result["content"] = rendered.html
+            result["headers"] = rendered.headers
+            result["rendered"] = True
 
     except requests.exceptions.Timeout:
         result["error"] = f"Request timed out after {timeout} seconds"
@@ -123,6 +146,12 @@ def main():
     parser.add_argument("--output", "-o", help="Output file path")
     parser.add_argument("--timeout", "-t", type=int, default=30, help="Timeout in seconds")
     parser.add_argument("--no-redirects", action="store_true", help="Don't follow redirects")
+    parser.add_argument(
+        "--render",
+        choices=["never", "auto", "always"],
+        default="never",
+        help="Render JavaScript-heavy pages with Playwright (default: never)",
+    )
 
     args = parser.parse_args()
 
@@ -130,6 +159,7 @@ def main():
         args.url,
         timeout=args.timeout,
         follow_redirects=not args.no_redirects,
+        render=args.render,
     )
 
     if result["error"]:
@@ -146,6 +176,7 @@ def main():
     # Print metadata to stderr
     print(f"\nURL: {result['url']}", file=sys.stderr)
     print(f"Status: {result['status_code']}", file=sys.stderr)
+    print(f"Rendered: {result['rendered']}", file=sys.stderr)
     if result["redirect_chain"]:
         print(f"Redirects: {' -> '.join(result['redirect_chain'])}", file=sys.stderr)
 

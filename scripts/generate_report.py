@@ -34,7 +34,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from urllib.parse import urlparse
 
-import urllib.request
+from fetch_page import fetch_page as fetch_url
 
 # Maximum number of analysis scripts to run in parallel.
 # Bounded to avoid overwhelming the target server with simultaneous crawls.
@@ -73,18 +73,15 @@ def run_script(script_name: str, args: list, timeout: int = 120) -> dict:
         return {"error": str(e)}
 
 
-def fetch_page(url: str) -> str:
+def fetch_page(url: str, render: str = "never") -> str:
     """Fetch page HTML to a temp file, return path."""
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; UltimateSEO/1.8)"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            html = resp.read().decode("utf-8", errors="replace")
-        tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8")
-        tmp.write(html)
-        tmp.close()
-        return tmp.name
-    except Exception:
+    fetched = fetch_url(url, timeout=20, render=render)
+    if fetched.get("error") or not fetched.get("content"):
         return ""
+    tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8")
+    tmp.write(fetched["content"])
+    tmp.close()
+    return tmp.name
 
 
 def detect_environment(html_text: str, url: str) -> dict:
@@ -217,12 +214,23 @@ def build_environment_fixes(data: dict) -> list:
     platform = env.get("primary", "Unknown")
     fixes = []
 
-    def add(severity: str, title: str, reason: str, fix: str):
+    def add(
+        severity: str,
+        title: str,
+        reason: str,
+        fix: str,
+        dependency: str = "Confirm the affected page template or CMS setting before editing.",
+        failure_check: str = "Rerun the same audit check; this finding should disappear or downgrade.",
+        leading_indicator: str = "Critical/warning count for this section declines in the next report.",
+    ):
         fixes.append({
             "severity": severity,
             "title": title,
             "reason": reason,
             "fix": fix,
+            "dependency": dependency,
+            "failure_check": failure_check,
+            "leading_indicator": leading_indicator,
         })
 
     op = data["sections"].get("onpage", {})
@@ -274,8 +282,9 @@ def build_environment_fixes(data: dict) -> list:
         add(
             "warning",
             "No llms.txt found",
-            "AI crawlers and assistants have no curated machine-readable guidance for key pages.",
+            "AI coding agents have no curated machine-readable guidance for key pages. Do not treat llms.txt as a confirmed AI-search ranking or citation lever.",
             _platform_hint(platform, "llms"),
+            leading_indicator="/llms.txt returns 200 and is well-formed; AI-search visibility is still measured through crawler access, indexation, entities, and citations.",
         )
 
     broken_count = bl.get("summary", {}).get("broken", 0)
@@ -448,14 +457,66 @@ def render_environment_fixes(fixes: list) -> str:
         title = html_lib.escape(item.get("title", ""), quote=True)
         reason = html_lib.escape(item.get("reason", ""), quote=True)
         fix = html_lib.escape(item.get("fix", ""), quote=True)
+        dependency = html_lib.escape(item.get("dependency", ""), quote=True)
+        failure_check = html_lib.escape(item.get("failure_check", ""), quote=True)
+        leading_indicator = html_lib.escape(item.get("leading_indicator", ""), quote=True)
+        metadata = ""
+        if dependency or failure_check or leading_indicator:
+            metadata = (
+                '<div style="margin-top:8px;color:var(--text-muted);font-size:0.82rem">'
+                f'{f"<div><strong>Dependency:</strong> {dependency}</div>" if dependency else ""}'
+                f'{f"<div><strong>Failure check:</strong> {failure_check}</div>" if failure_check else ""}'
+                f'{f"<div><strong>Leading indicator:</strong> {leading_indicator}</div>" if leading_indicator else ""}'
+                '</div>'
+            )
         html += (
             f'<div class="issue-item {sev if sev in ("critical","warning","info") else "info"}">'
             f'<span class="issue-badge">{badge}</span>'
             f'<div><strong>{title}</strong><br>'
             f'<span style="color:var(--text-muted)">{reason}</span><br>'
-            f'<span><strong>Fix:</strong> {fix}</span></div></div>'
+            f'<span><strong>Fix:</strong> {fix}</span>{metadata}</div></div>'
         )
     return html
+
+
+def _recommendation_metadata(issue: dict, section_name: str) -> dict:
+    """Attach falsifiable recommendation metadata to structured findings."""
+    dependency = (
+        issue.get("dependency")
+        or issue.get("depends_on")
+        or "Verify the affected page, template, or data source before changing production output."
+    )
+    failure_check = (
+        issue.get("failure_check")
+        or issue.get("how_to_know_failed")
+        or issue.get("validation")
+        or f"Rerun the {section_name} check; this finding should disappear, downgrade, or show improved evidence."
+    )
+    leading_indicator = (
+        issue.get("leading_indicator")
+        or issue.get("metric")
+        or f"Next audit shows fewer warnings in {section_name} and no new dependent regressions."
+    )
+    return {
+        "dependency": dependency,
+        "failure_check": failure_check,
+        "leading_indicator": leading_indicator,
+    }
+
+
+def _render_issue_metadata(issue: dict) -> str:
+    parts = []
+    for label, key in (
+        ("Dependency", "dependency"),
+        ("Failure check", "failure_check"),
+        ("Leading indicator", "leading_indicator"),
+    ):
+        value = html_lib.escape(str(issue.get(key, "")), quote=True)
+        if value:
+            parts.append(f"<div><strong>{label}:</strong> {value}</div>")
+    if not parts:
+        return ""
+    return '<div style="margin-top:8px;color:var(--text-muted);font-size:0.82rem">' + "".join(parts) + "</div>"
 
 
 def collect_data(
@@ -464,6 +525,7 @@ def collect_data(
     crawl_deep: bool = False,
     crawl_max_pages: int = 30,
     crawl_depth: int = 2,
+    render: str = "never",
 ) -> dict:
     """Run all analysis scripts and collect results."""
     print(f"🔍 Analyzing {url}...")
@@ -480,11 +542,12 @@ def collect_data(
         "crawl_deep": crawl_deep,
         "crawl_max_pages": crawl_max_pages,
         "crawl_depth": crawl_depth,
+        "render_mode": render,
     }
 
     # Fetch page for parse_html and readability
     print("  ⏳ Fetching page HTML...")
-    html_path = fetch_page(url)
+    html_path = fetch_page(url, render=render)
     page_html = ""
     if html_path and os.path.exists(html_path):
         try:
@@ -520,6 +583,7 @@ def collect_data(
         ("link_profile", "link_profile.py", [url, "--max-pages", "20"]),
         ("hreflang", "hreflang_checker.py", [url]),
         ("duplicate_content", "duplicate_content.py", [url]),
+        ("content_quality", "content_quality.py", [url]),
         ("sitemap", "sitemap_checker.py", [url]),
         ("canonical", "canonical_checker.py", canonical_args),
         ("programmatic_seo", "programmatic_seo_auditor.py", [url, "--max-pages", "80"]),
@@ -599,6 +663,7 @@ def calculate_overall_score(data: dict) -> dict:
         "link_profile": 7,
         "hreflang": 5,
         "duplicate_content": 5,
+        "content_quality": 6,
         "programmatic_seo": 4,
         "schema_validation": 5,
         "image_seo": 3,
@@ -751,6 +816,12 @@ def calculate_overall_score(data: dict) -> dict:
     else:
         scores["duplicate_content"] = 0
 
+    cq = data["sections"].get("content_quality", {})
+    if cq and not cq.get("error"):
+        scores["content_quality"] = int(cq.get("score", 0))
+    else:
+        scores["content_quality"] = 0
+
     # Programmatic SEO score
     pseo = data["sections"].get("programmatic_seo", {})
     if pseo and not pseo.get("error") and pseo.get("pattern_groups_found", 0) > 0:
@@ -856,12 +927,13 @@ def render_recommendations(section_data: dict) -> str:
                 badge = html_lib.escape(issue.get("severity", "INFO").upper(), quote=True)
                 finding = html_lib.escape(str(issue.get("finding", "")), quote=True)
                 fix = html_lib.escape(str(issue.get("fix", "")), quote=True)
+                meta = _render_issue_metadata(_recommendation_metadata(issue, "section"))
                 issues_html += (
                     f'<div class="issue-item {sev}">'
                     f'<span class="issue-badge">{badge}</span>'
                     f'<div><strong>{finding}</strong>'
                     f'{f"<br><span style=&quot;color:var(--text-muted)&quot;>Fix: {fix}</span>" if fix else ""}'
-                    f'</div></div>'
+                    f'{meta}</div></div>'
                 )
             elif isinstance(issue, str):
                 items.append(issue)
@@ -917,6 +989,7 @@ def render_all_recommendations(data: dict) -> str:
         "article": "📄 Article SEO", "entity": "🏛️ Entity SEO",
         "link_profile": "🔗 Link Profile", "hreflang": "🌍 Hreflang",
         "duplicate_content": "📋 Content Uniqueness",
+        "content_quality": "🧪 Content Quality",
         "programmatic_seo": "🏭 Programmatic SEO",
         "canonical": "🔗 Canonical Tags",
         "schema_validation": "🧩 JSON-LD",
@@ -990,7 +1063,8 @@ def generate_html(data: dict, scores: dict) -> str:
                 severity_map = {"critical": "critical", "high": "critical", "warning": "warning", "medium": "warning", "info": "info", "low": "info"}
                 severity = severity_map.get(sev_raw, "info")
                 text = f"{issue.get('finding', '')} — Fix: {issue.get('fix', '')}" if issue.get('fix') else issue.get('finding', str(issue))
-                all_issues.append({"text": text, "severity": severity, "section": section_name})
+                meta = _recommendation_metadata(issue, section_name)
+                all_issues.append({"text": text, "severity": severity, "section": section_name, **meta})
             elif isinstance(issue, str):
                 severity = "critical" if "🔴" in issue else "warning" if "⚠️" in issue else "info"
                 all_issues.append({"text": issue, "severity": severity, "section": section_name})
@@ -1015,6 +1089,7 @@ def generate_html(data: dict, scores: dict) -> str:
     lp = data["sections"].get("link_profile", {})
     hf = data["sections"].get("hreflang", {})
     dc = data["sections"].get("duplicate_content", {})
+    cq = data["sections"].get("content_quality", {})
     sch = data["sections"].get("schema_validation", {})
     imgsec = data["sections"].get("image_seo", {})
     smap = data["sections"].get("sitemap", {})
@@ -1038,7 +1113,11 @@ def generate_html(data: dict, scores: dict) -> str:
     issues_html = ""
     for issue in sorted(all_issues, key=lambda x: {"critical": 0, "warning": 1, "info": 2}[x["severity"]]):
         badge_class = issue["severity"]
-        issues_html += f'<div class="issue-item {badge_class}"><span class="issue-badge">{badge_class.upper()}</span> {issue["text"]}</div>\n'
+        text = html_lib.escape(str(issue["text"]), quote=True)
+        issues_html += (
+            f'<div class="issue-item {badge_class}"><span class="issue-badge">{badge_class.upper()}</span>'
+            f'<div>{text}{_render_issue_metadata(issue)}</div></div>\n'
+        )
 
     # Build category cards
     category_labels = {
@@ -1057,6 +1136,7 @@ def generate_html(data: dict, scores: dict) -> str:
         "link_profile": ("🔗", "Link Profile"),
         "hreflang": ("🌍", "Hreflang"),
         "duplicate_content": ("📋", "Content Uniqueness"),
+        "content_quality": ("🧪", "Content Quality"),
         "programmatic_seo": ("🏭", "Programmatic SEO"),
         "canonical": ("🔗", "Canonical Tags"),
         "schema_validation": ("🧩", "JSON-LD"),
@@ -1719,6 +1799,22 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
         </div>
     </div>
 
+    <!-- Content Quality -->
+    <div class="section" id="section-content_quality">
+        <div class="section-header" onclick="toggleSection('content_quality')">
+            <h2>🧪 Content Quality <span class="badge {"pass" if scores["categories"].get("content_quality",0) >= 75 else "warning"}">{scores["categories"].get("content_quality",0)}/100</span></h2>
+            <span class="chevron" id="chevron-content_quality">▼</span>
+        </div>
+        <div class="section-body" id="body-content_quality">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">{cq.get('word_count', '?')}</div><div class="lbl">Words</div></div>
+                <div class="summary-item"><div class="val">{len(cq.get('filler_phrases', []))}</div><div class="lbl">Filler Hits</div></div>
+                <div class="summary-item"><div class="val">{cq.get('citation_gap', 0)}</div><div class="lbl">Citation Gap</div></div>
+            </div>
+            {render_recommendations(cq)}
+        </div>
+    </div>
+
     <!-- JSON-LD validation -->
     <div class="section" id="section-schema_validation">
         <div class="section-header" onclick="toggleSection('schema_validation')">
@@ -2102,6 +2198,12 @@ def main():
         metavar="D",
         help="With --crawl-deep: BFS depth (default: 2)",
     )
+    parser.add_argument(
+        "--render",
+        choices=["never", "auto", "always"],
+        default="never",
+        help="Render the main page HTML with Playwright before page-level checks",
+    )
 
     args = parser.parse_args()
     domain = urlparse(args.url).netloc.replace(".", "_")
@@ -2111,6 +2213,7 @@ def main():
         crawl_deep=args.crawl_deep,
         crawl_max_pages=max(1, args.crawl_max_pages),
         crawl_depth=max(1, args.crawl_depth),
+        render=args.render,
     )
     scores = calculate_overall_score(data)
 
