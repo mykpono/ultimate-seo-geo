@@ -16,14 +16,16 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import ssl
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from typing import Optional
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.parse import urljoin
+
+import requests
+
+from render_page import render_url
+from url_safety import validate_url
 
 
 USER_AGENT = (
@@ -48,6 +50,7 @@ class CrawlResult:
     html: str = ""
     status_code: Optional[int] = None
     headers: dict = field(default_factory=dict)
+    rendered: bool = False
     error: Optional[str] = None
 
 
@@ -59,47 +62,55 @@ def _detect_backend() -> str:
 
 def _fetch_requests(url: str, timeout: int = 15) -> CrawlResult:
     result = CrawlResult(url=url)
-    parsed = urlparse(url)
-    if not parsed.scheme:
-        url = f"https://{url}"
-    if parsed.scheme and parsed.scheme not in ("http", "https"):
-        result.error = f"Invalid URL scheme: {parsed.scheme}"
+    safe = validate_url(url)
+    if not safe.ok:
+        result.error = f"URL safety check failed: {safe.reason}"
         return result
 
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
-    req = Request(url, headers=DEFAULT_HEADERS)
+    current_url = safe.normalized_url
     try:
-        resp = urlopen(req, timeout=timeout, context=ctx)
-        result.status_code = resp.status
-        result.final_url = resp.url
-        result.headers = dict(resp.headers.items())
-        raw = resp.read()
-        charset = resp.headers.get_content_charset() or "utf-8"
-        try:
-            result.html = raw.decode(charset, errors="replace")
-        except (LookupError, UnicodeDecodeError):
-            result.html = raw.decode("utf-8", errors="replace")
-    except HTTPError as e:
-        result.status_code = e.code
-        result.final_url = url
-        result.headers = dict(e.headers.items()) if e.headers else {}
-        try:
-            result.html = e.read().decode("utf-8", errors="replace")
-        except Exception:
-            pass
-    except URLError as e:
-        result.error = f"Connection error: {e.reason}"
-    except TimeoutError:
+        session = requests.Session()
+        response = None
+        for redirect_count in range(6):
+            safe_current = validate_url(current_url)
+            if not safe_current.ok:
+                result.error = f"URL safety check failed: {safe_current.reason}"
+                return result
+            response = session.get(
+                safe_current.normalized_url,
+                timeout=timeout,
+                headers=DEFAULT_HEADERS,
+                allow_redirects=False,
+            )
+            if not response.is_redirect:
+                break
+            location = response.headers.get("Location")
+            if not location:
+                break
+            current_url = urljoin(response.url, location)
+            if redirect_count == 5:
+                result.error = "Too many redirects (max 5)"
+                return result
+
+        if response is None:
+            result.error = "No response returned"
+            return result
+        result.status_code = response.status_code
+        result.final_url = response.url
+        result.headers = dict(response.headers)
+        result.html = response.text
+    except requests.exceptions.Timeout:
         result.error = f"Request timed out after {timeout}s"
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         result.error = f"Fetch failed: {e}"
     return result
 
 
 def _fetch_firecrawl(url: str, timeout: int = 15) -> CrawlResult:
+    safe = validate_url(url)
+    if not safe.ok:
+        return CrawlResult(url=url, error=f"URL safety check failed: {safe.reason}")
+
     api_key = os.environ.get("FIRECRAWL_API_KEY")
     if not api_key:
         print(
@@ -112,10 +123,14 @@ def _fetch_firecrawl(url: str, timeout: int = 15) -> CrawlResult:
     try:
         from firecrawl import FirecrawlApp  # type: ignore
         app = FirecrawlApp(api_key=api_key)
-        response = app.scrape_url(url)
+        response = app.scrape_url(safe.normalized_url)
+        final_url = response.get("metadata", {}).get("url", safe.normalized_url)
+        final_safe = validate_url(final_url)
+        if not final_safe.ok:
+            return CrawlResult(url=url, error=f"Firecrawl returned unsafe URL: {final_safe.reason}")
         return CrawlResult(
             url=url,
-            final_url=response.get("metadata", {}).get("url", url),
+            final_url=final_url,
             html=response.get("html", response.get("content", "")),
             status_code=response.get("metadata", {}).get("statusCode", 200),
             headers=response.get("metadata", {}).get("headers", {}),
@@ -133,35 +148,23 @@ def _fetch_firecrawl(url: str, timeout: int = 15) -> CrawlResult:
 
 
 def _fetch_playwright(url: str, timeout: int = 15) -> CrawlResult:
-    try:
-        from playwright.sync_api import sync_playwright  # type: ignore
-    except ImportError:
+    rendered = render_url(url, timeout=timeout)
+    if rendered.error and "Playwright not installed" in rendered.error:
         print(
             "Playwright not installed. Install with: pip install playwright && "
             "playwright install chromium\nFalling back to requests backend.",
             file=sys.stderr,
         )
         return _fetch_requests(url, timeout)
-
-    result = CrawlResult(url=url)
-    try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            page = browser.new_page(user_agent=USER_AGENT)
-            resp = page.goto(url, timeout=timeout * 1000, wait_until="networkidle")
-            if resp:
-                result.status_code = resp.status
-                result.headers = resp.all_headers()
-            result.final_url = page.url
-            result.html = page.content()
-            browser.close()
-    except Exception as e:
-        result.error = f"Playwright error: {e}"
-        if not result.html:
-            fallback = _fetch_requests(url, timeout)
-            if not fallback.error:
-                return fallback
-    return result
+    return CrawlResult(
+        url=url,
+        final_url=rendered.final_url,
+        html=rendered.html,
+        status_code=rendered.status_code,
+        headers=rendered.headers,
+        rendered=rendered.rendered,
+        error=rendered.error,
+    )
 
 
 _BACKEND_MAP = {
