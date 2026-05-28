@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-05-28
+
+### Added
+
+- **Shared URL safety layer** — `scripts/url_safety.py` centralizes outbound URL validation for audit fetches, blocking private/internal IPs, loopback, link-local ranges, obfuscated IPv4 forms, URL credentials, and unsafe redirect targets.
+- **SPA-aware rendering** — `scripts/render_page.py` adds optional Playwright rendering, and `fetch_page.py` / `generate_report.py` now support `--render never|auto|always` for JavaScript-heavy sites.
+- **Content quality scanner** — `scripts/content_quality.py` detects deterministic E-E-A-T risks including filler phrasing, citation gaps around statistics/claims, missing author signals, and missing dates.
+- **SEO drift monitor** — `scripts/drift_monitor.py` adds SQLite-backed `baseline`, `compare`, and `history` snapshots for SEO-critical elements like title, meta description, canonical, robots, H1, schema hash, headings hash, and internal link count.
+- **Regression tests** — Added focused `unittest` coverage for URL safety, render detection, redirect safety, recommendation metadata, content-quality scoring, and drift snapshot extraction.
+
+### Changed
+
+- **`scripts/crawl_adapter.py`** — Routes requests, Firecrawl, and Playwright fetching through the shared URL safety layer and preserves rendered-page metadata.
+- **`scripts/generate_report.py`** — Adds content quality into the report pipeline and renders falsifiable recommendation metadata: dependency, failure check, and leading indicator.
+- **Plugin bundle** — Root scripts and plugin-bundled scripts now include the new safety, rendering, content-quality, and drift-monitoring tools.
+
 ## [1.8.5] - 2026-04-11
 
 ### Added

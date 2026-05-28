@@ -78,12 +78,12 @@ Claude Code, Cursor, or Codex:
 | Feature | Custom GPT | Full Skill (Claude Code / Codex / Cursor) |
 |---|---|---|
 | Instruction set | Condensed (8K chars) | SKILL.md shell + `references/procedures/` + topical refs |
-| Python audit scripts | Not available | 31 scripts available |
+| Python audit scripts | Not available | 35 scripts available |
 | Progressive reference loading | Via knowledge file retrieval | Direct file reads |
 | Mode 3 Execute | Limited (no script verification) | Full execute + verify loop |
 | HTML report generation | Not available | `generate_report.py` |
 
-For the full experience with all 31 diagnostic scripts, use the skill with a code-capable
+For the full experience with all 35 diagnostic scripts, use the skill with a code-capable
 agent (Claude Code, Cursor, OpenAI Codex, Gemini CLI, etc.).
 
 ## Updating
