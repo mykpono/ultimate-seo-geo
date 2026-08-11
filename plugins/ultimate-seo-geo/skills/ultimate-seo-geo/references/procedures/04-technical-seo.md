@@ -2,7 +2,7 @@
 
 ## 4. Technical SEO
 
-### Core Web Vitals (INP replaced FID March 2024 — never reference FID)
+### Core Web Vitals (INP replaced FID March 2024 — FID removed from CrUX/PSI Sept 2024; Lighthouse never reported FID)
 
 | Metric | Good | Needs Improvement | Poor |
 |---|---|---|---|

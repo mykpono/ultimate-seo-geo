@@ -2,6 +2,37 @@
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-08-11
+
+### Changed — Knowledge Currency (10 updates)
+
+- **K1: FAQ rich results retired** — Google retired FAQ rich results for ALL sites on May 7, 2026 (supersedes the Aug 2023 gov/health restriction). FAQPage moved from "Restricted" to "No Google Rich Results" in `schema-types.md`. Decision tree updated: keep existing FAQPage as AI/entity signal (Info priority), do not recommend for Google rich results. Added QAPage to active schema types for genuine user Q&A pages. Updated `AGENTS.md` §5 (removed FAQPage from SaaS essential schema), §19 hard rules, and `procedures/05-schema-structured-data.md`.
+
+- **K2: Google Search ignores llms.txt** — Google confirmed (June 2026) that Search ignores `llms.txt`. Updated `ai-search-geo.md` and `procedures/03-geo-ai-search.md` to reframe as non-Google AI hygiene only, not a Google citation lever. Added hard rule in `AGENTS.md` §19.
+
+- **K3: AI Mode as distinct citation engine** — AI Overviews and AI Mode share only 13.7% URL overlap (Ahrefs, 540K query pairs). Updated `ai-search-geo.md` landscape table and AI Mode section to model them as separate citation engines with distinct optimization surfaces. AI Mode powered by custom Gemini 2.5, 1B+ MAU. Added hard rule in `AGENTS.md` §19.
+
+- **K4: AI Overviews reach 2.5B+ MAU** — Updated AI Overviews reach figure from 1.5B to 2.5B+ users/month (I/O 2026) in `ai-search-geo.md`.
+
+- **K5: Content recency as AI citation lever** — Content under 3 months old receives ~3x AI citation rate (SE Ranking, 2026). Added "Content Recency as Citation Lever" subsection to `ai-search-geo.md` citability signals. Updated AI Mode section. Added key insight in `AGENTS.md` §3 GEO.
+
+- **K6: E-E-A-T scoring weights clarified** — Added explicit disclaimer that E-E-A-T weights (20/25/25/30) are this skill's internal scoring model, not Google's published values. Google publishes no numeric weights, only that "trust is most important." Updated `eeat-framework.md` and `AGENTS.md` §19 hard rules.
+
+- **K7: May 2026 core update + Lighthouse 13.4.0** — Added May 2026 core update (completed May 21) and March 2026 core update to `technical-checklist.md`. Added Lighthouse 13.4.0 section covering Agentic Browsing category and insight-based audits.
+
+- **K8: FID was never in Lighthouse** — Precision fix across all files: Lighthouse is a lab tool and never reported FID; removal was from Chrome's field-data tools (CrUX API, PageSpeed Insights). Updated `AGENTS.md`, `technical-checklist.md`, `procedures/04-technical-seo.md`, and `procedures/19-quality-gates-hard-rules.md`.
+
+- **K9: Back-button hijacking spam policy** — Added as Google spam policy item to `technical-checklist.md` and `procedures/19-quality-gates-hard-rules.md`. Includes detection guidance (history.pushState abuse, popstate redirect loops). Added hard rule in `AGENTS.md` §19.
+
+- **K10: WebMCP origin trial** — Added as emerging standard in `technical-checklist.md`. Chrome 149 origin trial (June 9, 2026), three shipped Lighthouse audits. Not yet required for SEO; monitor as agent-era web development signal.
+
+### Changed
+
+- **Version** bumped to 1.10.0 across SKILL.md, AGENTS.md, README.md, plugin.json, marketplace.json, and plugin README.
+- **Review dates** updated on `schema-types.md`, `ai-search-geo.md`, `eeat-framework.md`, and `technical-checklist.md`.
+- **Dataset schema** corrected — was listed as "retired/discontinued" but Dataset Search still consumes it. Moved to conditional active status in `schema-types.md`; removed from retired list in `AGENTS.md` §19.
+- **Plugin bundle** synced — all 10 updated reference files copied to `plugins/ultimate-seo-geo/skills/ultimate-seo-geo/`.
+
 ## [1.9.0] - 2026-05-28
 
 ### Added

@@ -1,7 +1,7 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-11 | Review: 2027-02-11 -->
 
 # Technical SEO Checklist
-## Updated: March 2026
+## Updated: August 2026
 
 **Contents:** On-Page SEO Checklist · Core Web Vitals Thresholds · How to Fix CWV · 9-Category Technical Audit · AI Crawler Configuration · Technical SEO Scoring · Detailed CWV Fix Steps · LCP Subparts · IndexNow · Critical Technical Issues · JavaScript SEO Clarifications
 
@@ -23,7 +23,7 @@
 
 ## Core Web Vitals Thresholds
 
-**IMPORTANT: INP replaced FID on March 12, 2024. FID was fully removed from all Chrome tools on September 9, 2024. Never reference FID.**
+**IMPORTANT: INP replaced FID on March 12, 2024. FID was removed from Chrome's field-data tools (CrUX API, PageSpeed Insights) on September 9, 2024. Lighthouse is a lab tool and never reported FID. Never reference FID.**
 
 | Metric | Good | Needs Improvement | Poor |
 |---|---|---|---|
@@ -368,6 +368,38 @@ IndexNow notifies **Bing, Yandex, Naver, and Seznam** of URL updates — enablin
 | Missing security headers | `curl -I` or DevTools Network | Add HSTS, X-Frame-Options, X-Content-Type-Options |
 
 **Mobile-first indexing is 100% complete (July 5, 2024).** Google uses mobile Googlebot for ALL sites.
+
+---
+
+## Lighthouse 13.4.0 (June 2026)
+
+Lighthouse 13.4.0 is the latest stable version as of August 2026. Key changes:
+- **Agentic Browsing** category added in 13.2.0, enabled by default in 13.3.0, disabled in PSI REST API in 13.4.0. Reports as a fractional pass-ratio, not a 0-100 score.
+- Insight-based audits (introduced in 13.0, October 2025) provide contextual recommendations rather than just pass/fail.
+- When referencing Lighthouse version in audits, use 13.4.0 as the current stable.
+
+## Google Core Updates (2026)
+
+- **May 2026 Core Update**: Completed May 21, 2026. Continued the December 2025 trajectory of universal E-E-A-T enforcement.
+- **March 2026 Core Update**: Completed April 8, 2026 (rollout March 27 to April 8).
+
+## WebMCP (Emerging Standard)
+
+**Status**: Chrome 149 origin trial (sign-up open June 9, 2026). Early-stage standard for agent-friendly web pages.
+
+Three shipped Lighthouse audits:
+- `registered-webmcp-tools`: checks if the page declares MCP tools
+- `forms-missing-declarative-webmcp`: flags forms that lack declarative WebMCP equivalents
+- `webmcp-schema-validity`: validates WebMCP schema correctness
+
+Not yet required for SEO. Monitor as an emerging signal for agent-era web development.
+
+## Back-Button Hijacking (Spam Policy)
+
+Google spam policy targets sites that manipulate browser back-button behavior (preventing users from returning to search results). Sites using JavaScript `history.pushState` abuse or redirect loops on back navigation risk manual action. Check for:
+- Multiple `history.pushState` calls on page load that prevent back navigation
+- Redirect loops triggered on `popstate` events
+- Pages that re-redirect users back to themselves when back button is pressed
 
 ---
 

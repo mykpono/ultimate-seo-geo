@@ -10,8 +10,8 @@ Always use **JSON-LD** (`<script type="application/ld+json">`). Schema improves 
 2. **Validate** — Test at search.google.com/test/rich-results. Fix errors before adding new schema.
 3. **Identify missing schema** — Compare to Essential Schema table below.
 4. **Generate missing schema** — Use JSON-LD templates in `references/schema-types.md`.
-5. **Check retired types** — See § 19. Remove truly retired schema (SpecialAnnouncement, ClaimReview, etc.). Do NOT remove HowTo — rich results removed but schema still valid for Bing and AI systems.
-6. **Add FAQPage to key pages** — Google restricts FAQ rich results to gov/healthcare, but FAQPage is still extracted by ChatGPT, Perplexity, and AI Overviews.
+5. **Check retired types** — See § 19. Remove truly retired schema (SpecialAnnouncement, ClaimReview, etc.). Do NOT remove HowTo or FAQPage — rich results removed but schema still valid for Bing and AI systems.
+6. **FAQPage status** — Google retired FAQ rich results for ALL sites on May 7, 2026 (supersedes the Aug 2023 gov/health restriction). Do not recommend new FAQPage for Google rich results. Keep existing FAQPage as AI/entity signal (Info priority, not Critical removal). Use **QAPage** for genuine user-generated Q&A pages.
 
 ### Priority Schema by Site Type
 
@@ -19,7 +19,7 @@ Always use **JSON-LD** (`<script type="application/ld+json">`). Schema improves 
 |---|---|
 | **Publisher / Blog** | Article/BlogPosting, Person, ProfilePage (author pages), Organization, WebSite, BreadcrumbList |
 | **Forum / Community** | DiscussionForumPosting, Person, Organization |
-| **SaaS** | WebApplication/SoftwareApplication, Organization, WebSite, FAQPage |
+| **SaaS** | WebApplication/SoftwareApplication, Organization, WebSite |
 | **E-commerce** | Product + Offer, AggregateRating, Organization, BreadcrumbList, ProductGroup (variants), OfferShippingDetails |
 | **Local Business** | LocalBusiness (most specific subtype), Organization, AggregateRating |
 | **Personal Site** | Person, ProfilePage, WebSite, Article |

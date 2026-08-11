@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.9.0-green.svg)](../../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.10.0-green.svg)](../../CHANGELOG.md)
 
 > The definitive SEO + GEO skill for Claude. Full site audits, AI search optimization, schema generation, E-E-A-T assessment, and **35** bundled diagnostic Python scripts.
 
@@ -34,7 +34,7 @@ These are **slash commands** for **Claude Code**’s chat input—not for Termin
 
 ### Still seeing an old version (e.g. 1.8.2)?
 
-GitHub **main** and release **v1.9.0** already declare `"version": "1.9.0"` in `plugins/ultimate-seo-geo/.claude-plugin/plugin.json`. If the UI shows something older, the marketplace **git clone under your home directory is stale** (it does not auto-pull), or the Claude.ai web cache needs a refresh.
+GitHub **main** and release **v1.10.0** already declare `"version": "1.10.0"` in `plugins/ultimate-seo-geo/.claude-plugin/plugin.json`. If the UI shows something older, the marketplace **git clone under your home directory is stale** (it does not auto-pull), or the Claude.ai web cache needs a refresh.
 
 **Check what is on disk (run in Terminal, not inside Claude chat):**
 

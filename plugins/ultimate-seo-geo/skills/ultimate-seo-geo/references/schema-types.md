@@ -1,7 +1,7 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-11 | Review: 2027-02-11 -->
 
 # Schema.org Types — Status & Recommendations
-## Updated: March 2026 (Schema.org v29.4)
+## Updated: August 2026 (Schema.org v29.4)
 
 **Contents:** Active Schema Types · Restricted Schema Types · Deprecated Schema Types · Schema Templates · Validation Checklist · Testing Tools · E-commerce Schema Additions · Recent Schema Additions · AEO Schema
 
@@ -39,32 +39,27 @@ Always use **JSON-LD** (`<script type="application/ld+json">`). Google's documen
 | Event | Events | name, startDate, endDate, location, organizer, offers |
 | JobPosting | Job listings | title, description, datePosted, hiringOrganization, jobLocation |
 | Course | Educational content | name, description, provider, hasCourseInstance |
+| QAPage | Genuine user Q&A pages | mainEntity (Question + Answer), dateCreated, author |
 | DiscussionForumPosting | Forum threads | headline, author, datePublished, text, url |
 | LoyaltyProgram | Membership pricing | membershipPointsEarned, eligibleQuantity (added June 2025) |
 
 ---
 
-## RESTRICTED — Only for specific site types
-
-| Type | Restriction | GEO Note |
-|---|---|---|
-| FAQPage | **Google rich results**: government and healthcare ONLY (restricted Aug 2023) | **Still valid for GEO**: AI engines (ChatGPT, Perplexity, Google AI Overviews) still extract FAQ schema for citations regardless of Google rich results restriction |
-
-> **Decision tree for FAQPage:**
-> - **Adding new FAQPage to commercial site for Google rich results?** → Not recommended.
-> - **Existing FAQPage on commercial site?** → Flag at Info priority. Removing it removes AI citation upside.
-> - **Adding FAQPage specifically for AI/LLM citations?** → Acceptable; clearly a GEO strategy.
-
----
-
-## NO RICH RESULTS — Keep if present, don't add for Google rich results
+## NO GOOGLE RICH RESULTS — Keep as AI/entity signal, don't add for Google rich results
 
 These types no longer generate Google rich results but are still valid Schema.org markup. **Do NOT recommend removing them** — they still help Bing, AI systems, and content understanding.
 
 | Type | Status | Since | Keep? | Notes |
 |---|---|---|---|---|
+| **FAQPage** | Google retired FAQ rich results for ALL sites | May 7, 2026 | **Yes — keep as AI/entity signal** | Supersedes the Aug 2023 gov/health restriction. No Google SERP feature benefit for any site. Still provides signal to non-Google AI systems. Flag existing at Info priority (not Critical removal). Use **QAPage** for genuine user Q&A pages. |
 | **HowTo** | Google rich results removed | September 2023 | **Yes — keep** | Bing still renders HowTo rich results; AI systems parse it for citations; valid structured data |
 | **Sitelinks Search Box** | Removed from Search UI | Jan 2026 | Optional | WebSite SearchAction no longer shows in results but causes no harm |
+
+> **Decision tree for FAQPage (post May 2026):**
+> - **Adding new FAQPage for Google rich results?** → No benefit. Retired for all sites May 7, 2026.
+> - **Existing FAQPage on site?** → Keep. Flag at Info priority. Still aids non-Google AI systems.
+> - **Genuine user Q&A page?** → Use **QAPage** (the correct type for real user-generated Q&A).
+> - **Removing FAQPage?** → Do not recommend removal. Causes no harm.
 
 ## RETIRED — Safe to remove (no longer processed)
 
@@ -79,7 +74,7 @@ These types are truly retired — search engines no longer process them at all. 
 | **VehicleListing** | Retired from rich results | June 2025 | Discontinued |
 | **CourseInfo** | Merged into Course | June 2025 | Use Course instead |
 | **Practice Problem** | Retired from rich results | Late 2025 | |
-| **Dataset** | Dataset Search discontinued | Late 2025 | |
+| **Dataset** | Active for Dataset Search (not discontinued) | N/A | Move to Active if using Dataset Search |
 
 ## YMYL-SENSITIVE — Require verified credentials before recommending
 
@@ -94,7 +89,7 @@ These types are truly retired — search engines no longer process them at all. 
 | **FinancialProduct** | Licensed financial institution | YMYL financial authority claim |
 | **Physician** | Licensed medical practitioner | False credential representation |
 
-> **Safe alternatives for health/legal/finance content**: Use `Article`, `WebPage`, `FAQPage`, or `WebSite` with strong E-E-A-T signals in content (author bio with credentials, citations to authoritative sources, medical/legal disclaimers). These provide structured data value without claiming professional authority the site may not have.
+> **Safe alternatives for health/legal/finance content**: Use `Article`, `WebPage`, or `WebSite` with strong E-E-A-T signals in content (author bio with credentials, citations to authoritative sources, medical/legal disclaimers). These provide structured data value without claiming professional authority the site may not have.
 
 ---
 
@@ -209,7 +204,7 @@ These types are truly retired — search engines no longer process them at all. 
 }
 ```
 
-### FAQPage (use for GEO/AI citation benefit)
+### FAQPage (no Google rich results since May 2026; keep as AI/entity signal only)
 
 ```json
 {
