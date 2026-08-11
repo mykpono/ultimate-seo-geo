@@ -30,7 +30,7 @@ clear fix directive — not just diagnosis.
 
 | Goal | Procedure file(s) | Also read / run |
 |------|-------------------|-----------------|
-| Full scored audit | `references/procedures/02-full-site-audit.md`, `references/procedures/21-script-toolbox.md` | `references/audit-script-matrix.md`, `generate_report.py` |
+| Full scored audit | `references/procedures/02-full-site-audit.md`, `references/procedures/21-script-toolbox.md` | `references/audit-script-matrix.md`, `references/thinking-framework.md`, `generate_report.py` |
 | AI citations / GEO | `references/procedures/03-geo-ai-search.md` | `references/ai-search-geo.md`, `entity_checker.py`, `llms_txt_checker.py`, `robots_checker.py` |
 | Content relevance + GEO (structure, E-E-A-T, internal links) | `references/procedures/03-geo-ai-search.md`, `references/procedures/06-content-eeat-and-pruning.md` | `references/eeat-framework.md`, `article_seo.py`, `readability.py`, `internal_links.py`, `generate_report.py` |
 | Schema only | `references/procedures/05-schema-structured-data.md` | `references/schema-types.md`, `validate_schema.py` |
@@ -38,8 +38,14 @@ clear fix directive — not just diagnosis.
 | Crawl / index / performance | `references/procedures/04-technical-seo.md`, `references/procedures/11-crawl-indexation.md` | Matrix scripts (`robots_checker`, `sitemap_checker`, `pagespeed.py` if API works) |
 | Migration | `references/procedures/20-site-migration.md` | `references/site-migration.md`, `redirect_checker.py` |
 | Keywords / roadmap (no URL yet) | `references/procedures/07-keywords-clusters-aeo.md`, `references/procedures/16-strategy-roadmap.md` | **Do not** invent a live-site `/100` score |
+| SEO drift / change tracking | `references/procedures/22-drift-monitoring.md` | `drift_monitor.py` |
+| Semantic topic clustering | `references/procedures/23-semantic-clustering.md` | `topic_cluster.py` |
+| Content brief generation | `references/procedures/07-keywords-clusters-aeo.md` | `content_brief.py` |
+| E-commerce SEO | `references/procedures/24-ecommerce-seo.md` | `ecommerce_schema.py`, `validate_schema.py` |
+| Advanced local / maps | `references/procedures/25-maps-intelligence.md` | `maps_checker.py`, `local_signals_checker.py` |
+| Google API credentials | `references/procedures/21-script-toolbox.md` | `google_api_tier.py`, `crux_history.py`, `gsc_query.py`, `ga4_report.py` |
 
-Section numbers **§1–§21** match `AGENTS.md` and the filenames in `references/procedures/`. Full index: [`references/procedures/README.md`](references/procedures/README.md).
+Section numbers **§1–§25** match `AGENTS.md` and the filenames in `references/procedures/`. Full index: [`references/procedures/README.md`](references/procedures/README.md).
 
 ### Reference Reading Guide
 
@@ -152,10 +158,10 @@ Topic-to-section routing table: **`references/procedures/01-request-detection-ro
 ### What "Done" Looks Like per Mode
 
 **Audit complete** when: SEO Health Score delivered, all Critical and High findings documented in
-Finding/Evidence/Impact/Fix/Confidence format, no section skipped without reason stated.
+Finding/Evidence/Impact/Fix/Confidence/Falsifiability/Leading Indicator format (with First-Principle Observation and Dependency for Critical/High), Assumptions Audit section present, no section skipped without reason stated.
 
 **Plan complete** when: findings grouped into four implementation phases (Foundation / Expansion /
-Scale / Authority), each item has an owner action, expected outcome, and effort estimate.
+Scale / Authority), each item has an owner action, expected outcome, effort estimate, and dependency columns (Blocked By / Unblocks). Plan is topologically sorted by dependencies.
 
 **Execute complete** when: every fix implemented AND verified — run the relevant validation script,
 review the output, confirm it resolves the original finding.
@@ -192,7 +198,7 @@ These rules apply to every mode. **Full tables and evaluator pass:** `references
 
 ### Finding format (mandatory)
 
-Every finding: **Finding** / **Evidence** / **Impact** / **Fix** / **Confidence** (Confirmed / Likely / Hypothesis). Example report excerpt: `references/audit-output-example.md`.
+Every finding: **Finding** / **Evidence** / **Impact** / **Fix** / **Confidence** (Confirmed / Likely / Hypothesis) / **Falsifiability** (what would prove this wrong) / **Leading Indicator** (what to monitor post-fix). Critical and High findings also require **First-Principle Observation** and **Dependency**. Apply the PERCEIVE → ANALYZE → VALIDATE → ACT framework from `references/thinking-framework.md`. Example report excerpt: `references/audit-output-example.md`.
 
 ### High-Risk execute gate
 
@@ -229,3 +235,7 @@ Run the internal self-evaluation pass in `references/procedures/19-quality-gates
 | 19 | [`references/procedures/19-quality-gates-hard-rules.md`](references/procedures/19-quality-gates-hard-rules.md) |
 | 20 | [`references/procedures/20-site-migration.md`](references/procedures/20-site-migration.md) |
 | 21 | [`references/procedures/21-script-toolbox.md`](references/procedures/21-script-toolbox.md) |
+| 22 | [`references/procedures/22-drift-monitoring.md`](references/procedures/22-drift-monitoring.md) |
+| 23 | [`references/procedures/23-semantic-clustering.md`](references/procedures/23-semantic-clustering.md) |
+| 24 | [`references/procedures/24-ecommerce-seo.md`](references/procedures/24-ecommerce-seo.md) |
+| 25 | [`references/procedures/25-maps-intelligence.md`](references/procedures/25-maps-intelligence.md) |

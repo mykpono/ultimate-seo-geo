@@ -22,12 +22,20 @@ Evidence: 0 JSON-LD blocks found across 8 pages; competitors average 3 schema ty
 Impact: Missing rich results; 0% AI citation eligibility — schema increases citation ~2.5×
 Fix: Add Organization schema to homepage, SoftwareApplication + AggregateRating to /pricing
 Confidence: Confirmed | Severity: 🟠 High
+First-Principle Observation: Raw HTML of all 8 pages contains zero <script type="application/ld+json"> elements.
+Dependency: Independent — can be implemented immediately. Unblocks "improve AI citation rate" (GEO).
+Falsifiability: If competitors without schema rank equally and get cited at same rate, schema is not a differentiator in this niche.
+Leading Indicator: Rich Results Test passes within 1 week; GSC "Enhancements" shows new schema items within 2–4 weeks.
 
 Finding: LCP 4.8s on homepage — hero image is 1.2MB unoptimized PNG
 Evidence: PageSpeed Insights mobile score 38; LCP element: <img src="/hero-dashboard.png">
 Impact: Poor CWV = deprioritized in mobile rankings; FCP > 0.4s reduces AI citations by 3×
 Fix: Convert to WebP (target <200KB), add fetchpriority="high", preload via <link>
 Confidence: Confirmed | Severity: 🟠 High
+First-Principle Observation: PSI reports LCP = 4.8s; the LCP element is a 1.2MB PNG with no srcset, no fetchpriority, no preload.
+Dependency: Independent of schema fixes. Unblocks "improve mobile rankings" and "reduce bounce rate."
+Falsifiability: If LCP drops below 2.5s and mobile rankings do not improve within 8 weeks, CWV is not the bottleneck.
+Leading Indicator: PSI LCP < 2.5s within 1 week of deployment; mobile rankings movement within 4–8 weeks.
 
 ## ⚡ Quick Wins
 
@@ -36,6 +44,8 @@ Evidence: Homepage title "Home | Greenleaf" instead of primary keyword
 Impact: ~15% CTR loss vs. keyword-leading titles at same position
 Fix: Rewrite to "Project Management for Remote Teams | Greenleaf"
 Confidence: Confirmed | Severity: 🟡 Medium
+Falsifiability: If CTR does not improve within 4 weeks at same position, the keyword was not the issue.
+Leading Indicator: GSC CTR for homepage queries within 2–4 weeks.
 ```
 
 ---

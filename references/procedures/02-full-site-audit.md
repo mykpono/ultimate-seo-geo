@@ -42,7 +42,8 @@
 3. **Run all audit modules** in sequence: On-Page SEO · Content/E-E-A-T (§ 6) · Technical (§ 4) · Schema (§ 5) · Core Web Vitals (§ 4) · GEO/AI Search (§ 3) · Links (§ 9) · Images (§ 13) · Crawl & Indexation (§ 11) · Keyword Gaps (§ 7) · Local SEO if applicable (§ 12) · Analytics setup (§ 10).
 4. **Score** — SEO Health Score using weights below.
 5. **Assign confidence level**: High (8+ pages fetched + analytics access) / Medium (4–7 pages, no analytics) / Low (1–3 pages).
-6. **Prioritize findings** — Critical → High → Medium → Quick Wins.
+6. **Audit assumptions** — Before assembling recommendations, explicitly list the assumptions underpinning the audit (e.g., "homepage is representative of site quality", "low traffic pages = low value", "CMS renders server-side", "no recent algorithm penalty"). Surface these in the report's **Assumptions Audit** section so the user can reject or correct them. Revise any findings that depend on a shaky assumption.
+7. **Prioritize findings** — Critical → High → Medium → Quick Wins. Apply the PERCEIVE → ANALYZE → VALIDATE → ACT framework (`references/thinking-framework.md`) to ensure each finding is grounded, falsifiable, and dependency-mapped.
 
 ### SEO Health Score Weights
 
@@ -62,6 +63,10 @@ For the on-page element checklist (title tags, meta descriptions, H1, URLs, cano
 
 **First check for any new site:** `site:yourdomain.com` in Google. Zero results = indexation problem → go to § 4 immediately.
 
+### Thinking Framework
+
+Before assembling recommendations, apply the **PERCEIVE → ANALYZE → VALIDATE → ACT** framework from `references/thinking-framework.md`. This ensures every finding traces to a first-principle observation, maps its dependencies, includes a falsifiability check, and names a leading indicator. For Critical and High findings, all four framework fields are required. For Medium findings, Falsifiability and Leading Indicator are sufficient.
+
 ### Finding Format
 
 Every audit finding must use this structure:
@@ -72,6 +77,14 @@ Evidence: [what was observed / what data shows this]
 Impact: [how this hurts rankings, traffic, or citations]
 Fix: [specific, actionable step]
 Confidence: Confirmed / Likely / Hypothesis
+Falsifiability: [what evidence would prove this recommendation wrong or unnecessary]
+Leading Indicator: [what metric to monitor post-fix, and over what timeframe]
+```
+
+For Critical and High findings, also include:
+```
+First-Principle Observation: [the raw observable fact that triggered this finding]
+Dependency: [what other findings this blocks, enables, or depends on — use finding IDs]
 ```
 
 **Confidence labels:**
@@ -105,7 +118,12 @@ Date: [date] | Business Type: [type] | Audited Pages: [N] | Confidence: High/Med
 ## 🟡 Medium Priority (fix this month)
 ## ⚡ Quick Wins (under 2 hours each)
 ## 💡 Opportunity Signals
-## Full Findings [per-category, each in Finding/Evidence/Impact/Fix/Confidence format]
+## Assumptions Audit
+[List assumptions made during this audit and flag any that may not hold.
+ e.g., "Homepage represents overall site quality", "Low traffic = low value page",
+ "CMS is server-rendered". The user can reject or correct these.]
+
+## Full Findings [per-category, each in Finding/Evidence/Impact/Fix/Confidence/Falsifiability/Leading Indicator format]
 ```
 
 For a 3-finding excerpt showing the output format, see `references/audit-output-example.md`.
@@ -115,9 +133,31 @@ For a 3-finding excerpt showing the output format, see `references/audit-output-
 When converting audit findings into a roadmap (§ 16), use this format per item:
 
 ```
-| Fix schema on all product pages | Dev | 2 hr | Star ratings in SERPs (+15–30% CTR) | Phase 1 |
+| Fix schema on all product pages | Dev | 2 hr | Star ratings in SERPs (+15–30% CTR) | Phase 1 | — | F3, F7 |
 ```
-Columns: Action | Owner | Effort | Expected Outcome | Phase
+Columns: Action | Owner | Effort | Expected Outcome | Phase | Blocked By | Unblocks
+
+#### Dependency-Graph Sequencing
+
+Replace flat priority lists with a dependency-aware sequence. For every action item:
+
+1. **Blocked By** — which other action(s) must complete first (use finding IDs or action IDs). Use `—` if none.
+2. **Unblocks** — which downstream actions become possible after this one completes.
+3. **Parallelizable** — actions with no mutual dependencies can run simultaneously; group them in the plan.
+
+Present the plan as a **topologically sorted** sequence: items with no blockers first, then items whose blockers are satisfied, and so on. Within each level, sort by impact descending.
+
+**Example dependency chain:**
+```
+A1: Fix canonical conflicts          | Blocked By: —   | Unblocks: A3, A5
+A2: Add author bios to blog posts    | Blocked By: —   | Unblocks: A4
+A3: Submit cleaned sitemap           | Blocked By: A1  | Unblocks: A6
+A4: Add Person schema                | Blocked By: A2  | Unblocks: —
+A5: Fix duplicate content            | Blocked By: A1  | Unblocks: A6
+A6: Request re-indexation            | Blocked By: A3, A5 | Unblocks: —
+```
+
+Actions A1 and A2 can run in parallel (no shared blockers). A3 and A5 can run in parallel once A1 is done. A6 waits for both A3 and A5.
 
 ### Mode 3 Execute + Verify Loop
 

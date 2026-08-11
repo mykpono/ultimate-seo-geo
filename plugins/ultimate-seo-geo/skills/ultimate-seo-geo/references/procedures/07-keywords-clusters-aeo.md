@@ -92,3 +92,15 @@ AEO covers zero-click SERP features: Featured Snippets, PAA, Knowledge Panel, vo
 
 For Knowledge Panel (sameAs schema), Sitelinks Searchbox (SearchAction code), Speakable schema, and voice search platform breakdown (Siri/Alexa use Bing, not Google), see `references/schema-types.md` → "AEO Schema" section.
 
+---
+
+### Content Brief Generation
+
+For structured briefs to hand to writers, use `scripts/content_brief.py`:
+
+```bash
+python scripts/content_brief.py "target keyword" --competitors https://competitor1.com/page https://competitor2.com/page --site https://mysite.com
+```
+
+Brief output includes: target + secondary keywords, H2/H3 outline derived from competitor analysis, word count targets, schema recommendations, AI citation opportunities, and internal link suggestions. See `references/procedures/23-semantic-clustering.md` for topic cluster context.
+

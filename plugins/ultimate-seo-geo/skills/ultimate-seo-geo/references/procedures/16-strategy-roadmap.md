@@ -5,9 +5,11 @@
 ### Step by Step
 
 1. **Triage findings**: (Business Impact × Ranking Impact) / Effort. Highest = do first.
-2. **Group into four phases** below.
-3. **State the #1 action for this week** — concrete task + expected outcome.
-4. **Set milestones** — what does success look like at 30/60/90 days?
+2. **Map dependencies**: For each action, identify what it blocks and what blocks it. Use the dependency-graph format from `references/procedures/02-full-site-audit.md` (Mode 2 Plan Entry Format). Topologically sort: items with no blockers first.
+3. **Group into four phases** below, respecting dependency order — never schedule an action before its blockers.
+4. **Identify parallel tracks**: Actions with no mutual dependencies can run simultaneously. Flag these explicitly so teams can parallelize work.
+5. **State the #1 action for this week** — concrete task + expected outcome.
+6. **Set milestones** — what does success look like at 30/60/90 days?
 
 ### Implementation Phases
 
