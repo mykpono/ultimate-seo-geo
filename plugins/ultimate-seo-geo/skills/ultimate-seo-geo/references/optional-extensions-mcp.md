@@ -39,6 +39,50 @@ bash extensions/dataforseo/install-cursor.sh
 
 Each extension folder contains `README.md`, `extension.json` (MCP package name and env vars), and the install scripts above.
 
+## Additional Extensions (Community / Third-Party)
+
+These extensions connect to external SEO data platforms. Each requires its own API credentials.
+
+| Extension | What It Adds | Data Types | Env Var |
+|-----------|-------------|------------|---------|
+| **Ahrefs** | Backlink data, keyword rankings, content gap analysis | Referring domains, DR, keyword difficulty, SERP features | `AHREFS_API_KEY` |
+| **SE Ranking** | AI Share-of-Voice, GEO visibility tracking | AI citation share, visibility scores, rank tracking | `SE_RANKING_API_KEY` |
+| **Profound** | LLM citation tracking across AI search engines | Citation frequency in ChatGPT, Perplexity, Claude, Gemini | `PROFOUND_API_KEY` |
+| **Bing Webmaster + IndexNow** | Bing-specific indexation and instant submission | Bing crawl stats, indexed pages, URL submission | `BING_WEBMASTER_API_KEY` |
+| **Unlighthouse** | Multi-page Lighthouse audits at scale | Per-page CWV scores, accessibility, best practices | Runs locally via npx |
+| **Banana/Browserless** | Headless rendering as a service | JS-rendered HTML for SPA/CSR sites | `BROWSERLESS_API_KEY` |
+
+### Extension Integration Pattern
+
+All extensions follow the same pattern:
+1. **Graceful degradation** — Core scripts work without any extensions. Extensions add richer data.
+2. **Env-var detection** — Scripts check for the relevant env var. If absent, skip with a note.
+3. **No vendor lock-in** — Data flows through the same Finding format regardless of source.
+4. **MCP routing** — When MCP tools from these providers are available, the agent uses them per §21 (Script Toolbox).
+
+### Using Extensions with the Agent
+
+When an extension's MCP server is connected, the agent can:
+- Pull live SERP data instead of relying on manual CSV input
+- Cross-reference backlink data with content recommendations
+- Track AI citation share across platforms (Profound + SE Ranking)
+- Submit URLs for instant indexation (Bing IndexNow)
+
+### Extension Install Pattern
+
+Each extension (when available in the monorepo `extensions/` directory) follows:
+
+```
+extensions/<name>/
+├── README.md           # Setup guide
+├── extension.json      # MCP package name + env vars
+├── install-generic.sh  # Env-var-only setup
+├── install-claude.sh   # Claude Code MCP config
+└── install-cursor.sh   # Cursor MCP config
+```
+
+For extensions not yet packaged, configure the MCP server directly in your IDE settings using the provider's official MCP package.
+
 ## Monorepo users
 
 If you already have the full repo at disk, see **`extensions/README.md`** for the same install flow and design principles (graceful degradation, no vendor lock-in).

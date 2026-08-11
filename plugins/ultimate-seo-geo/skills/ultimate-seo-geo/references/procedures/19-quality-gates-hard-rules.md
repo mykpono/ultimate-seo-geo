@@ -13,7 +13,7 @@ After generating any Mode 1 audit output — before delivering it — run this i
 | 1 | Every Critical and High finding has an **Evidence** field from actual script output or verifiable page observation | Evidence: present on each | Add evidence or downgrade severity to Medium |
 | 2 | No fabricated metrics | PSI/CrUX/LCP/CLS/INP numbers only appear if `pagespeed.py` returned JSON | Strip invented numbers; replace with "could not retrieve — verify at pagespeed.web.dev" |
 | 3 | Health Score is supported by findings distribution | Critical = −15, High = −8, Medium = −3, Low = −1 applied | Recalculate or note discrepancy |
-| 4 | Structured format used on every finding | Finding / Evidence / Impact / Fix / Confidence all present | Add missing fields |
+| 4 | Structured format used on every finding | Finding / Evidence / Impact / Fix / Confidence / Falsifiability / Leading Indicator all present. Critical and High findings also include First-Principle Observation and Dependency. | Add missing fields; see `references/thinking-framework.md` |
 | 5 | No duplicate findings | Run `finding_verifier.py` if available; manually check if not | Merge duplicates before scoring |
 | 6 | Scope respected | Full audit only if user confirmed they own the site; Competitive Mode labeled "External Observation Only" | Re-label or scope down |
 | 7 | Fix directives are actionable | Each fix names the specific element, file, or page to change | Rewrite vague fixes ("improve content") with exact instructions |
@@ -21,6 +21,9 @@ After generating any Mode 1 audit output — before delivering it — run this i
 | 9 | No low-value mass changes | Never recommend touching 10+ pages for changes with zero ranking impact (e.g., removing `keywords` meta tags, cosmetic HTML cleanup). Wastes effort and introduces deployment risk. | Remove or downgrade to informational note |
 | 10 | No recommending removal of valid schema | Never recommend removing structured data just because one search engine stopped showing rich results for it (e.g., HowTo). Only recommend removing truly retired types no longer processed at all. | Change "remove" to "keep — no rich results but still valid" |
 | 11 | High-Risk deliverables withheld until confirmation | robots.txt, redirect maps, noindex directives, canonical overrides, and hreflang changes must NOT appear as code/file output before the user explicitly confirms. The response should describe the change and its consequences in plain language only. | Remove the code block; replace with a plain-language description and a confirmation prompt |
+| 12 | Assumptions explicitly surfaced | An **Assumptions Audit** section lists every assumption the audit relies on (e.g., "homepage represents site quality", "CMS is server-rendered", "no recent algorithm penalty"). The user can reject or correct any assumption before acting on findings. | Add the section; revise findings that depend on unvalidated assumptions |
+| 13 | Every recommendation is falsifiable | Each finding includes a **Falsifiability** field stating what evidence would prove the recommendation wrong. Unfalsifiable recommendations are opinion, not guidance. | Add falsifiability statement or demote to informational note |
+| 14 | Mode 2 plans use dependency sequencing | Action items include **Blocked By** and **Unblocks** columns. Plan is topologically sorted — no action scheduled before its blockers. | Reorder the plan; add missing dependency fields |
 
 This pattern is adapted from Anthropic's [Evaluator-Optimizer workflow](https://github.com/anthropics/claude-cookbooks/tree/main/patterns/agents) — one pass generates, a second pass evaluates before output reaches the user.
 
