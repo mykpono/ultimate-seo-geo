@@ -24,11 +24,13 @@ After generating any Mode 1 audit output — before delivering it — run this i
 
 This pattern is adapted from Anthropic's [Evaluator-Optimizer workflow](https://github.com/anthropics/claude-cookbooks/tree/main/patterns/agents) — one pass generates, a second pass evaluates before output reaches the user.
 
-**Retired schema (safe to remove)** — Google no longer processes these types at all: SpecialAnnouncement (July 2025), ClaimReview (June 2025), Dataset (late 2025), VehicleListing (June 2025), Practice Problem (late 2025), EstimatedSalary (June 2025), LearningVideo (June 2025), EnergyConsumptionDetails (replaced by Certification, April 2025), CourseInfo (June 2025).
+**Retired schema (safe to remove)** — Google no longer processes these types at all: SpecialAnnouncement (July 2025), ClaimReview (June 2025), VehicleListing (June 2025), Practice Problem (late 2025; tooling sunset January 2026), EstimatedSalary (June 2025), LearningVideo (June 2025), EnergyConsumptionDetails (replaced by Certification, April 2025), CourseInfo (June 2025). Note: Dataset is NOT discontinued (Dataset Search still consumes it).
 
-**Rich results removed but schema still valid (do NOT recommend removal)** — HowTo (Sept 2023): Google no longer shows HowTo rich results, but the schema is still valid structured data. It helps Bing (which still renders HowTo rich results), AI systems that parse structured data for citations, and general content understanding. Never recommend removing valid schema just because one search engine stopped displaying rich results for it.
+**Rich results removed but schema still valid (do NOT recommend removal)** — HowTo (Sept 2023) and FAQPage (May 7, 2026): Google no longer shows rich results for these types, but the schema is still valid structured data. HowTo helps Bing (which still renders HowTo rich results) and AI systems. FAQPage still provides signal to non-Google AI systems. Use **QAPage** for genuine user Q&A pages (not as a "FAQ replacement"). Never recommend removing valid schema just because one search engine stopped displaying rich results for it.
 
-**INP not FID** — FID removed September 9, 2024. Referencing FID confuses users and dates the audit.
+**INP not FID** — FID removed from Chrome's field-data tools (CrUX API, PageSpeed Insights) on September 9, 2024. Lighthouse is a lab tool and never reported FID. Referencing FID confuses users and dates the audit.
+
+**Back-button hijacking** — Google spam policy. Sites that manipulate browser back-button behavior (preventing users from returning to search results) risk manual action. Check for JavaScript `history.pushState` abuse or redirect loops on back navigation.
 
 **Mobile-first is complete** — Mobile Googlebot for ALL sites since July 5, 2024.
 

@@ -1,7 +1,7 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-11 | Review: 2027-02-11 -->
 
 # GEO Signals & AI Search Optimization Reference
-## Updated: March 2026
+## Updated: August 2026
 
 **Contents:** 2026 AI Search Landscape · GEO Health Score · Citability Signals · Structural Readability · Authority & Brand Signals · Technical Accessibility · Multi-Modal Content · Platform-Specific Optimization · GEO Quick Wins · Brand Mention Strategy · Wikipedia & Wikidata Entity Setup · Passage Indexing Optimization · DataForSEO MCP Integration · GEO Error Handling
 
@@ -11,15 +11,15 @@
 
 | Platform | Reach | Query Coverage | Key Insight |
 |---|---|---|---|
-| **Google AI Overviews** | 1.5B users/month | 48% of queries (projected 70-80% by end 2026) | Citations from top-10 pages dropped from 76% to 38% in 2025 — ranking rank matters less |
-| **Google AI Mode** | 180+ countries (launched May 2025) | Separate search tab | Zero organic blue links — AI citation is the ONLY visibility mechanism |
+| **Google AI Overviews** | 2.5B+ users/month (I/O 2026) | 48% of queries (projected 70-80% by end 2026) | Citations from top-10 pages dropped from 76% to 38% in 2025 — ranking matters less |
+| **Google AI Mode** | 1B+ monthly users, 180+ countries | Separate search tab, powered by custom Gemini 2.5 | Zero organic blue links — AI citation is the ONLY visibility. Only 13.7% URL overlap with AI Overviews (Ahrefs, 540K query pairs) — treat as a **distinct citation engine**. |
 | **ChatGPT Search** | 900M weekly active users | All queries | 85% of retrieved pages are never cited; no referral traffic header |
 | **Perplexity** | 500M+ queries/month | All queries | Sends trackable referral traffic in GA; cites Reddit (46.7%) and Wikipedia heavily |
 | **Bing Copilot** | Integrated in Bing | All queries | Bing index authority; supports IndexNow for faster indexing |
 
 **AI-referred sessions grew 527% year-over-year** (Jan–May 2025, SparkToro/Previsible).
 
-**Platform citation overlap**: Only 11–13.7% of domains cited by both ChatGPT and Google AI Overviews for the same query. Platform-specific optimization is essential.
+**Platform citation overlap**: Only 11–13.7% of domains cited by both ChatGPT and Google AI Overviews for the same query. AI Mode and AI Overviews share only 13.7% URL overlap — they are functionally separate citation engines requiring distinct optimization. Platform-specific optimization is essential.
 
 ---
 
@@ -77,6 +77,12 @@ Different AI platforms prioritize different GEO dimensions. Use this matrix to a
 - **Final 30%**: 24.7% of citations
 
 **Implication**: Lead with the answer, not with context. Top-loading key information is the single highest-leverage writing change.
+
+### Content Recency as Citation Lever
+Content under 3 months old receives approximately **3x the AI citation rate** compared to older content (SE Ranking, 2026). AI systems strongly favor fresh, recently updated content. Implications:
+- Add visible `dateModified` to all key pages when updating content
+- Refresh statistics, data points, and examples at least quarterly on high-value pages
+- New content has a recency window of ~3 months where citation probability is highest
 
 ---
 
@@ -244,9 +250,9 @@ Allow: /
 
 ### llms.txt Standard
 
-**Status**: Proposed standard, not officially adopted by Google/OpenAI/Anthropic. Current research shows no proven citation impact.
+**Status**: Google confirmed (June 2026) that **Google Search ignores llms.txt**. It is not a ranking signal, citation lever, or indexation input for Google. Some non-Google AI systems may read it, but no platform has confirmed it influences citation selection.
 
-**Recommendation**: Implement as a low-cost hygiene step — it signals intent to AI crawlers and may help as the standard matures, but do not prioritize it over citability, brand signals, or technical accessibility. Current research shows no proven citation impact.
+**Recommendation**: Implement as a low-cost hygiene step for non-Google AI engines only. Do not prioritize over citability, brand signals, or technical accessibility. Do not claim Google SEO or Google AI citation benefit.
 
 **Implemented by**: Anthropic (Claude docs), Cloudflare, Stripe
 
@@ -302,10 +308,13 @@ Content with multi-modal elements sees **156% higher AI selection rates**.
 - First 30% of content provides 44.2% of citations — front-load your answers
 - Semantic completeness (r=0.89): self-contained sections score 4.2× more citations
 
-### Google AI Mode (launched May 2025)
+### Google AI Mode (launched May 2025, powered by custom Gemini 2.5)
+- **Distinct citation engine** from AI Overviews — only 13.7% URL overlap (Ahrefs, 540K query pairs). Optimize separately.
+- 1B+ monthly users (I/O 2026). Powered by a custom version of Gemini 2.5.
 - Conversational, multi-turn — requires comprehensive depth
 - "Deep Search" runs 100+ sub-searches for complex queries
 - No organic blue links — AI citation is the only visibility
+- Content **recency** is a strong citation lever (~3x for content under 3 months, SE Ranking)
 - Optimize for multi-step, research-style queries
 - Images and video inputs supported (multi-modal input)
 

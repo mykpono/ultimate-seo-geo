@@ -2,8 +2,8 @@
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.9.0 |
-| **Updated** | 2026-05-28 |
+| **Version** | 1.10.0 |
+| **Updated** | 2026-08-11 |
 | **License** | MIT |
 | **Author** | Myk Pono |
 | **Homepage** | [lab.mykpono.com](https://lab.mykpono.com) |
@@ -254,7 +254,11 @@ GEO = getting content cited by AI engines: Google AI Overviews, AI Mode, ChatGPT
 | Technical Accessibility (AI crawlers, SSR, llms.txt) | 20% |
 | Multi-Modal Content (text + images + video) | 15% |
 
-**Key insight:** 44.2% of AI citations come from the first 30% of content.
+**Key insights:**
+- 44.2% of AI citations come from the first 30% of content.
+- Content under 3 months old receives ~3x AI citation rate (SE Ranking, 2026).
+- AI Overviews and AI Mode share only 13.7% URL overlap — treat as distinct citation engines.
+- Google confirmed (June 2026) that **Search ignores llms.txt** — implement as non-Google AI hygiene only.
 
 For full GEO audit steps, citation demonstration pattern, entity optimization, and platform-specific playbooks → read `references/procedures/03-geo-ai-search.md` and `references/ai-search-geo.md`.
 
@@ -264,7 +268,7 @@ Scripts: `robots_checker.py`, `entity_checker.py`, `llms_txt_checker.py`, `socia
 
 ## 4. Technical SEO
 
-### Core Web Vitals (INP replaced FID March 2024 — never reference FID)
+### Core Web Vitals (INP replaced FID March 2024 — FID removed from CrUX/PSI Sept 2024; Lighthouse never reported FID)
 
 | Metric | Good | Needs Improvement | Poor |
 |---|---|---|---|
@@ -300,7 +304,7 @@ Always use JSON-LD. Schema improves AI citation likelihood ~2.5×.
 | Site Type | Essential Schema |
 |---|---|
 | Publisher / Blog | Article, Person, ProfilePage, Organization, WebSite, BreadcrumbList |
-| SaaS | WebApplication/SoftwareApplication, Organization, WebSite, FAQPage |
+| SaaS | WebApplication/SoftwareApplication, Organization, WebSite |
 | E-commerce | Product + Offer, AggregateRating, Organization, BreadcrumbList |
 | Local Business | LocalBusiness (specific subtype), Organization, AggregateRating |
 
@@ -437,15 +441,20 @@ Triage: `(Business Impact × Ranking Impact) / Effort`. Four phases:
 
 ### Hard Rules
 
-- **INP not FID** — FID removed September 2024.
+- **INP not FID** — FID removed from Chrome's field-data tools (CrUX API, PageSpeed Insights) September 9, 2024. Lighthouse (lab tool) never reported FID.
 - **Mobile-first complete** — all sites since July 2024.
-- **E-E-A-T universal** — all competitive queries, December 2025.
+- **E-E-A-T universal** — all competitive queries, December 2025. Google publishes no numeric E-E-A-T weights; only that "trust is most important."
 - **AI citation ≠ ranking** — 85% of retrieved pages never cited. Being retrieved is necessary but not sufficient.
 - **Mentions > Backlinks for AI** — 0.664 vs. 0.218 correlation.
 - **Blocking AI crawlers harms GEO** — removes site from AI search entirely.
 - **GPTBot ≠ training only** — blocking also limits ChatGPT Search citation.
-- **Retired schema (safe to remove):** SpecialAnnouncement, ClaimReview, Dataset, VehicleListing, Practice Problem, EstimatedSalary, LearningVideo, EnergyConsumptionDetails, CourseInfo.
-- **HowTo:** Rich results removed but schema still valid — do NOT recommend removal.
+- **Google Search ignores llms.txt** — confirmed June 2026. Implement as non-Google AI hygiene only.
+- **AI Mode is a distinct citation engine** — only 13.7% URL overlap with AI Overviews (Ahrefs, 540K query pairs). Optimize separately.
+- **Content recency boosts AI citations** — content under 3 months old receives ~3x citation rate (SE Ranking, 2026).
+- **Back-button hijacking** — Google spam policy. Sites manipulating browser back-button behavior risk manual action.
+- **FAQ rich results retired** — Google retired FAQ rich results for ALL sites on May 7, 2026. Keep existing FAQPage as AI/entity signal; do not recommend for Google rich results. Use QAPage for genuine Q&A.
+- **Retired schema (safe to remove):** SpecialAnnouncement, ClaimReview, VehicleListing, Practice Problem, EstimatedSalary, LearningVideo, EnergyConsumptionDetails, CourseInfo. Note: Dataset is NOT discontinued.
+- **HowTo / FAQPage:** Rich results removed but schema still valid — do NOT recommend removal.
 
 ---
 

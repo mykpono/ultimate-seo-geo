@@ -1,15 +1,15 @@
 ---
 name: ultimate-seo-geo
 description: Audits and optimizes websites for search engine visibility (SEO) and AI search citation (GEO), covering technical health, E-E-A-T content scoring, domain authority, structured data, rich results, and entity signals. Use when running SEO audits, diagnosing traffic drops or ranking losses, generating Schema.org JSON-LD, checking Core Web Vitals, crawlability, robots.txt, sitemaps, hreflang, backlinks, planning content strategy or site migrations, fixing indexing issues, or optimizing for AI Overviews, ChatGPT, and Perplexity. NOT for paid ads (PPC/SEM), social media strategy, email marketing, or general web development unrelated to search.
-version: 1.9.0
+version: 1.10.0
 ---
 
 # Ultimate SEO + GEO — LLM-Agnostic SEO Agent
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.9.0 |
-| **Updated** | 2026-05-28 |
+| **Version** | 1.10.0 |
+| **Updated** | 2026-08-11 |
 | **License** | MIT |
 | **Author** | Myk Pono |
 | **Lab** | [lab.mykpono.com](https://lab.mykpono.com) |

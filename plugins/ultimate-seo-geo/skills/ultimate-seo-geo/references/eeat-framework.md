@@ -1,7 +1,7 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-11 | Review: 2027-02-11 -->
 
 # E-E-A-T Evaluation Framework
-## Updated per Google Quality Rater Guidelines — September 2025 + December 2025 Core Update
+## Updated per Google Quality Rater Guidelines — September 2025 + May 2026 Core Update
 
 ---
 
@@ -14,24 +14,15 @@ E-E-A-T = **E**xperience, **E**xpertise, **A**uthoritativeness, **T**rustworthin
 
 **Trustworthiness** is the most important factor — assessed based on the other three plus direct trust indicators.
 
-## CRITICAL: December 2025 Core Update
+## E-E-A-T is Universal (December 2025+)
 
 > **E-E-A-T now applies to ALL competitive queries, not just YMYL.**
 
-The December 2025 core update was a "watershed moment" that:
-- Extended E-E-A-T evaluation to virtually all competitive queries
-- Made author attribution standards tighter across ALL categories (not just health/finance)
-- Penalized anonymous or generic authorship even for non-YMYL content
-- Significantly improved AI content quality detection
-
-**Industry traffic impact (Dec 2025):**
-| Industry | Traffic Drops |
-|---|---|
-| Affiliate sites | 71% average decline |
-| Health/YMYL | 67% average decline |
-| E-commerce | 52% average decline |
+The December 2025 core update extended E-E-A-T evaluation to virtually all competitive queries, made author attribution standards tighter across ALL categories (not just health/finance), and penalized anonymous or generic authorship even for non-YMYL content. The May 2026 core update (completed May 21, 2026) continued this trajectory.
 
 **Key takeaway:** Even entertainment and lifestyle content now requires demonstrated expertise. Generic content no longer ranks — regardless of topical category.
+
+**Note on E-E-A-T weights:** Google publishes no numeric E-E-A-T weights, only that "trust is the most important" dimension. The weights below (20/25/25/30) are this skill's internal scoring model for consistency, not Google's published values.
 
 ---
 
