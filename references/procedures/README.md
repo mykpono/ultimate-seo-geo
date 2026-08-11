@@ -25,3 +25,7 @@ These files hold the **detailed procedural sections** formerly in the root `SKIL
 | 19 | [19-quality-gates-hard-rules.md](19-quality-gates-hard-rules.md) | Quality gates and hard rules |
 | 20 | [20-site-migration.md](20-site-migration.md) | Site migration |
 | 21 | [21-script-toolbox.md](21-script-toolbox.md) | Script toolbox, parallel runs, attribution |
+| 22 | [22-drift-monitoring.md](22-drift-monitoring.md) | SEO drift monitoring, baseline/compare/report |
+| 23 | [23-semantic-clustering.md](23-semantic-clustering.md) | SERP-overlap topic clustering, hub-and-spoke architecture |
+| 24 | [24-ecommerce-seo.md](24-ecommerce-seo.md) | E-commerce SEO, product/category schema, faceted nav |
+| 25 | [25-maps-intelligence.md](25-maps-intelligence.md) | Advanced local SEO, geo-grid tracking, GBP audit, review intelligence |

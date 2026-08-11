@@ -38,8 +38,14 @@ clear fix directive — not just diagnosis.
 | Crawl / index / performance | `references/procedures/04-technical-seo.md`, `references/procedures/11-crawl-indexation.md` | Matrix scripts (`robots_checker`, `sitemap_checker`, `pagespeed.py` if API works) |
 | Migration | `references/procedures/20-site-migration.md` | `references/site-migration.md`, `redirect_checker.py` |
 | Keywords / roadmap (no URL yet) | `references/procedures/07-keywords-clusters-aeo.md`, `references/procedures/16-strategy-roadmap.md` | **Do not** invent a live-site `/100` score |
+| SEO drift / change tracking | `references/procedures/22-drift-monitoring.md` | `drift_monitor.py` |
+| Semantic topic clustering | `references/procedures/23-semantic-clustering.md` | `topic_cluster.py` |
+| Content brief generation | `references/procedures/07-keywords-clusters-aeo.md` | `content_brief.py` |
+| E-commerce SEO | `references/procedures/24-ecommerce-seo.md` | `ecommerce_schema.py`, `validate_schema.py` |
+| Advanced local / maps | `references/procedures/25-maps-intelligence.md` | `maps_checker.py`, `local_signals_checker.py` |
+| Google API credentials | `references/procedures/21-script-toolbox.md` | `google_api_tier.py`, `crux_history.py`, `gsc_query.py`, `ga4_report.py` |
 
-Section numbers **§1–§21** match `AGENTS.md` and the filenames in `references/procedures/`. Full index: [`references/procedures/README.md`](references/procedures/README.md).
+Section numbers **§1–§25** match `AGENTS.md` and the filenames in `references/procedures/`. Full index: [`references/procedures/README.md`](references/procedures/README.md).
 
 ### Reference Reading Guide
 
@@ -229,3 +235,7 @@ Run the internal self-evaluation pass in `references/procedures/19-quality-gates
 | 19 | [`references/procedures/19-quality-gates-hard-rules.md`](references/procedures/19-quality-gates-hard-rules.md) |
 | 20 | [`references/procedures/20-site-migration.md`](references/procedures/20-site-migration.md) |
 | 21 | [`references/procedures/21-script-toolbox.md`](references/procedures/21-script-toolbox.md) |
+| 22 | [`references/procedures/22-drift-monitoring.md`](references/procedures/22-drift-monitoring.md) |
+| 23 | [`references/procedures/23-semantic-clustering.md`](references/procedures/23-semantic-clustering.md) |
+| 24 | [`references/procedures/24-ecommerce-seo.md`](references/procedures/24-ecommerce-seo.md) |
+| 25 | [`references/procedures/25-maps-intelligence.md`](references/procedures/25-maps-intelligence.md) |

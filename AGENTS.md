@@ -128,6 +128,12 @@ If running on a model with limited context or execution time, apply graceful deg
 | **Migration** | "moving domains", "CMS migration", "redirect map" | § 20 |
 | **Myths** | "does X help SEO?", "is X a ranking factor?" | § 18 |
 | **Scripts** | "run a check", "generate a report", "validate schema" | § 21 |
+| **SEO Drift** | "drift", "what changed", "before/after", "deployment check" | § 22 |
+| **Semantic Clustering** | "SERP overlap", "content hub", "cluster analysis" | § 23 |
+| **E-commerce SEO** | "product schema", "e-commerce", "product pages", "merchant" | § 24 |
+| **Maps / Advanced Local** | "geo-grid", "GBP audit", "review intelligence", "NAP audit" | § 25 |
+| **Content Brief** | "content brief", "brief for writers", "writing brief" | § 7 |
+| **Google API Tiers** | "API tier", "connect GSC", "GA4 data", "CrUX history" | § 21 |
 | **Paid ads primary** | "Google Ads", "PPC" without organic SEO ask | Out of scope |
 
 ---
@@ -536,6 +542,17 @@ bash scripts/run_individual_checks.sh https://example.com
 | `fetch_page.py` | Fetch and save raw HTML (utility) |
 | `crawl_adapter.py` | Pluggable crawl backend (requests/firecrawl/playwright) |
 | `site_mapper.py` | URL discovery via sitemap + crawl |
+| `drift_monitor.py` | SEO drift baseline, compare, history, report (17 rules) |
+| `topic_cluster.py` | SERP-overlap topic clustering (CSV input) |
+| `content_brief.py` | Content brief generation from competitor analysis |
+| `ecommerce_schema.py` | E-commerce schema validation (Product, Offer, Return, Shipping) |
+| `maps_checker.py` | Advanced local SEO / GBP schema audit |
+| `google_api_tier.py` | Detect available Google API credentials (Tier 0–2) |
+| `crux_history.py` | CrUX History API — historical CWV data (Tier 0) |
+| `gsc_query.py` | Google Search Console queries (Tier 1, OAuth) |
+| `ga4_report.py` | GA4 organic traffic data (Tier 2, OAuth) |
+| `pdf_charts.py` | SVG chart generation for PDF reports (module) |
+| `pdf_template.py` | Professional A4 PDF template with cover + TOC (module) |
 
 ### Environment Note
 
@@ -566,6 +583,10 @@ Extensions add external data sources. Core scripts work without them.
 |-----------|-------------|---------|
 | Firecrawl | JS-rendered crawling | `bash extensions/firecrawl/install-generic.sh` |
 | DataForSEO | Live SERP, keywords, backlinks | `bash extensions/dataforseo/install-generic.sh` |
+| Ahrefs | Backlink data, keyword rankings, content gap | MCP config |
+| SE Ranking | AI Share-of-Voice, GEO visibility | MCP config |
+| Profound | LLM citation tracking (ChatGPT, Perplexity, Claude) | MCP config |
+| Bing Webmaster | Bing indexation + IndexNow submission | MCP config |
 
 See `references/optional-extensions-mcp.md` for install paths (plugin bundle); full monorepo: `extensions/README.md`.
 
@@ -576,6 +597,58 @@ For parallel audit execution, scopes and scripts are in **`agents/PARALLEL-AUDIT
 ### Context Management for Long Sessions
 
 If context fills mid-audit: compress completed findings into `[Section] Finding | Severity | Fix` one-liners, checkpoint the score, continue with remaining sections, merge back to full format at end.
+
+---
+
+## 22. SEO Drift Monitoring
+
+Track changes to SEO-critical page elements over time. `drift_monitor.py` captures baseline snapshots (title, meta, canonical, robots, H1, headings, schema, internal links, word count, Open Graph) and compares against current state using 17 rules across 3 severity levels:
+
+- **Critical** (6 rules): Status code to 4xx/5xx, canonical changed, robots to noindex, redirect on 200, title removed, all schema removed
+- **Warning** (7 rules): Title/meta >50% different, H1 changed, headings structure, schema count, word count −20%, links ±30%
+- **Info** (4 rules): Minor title/meta tweaks, links 10–30%, word count within 20%
+
+Use cases: pre/post deployment checks, ongoing monitoring, traffic drop investigation, migration validation.
+
+Scripts: `drift_monitor.py` (baseline, compare, history, report) → `references/procedures/22-drift-monitoring.md`
+
+---
+
+## 23. Semantic Topic Clustering
+
+SERP-overlap-based topic clustering for content strategy. Clusters keywords by shared top-10 SERP results (pages ranking for multiple keywords indicate topical overlap). Hub-and-spoke architecture: pillar pages + cluster posts. Generates internal link matrices.
+
+Requires SERP data input (DataForSEO extension or manual CSV with keyword,rank,url format).
+
+Script: `topic_cluster.py` → `references/procedures/23-semantic-clustering.md`
+
+---
+
+## 24. E-commerce SEO
+
+Specialized e-commerce audit procedures and schema validation. Covers Product + Offer schema, MerchantReturnPolicy (requires `returnPolicyCountry` since March 2025), OfferShippingDetails, category vs. product page differentiation, faceted navigation, out-of-stock handling, and EU compliance (Certification migration, IPTC AI image labeling).
+
+Script: `ecommerce_schema.py` → `references/procedures/24-ecommerce-seo.md`
+
+---
+
+## 25. Maps Intelligence & Advanced Local SEO
+
+Extends §12 with geo-grid rank tracking, GBP completeness audit, review intelligence (rating, count, recency, velocity, sentiment), competitor radius mapping, and NAP consistency checking across directories.
+
+Script: `maps_checker.py` → `references/procedures/25-maps-intelligence.md`
+
+---
+
+## Google API Tier System
+
+| Tier | Auth | APIs | Scripts |
+|------|------|------|---------|
+| 0 | API key (`PAGESPEED_API_KEY`) | PageSpeed Insights, CrUX, CrUX History | `pagespeed.py`, `crux_history.py` |
+| 1 | OAuth2 | Google Search Console | `gsc_query.py` |
+| 2 | OAuth2 | GA4 Data API | `ga4_report.py` |
+
+Run `google_api_tier.py` to detect available credentials and capabilities. Each tier adds data but lower tiers produce valid audits. See `references/optional-extensions-mcp.md` for extension data sources.
 
 ---
 
@@ -594,3 +667,7 @@ This file provides enough context to route, audit, and execute. For the routing 
 | Competitor analysis dimensions | `references/procedures/08-competitor-analysis.md` |
 | Migration pre/post checklists | `references/procedures/20-site-migration.md` |
 | Execute + verify loop with examples | `references/procedures/02-full-site-audit.md` (Mode 3) |
+| Drift monitoring rules + workflow | `references/procedures/22-drift-monitoring.md` |
+| SERP-overlap topic clustering | `references/procedures/23-semantic-clustering.md` |
+| E-commerce schema + faceted nav | `references/procedures/24-ecommerce-seo.md` |
+| Geo-grid + GBP + review intelligence | `references/procedures/25-maps-intelligence.md` |
