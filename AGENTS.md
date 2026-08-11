@@ -22,7 +22,7 @@ clear fix directive — not just diagnosis.
 
 | Goal | Read | Run |
 |------|------|-----|
-| Full scored audit | `references/audit-script-matrix.md` | `generate_report.py` |
+| Full scored audit | `references/audit-script-matrix.md`, `references/thinking-framework.md` | `generate_report.py` |
 | GEO / AI citations | `references/ai-search-geo.md`, `references/entity-optimization.md` | `robots_checker.py`, `entity_checker.py`, `llms_txt_checker.py` |
 | Schema markup | `references/schema-types.md` | `validate_schema.py` |
 | Technical / CWV | `references/technical-checklist.md` | `pagespeed.py`, `robots_checker.py`, `security_headers.py` |
@@ -158,7 +158,8 @@ Do not state metrics unless the corresponding script ran:
 3. **Run all audit modules** in sequence.
 4. **Score** using Health Score weights below.
 5. **Assign confidence**: High (8+ pages + analytics) / Medium (4–7 pages) / Low (1–3 pages).
-6. **Prioritize** — Critical → High → Medium → Quick Wins.
+6. **Audit assumptions** — Before assembling recommendations, list every assumption the audit relies on (e.g., "homepage represents site quality", "CMS is server-rendered"). Surface in the report so the user can reject or correct them. See `references/thinking-framework.md`.
+7. **Prioritize** — Critical → High → Medium → Quick Wins. Apply the PERCEIVE → ANALYZE → VALIDATE → ACT framework to ensure findings are grounded, falsifiable, and dependency-mapped.
 
 ### SEO Health Score Weights
 
@@ -184,6 +185,14 @@ Evidence: [what was observed]
 Impact: [how this hurts rankings, traffic, or citations]
 Fix: [specific, actionable step]
 Confidence: Confirmed / Likely / Hypothesis
+Falsifiability: [what evidence would prove this recommendation wrong or unnecessary]
+Leading Indicator: [what metric to monitor post-fix, and over what timeframe]
+```
+
+For Critical and High findings, also include:
+```
+First-Principle Observation: [the raw observable fact that triggered this finding]
+Dependency: [what other findings this blocks, enables, or depends on]
 ```
 
 **Scoring:** `base_score = (positive_signals / (positive_signals + deficit_signals)) × 100`. Deduct: Critical −15 pts, Warning −5 pts.
@@ -202,16 +211,20 @@ Date: [date] | Business Type: [type] | Audited Pages: [N] | Confidence: High/Med
 ...
 
 ## Executive Summary
+## Assumptions Audit
+[List assumptions the audit relies on so the user can reject or correct them]
 ## 🔴 Critical Issues (fix immediately)
 ## 🟠 High Priority (fix this week)
 ## 🟡 Medium Priority (fix this month)
 ## ⚡ Quick Wins (under 2 hours each)
-## Full Findings [Finding/Evidence/Impact/Fix/Confidence format]
+## Full Findings [Finding/Evidence/Impact/Fix/Confidence/Falsifiability/Leading Indicator format]
 ```
 
 ### Mode 2 Plan Format
 
-| Action | Owner | Effort | Expected Outcome | Phase |
+| Action | Owner | Effort | Expected Outcome | Phase | Blocked By | Unblocks |
+
+Plans use **dependency-graph sequencing**: topologically sorted so prerequisite actions come first, parallelizable actions are grouped together, and no action is scheduled before its blockers complete. See `references/procedures/02-full-site-audit.md` (Mode 2 Plan Entry Format) for full format.
 
 ### Mode 3 Execute + Verify
 
@@ -402,7 +415,7 @@ Script: `programmatic_seo_auditor.py` → `references/programmatic-seo.md`
 
 ## 16. Strategy & Roadmap
 
-Triage: `(Business Impact × Ranking Impact) / Effort`. Four phases:
+Triage: `(Business Impact × Ranking Impact) / Effort`. Map dependencies between actions (Blocked By / Unblocks), topologically sort, then group into four phases:
 
 | Phase | Timeframe | Focus |
 |---|---|---|
@@ -430,7 +443,7 @@ Triage: `(Business Impact × Ranking Impact) / Effort`. Four phases:
 | 1 | Every Critical/High finding has Evidence from actual data | Add evidence or downgrade severity |
 | 2 | No fabricated metrics (PSI/CrUX numbers only if script ran) | Strip numbers; say "not measured" |
 | 3 | Health Score supported by findings distribution | Recalculate |
-| 4 | Finding/Evidence/Impact/Fix/Confidence all present | Add missing fields |
+| 4 | Finding/Evidence/Impact/Fix/Confidence/Falsifiability/Leading Indicator all present | Add missing fields |
 | 5 | No duplicate findings | Merge duplicates |
 | 6 | Scope respected (Internal vs. Competitive) | Re-label |
 | 7 | Fix directives name specific element/page/file | Rewrite vague fixes |
@@ -438,6 +451,9 @@ Triage: `(Business Impact × Ranking Impact) / Effort`. Four phases:
 | 9 | No low-value mass changes (10+ pages, zero impact) | Remove or downgrade |
 | 10 | No removing valid schema (e.g. HowTo still valid despite no rich results) | Change to "keep" |
 | 11 | High-Risk deliverables withheld until user confirms | Remove code; describe in plain language |
+| 12 | Assumptions explicitly surfaced in Assumptions Audit section | Add section; revise assumption-dependent findings |
+| 13 | Every recommendation is falsifiable | Add falsifiability or demote to informational note |
+| 14 | Mode 2 plans use dependency sequencing (Blocked By / Unblocks) | Reorder plan; add dependency columns |
 
 ### Hard Rules
 
