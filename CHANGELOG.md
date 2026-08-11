@@ -2,6 +2,50 @@
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-08-11
+
+### Added — Methodology Upgrades (M1–M4)
+
+- **M1: 10-Principle Thinking Framework** — New `references/thinking-framework.md` with PERCEIVE → ANALYZE → VALIDATE → ACT methodology. Integrated into `references/procedures/02-full-site-audit.md`. Every Critical/High recommendation now gets: (1) first-principle observation, (2) dependency relationship, (3) falsifiability check, (4) leading indicator.
+
+- **M2: Falsifiability on every recommendation** — Extended Finding format from `Finding/Evidence/Impact/Fix/Confidence` to include **Falsifiability** ("what evidence would prove this wrong?") and **Leading Indicator** ("what metric to monitor post-fix, and over what timeframe"). Updated `AGENTS.md` §2, §19, and `procedures/02-full-site-audit.md`.
+
+- **M3: Dependency-graph action plans** — Mode 2 Action Plans now use topologically sorted dependency sequencing: each action has **Blocked By** and **Unblocks** columns. Parallelizable actions are grouped together. Replaces flat priority lists. Updated `AGENTS.md` §2 (Mode 2 Plan Format) and `procedures/16-strategy-roadmap.md`.
+
+- **M4: Assumptions audit** — Before assembling recommendations, the audit explicitly lists every assumption it relies on (e.g., "homepage represents site quality", "CMS is server-rendered"). Surfaced in a new **Assumptions Audit** section of the report so the user can reject or correct them. Updated `AGENTS.md` §2, §19 (quality gate #12), and `procedures/02-full-site-audit.md`.
+
+### Added — New Feature Modules (F1–F8)
+
+- **F1: SEO Drift Monitoring (§ 22)** — Expanded `scripts/drift_monitor.py` with 17-rule comparison engine across 3 severity levels (6 critical, 7 warning, 4 info), `report` command, and Open Graph + word count tracking. New procedure `references/procedures/22-drift-monitoring.md`. Use cases: pre/post deployment checks, ongoing monitoring, traffic drop investigation, migration validation.
+
+- **F2: Semantic Topic Clustering (§ 23)** — New `scripts/topic_cluster.py` for SERP-overlap-based topic clustering. Clusters keywords by shared top-10 SERP results, generates hub-and-spoke architecture with pillar pages and cluster posts, and produces internal link matrices. Requires SERP data input (DataForSEO extension or manual CSV). New procedure `references/procedures/23-semantic-clustering.md`.
+
+- **F3: Content Brief Generation** — New `scripts/content_brief.py` for structured content briefs from competitor analysis. Covers target keywords, H2/H3 outline, internal links, word count targets, competing pages, schema recommendations, and featured snippet / AI citation opportunities. Updated `references/procedures/07-keywords-clusters-aeo.md`.
+
+- **F4: E-commerce SEO (§ 24)** — New `scripts/ecommerce_schema.py` for Product + Offer schema validation, MerchantReturnPolicy (requires `returnPolicyCountry` since March 2025), OfferShippingDetails, category vs. product page differentiation, faceted navigation, out-of-stock handling, and EU compliance. New procedure `references/procedures/24-ecommerce-seo.md`.
+
+- **F5: Google API Tier System** — New scripts: `scripts/google_api_tier.py` (credential detection), `scripts/crux_history.py` (CrUX History API, Tier 0), `scripts/gsc_query.py` (Google Search Console, Tier 1), `scripts/gsc_export.py` (GSC data export), `scripts/ga4_report.py` (GA4 organic traffic, Tier 2). Auto-detects available credentials and adapts audit depth. Each tier adds data but lower tiers produce valid audits.
+
+- **F6: Expanded MCP Extensions** — Updated `references/optional-extensions-mcp.md` with Ahrefs (backlinks, keyword rankings, content gap), SE Ranking (AI Share-of-Voice, GEO visibility), Profound (LLM citation tracking), and Bing Webmaster (Bing indexation + IndexNow submission) MCP configurations.
+
+- **F7: Maps Intelligence (§ 25)** — New `scripts/maps_checker.py` for geo-grid rank tracking, GBP completeness audit, review intelligence (rating, count, recency, velocity, sentiment), competitor radius mapping, and NAP consistency checking across directories. New procedure `references/procedures/25-maps-intelligence.md`.
+
+- **F8: Professional PDF Reports** — New `scripts/pdf_charts.py` (SVG chart generation) and `scripts/pdf_template.py` (A4 template with cover page + table of contents). Produces presentation-ready PDF reports with health score gauge, category radar chart, and CWV bar charts.
+
+### Changed
+
+- **AGENTS.md** — Added §22 (Drift Monitoring), §23 (Semantic Clustering), §24 (E-commerce SEO), §25 (Maps Intelligence), Google API Tier System table. Updated §1 request detection table with new routing rows. Updated §2 finding format and Mode 2 plan format. Updated §19 quality gates (#12 assumptions, #13 falsifiability, #14 dependency sequencing). Updated §21 script table (+11 scripts).
+- **SKILL.md** — Updated routing index with new sections and scripts.
+- **Request detection (§ 1)** — New routing rows: SEO Drift, Semantic Clustering, E-commerce SEO, Maps / Advanced Local, Content Brief, Google API Tiers.
+- **Audit output template** — Added Assumptions Audit section, First-Principle Observation and Dependency fields for Critical/High findings.
+- **Script count** — 35 → 46 bundled audit scripts (+11 new).
+- **Plugin bundle** synced — all updated files and 11 new scripts copied to `plugins/ultimate-seo-geo/skills/ultimate-seo-geo/`.
+
+### Fixed
+
+- **`scripts/gsc_export.py`** — Tracked in repo (was present in plugin bundle but missing from root `scripts/`).
+- **Plugin sync** — Fixed mismatch between root and plugin script trees.
+
 ## [1.10.0] - 2026-08-11
 
 ### Changed — Knowledge Currency (10 updates)
