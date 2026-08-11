@@ -2,9 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.10.0-green.svg)](../../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.10.1-green.svg)](../../CHANGELOG.md)
 
-> The definitive SEO + GEO skill for Claude. Full site audits, AI search optimization, schema generation, E-E-A-T assessment, and **35** bundled diagnostic Python scripts.
+> The definitive SEO + GEO skill for Claude. Full site audits, AI search optimization, schema generation, E-E-A-T assessment, and **46** bundled diagnostic Python scripts.
 
 **Author:** [Myk Pono](https://mykpono.com) · [Lab](https://lab.mykpono.com) · [GitHub](https://github.com/mykpono/ultimate-seo-geo)
 
@@ -34,7 +34,7 @@ These are **slash commands** for **Claude Code**’s chat input—not for Termin
 
 ### Still seeing an old version (e.g. 1.8.2)?
 
-GitHub **main** and release **v1.10.0** already declare `"version": "1.10.0"` in `plugins/ultimate-seo-geo/.claude-plugin/plugin.json`. If the UI shows something older, the marketplace **git clone under your home directory is stale** (it does not auto-pull), or the Claude.ai web cache needs a refresh.
+GitHub **main** already declares the latest version in `plugins/ultimate-seo-geo/.claude-plugin/plugin.json`. If the UI shows something older, the marketplace **git clone under your home directory is stale** (it does not auto-pull), or the Claude.ai web cache needs a refresh.
 
 **Check what is on disk (run in Terminal, not inside Claude chat):**
 
@@ -77,7 +77,7 @@ The bundled skill folder includes **`scripts/`** (audit tools), **`references/`*
 
 - **Parallel audits:** `agents/PARALLEL-AUDIT.md` defines independent script groups for Task/subagent tools; merge with `finding_verifier.py` (see `agents/README.md`).
 - **Optional MCP:** Firecrawl and DataForSEO — **`references/optional-extensions-mcp.md`** (install from a full repo clone or GitHub paths).
-- **Reports:** `generate_report.py` writes **HTML** (default), **XLSX** with `openpyxl`, **PDF** with optional **WeasyPrint**, or **HTML + XLSX** with `--format all`. Without WeasyPrint, open the HTML report and use **Print → Save as PDF**.
+- **Reports:** `generate_report.py` writes **HTML** (default), **XLSX** with `openpyxl`, **PDF** with optional **WeasyPrint** (professional A4 layout with cover page, TOC, and SVG charts via `pdf_template.py` + `pdf_charts.py`), or **HTML + XLSX** with `--format all`. Without WeasyPrint, open the HTML report and use **Print → Save as PDF**.
 
 ---
 
@@ -103,18 +103,22 @@ We're moving from Magento to Shopify — 3,000 product pages. What do we need fo
 
 ## Coverage
 
-### SEO (21 Modules)
+### SEO (25 Modules)
 - **Technical SEO** — Core Web Vitals (LCP/INP/CLS), crawlability, indexability, JS rendering, security headers, mobile-first
 - **On-Page SEO** — Title tags, meta descriptions, H1s, URLs, canonicals
 - **Content & E-E-A-T** — Content quality scoring, author credentials, experience signals, readability, thin content detection
 - **Schema Markup** — All active Schema.org types, deprecation-aware, JSON-LD generation and validation
-- **Keywords & Content Strategy** — Keyword research, topic clusters, content gaps, funnel mapping
+- **Keywords & Content Strategy** — Keyword research, topic clusters, content gaps, funnel mapping, content brief generation
 - **Link Building** — Internal link audit, orphan page detection, anchor text analysis
 - **Local SEO** — Google Business Profile, NAP consistency, review strategy, LocalBusiness schema
+- **Maps Intelligence** — Geo-grid rank tracking, GBP completeness audit, review intelligence, competitor radius mapping
 - **International SEO** — Hreflang audit, language code validation, bidirectional return tags
 - **Programmatic SEO** — Quality gates for pages at scale, thin content safeguards
+- **E-commerce SEO** — Product + Offer schema, MerchantReturnPolicy, OfferShippingDetails, faceted navigation
 - **Site Migrations** — Pre/during/post migration checklists, redirect map validation
-- **Analytics & Reporting** — GA4/GSC setup, traffic drop diagnostics, CTR benchmarks
+- **SEO Drift Monitoring** — Baseline snapshots, 17-rule comparison engine, history tracking, deployment checks
+- **Semantic Topic Clustering** — SERP-overlap clustering, hub-and-spoke architecture, internal link matrices
+- **Analytics & Reporting** — GA4/GSC setup, traffic drop diagnostics, Google API tier system (Tier 0–2)
 
 ### GEO (AI Search Optimization)
 - **Platform Coverage** — Google AI Overviews, AI Mode, ChatGPT Search, Perplexity, Bing Copilot
@@ -125,7 +129,7 @@ We're moving from Magento to Shopify — 3,000 product pages. What do we need fo
 - **RSL 1.0** — Machine-readable AI licensing (December 2025 standard)
 
 ### Bundled Python tools
-**35** audit `.py` scripts in `scripts/` (maintainer-only checkers are not bundled). Full step ↔ script map: **`references/audit-script-matrix.md`**. Eval regression: `evals/fixtures/` + `score_eval_transcript.py --all-fixtures`.
+**46** audit `.py` scripts in `scripts/` (maintainer-only checkers are not bundled). Full step ↔ script map: **`references/audit-script-matrix.md`**. Eval regression: `evals/fixtures/` + `score_eval_transcript.py --all-fixtures`.
 
 ---
 
