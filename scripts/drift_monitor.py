@@ -189,7 +189,7 @@ def _apply_rules(previous: dict, current: dict) -> list[dict]:
     old_robots = previous.get("robots", "")
     new_robots = current.get("robots", "")
     if old_robots != new_robots:
-        sev = "critical" if "noindex" in (new_robots or "").lower() else "critical"
+        sev = "critical" if "noindex" in (new_robots or "").lower() else "warning"
         desc = "Robots meta changed to noindex" if "noindex" in (new_robots or "").lower() else "Robots meta directive changed"
         changes.append({
             "rule": 3,

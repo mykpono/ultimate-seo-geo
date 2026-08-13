@@ -245,6 +245,24 @@ def check_wikipedia(entity_name: str) -> dict:
 # NAP consistency check
 # ---------------------------------------------------------------------------
 
+# A phone-shaped run of characters. Kept separate from the digit count below so
+# the two conditions stay independently readable.
+_PHONE_CANDIDATE_RE = re.compile(r"\+?\d[\d\-\(\)\.\s]{5,18}\d")
+
+
+def has_visible_phone(page_text: str) -> bool:
+    """True when the page shows something that could be a phone number.
+
+    A candidate run must carry at least 7 actual digits. The original
+    expression put ``\\s`` inside the character class with no digit floor, so
+    seven consecutive spaces matched and the check returned True on every page.
+    """
+    return any(
+        len(re.sub(r"\D", "", candidate)) >= 7
+        for candidate in _PHONE_CANDIDATE_RE.findall(page_text)
+    )
+
+
 def check_nap_consistency(soup: BeautifulSoup, entities: list) -> list:
     """Check Name/Address/Phone consistency signals on the page."""
     issues = []
@@ -266,7 +284,7 @@ def check_nap_consistency(soup: BeautifulSoup, entities: list) -> list:
 
     # Check for visible phone/address on page
     page_text = soup.get_text(separator=" ")
-    has_phone = bool(re.search(r"[\+]?[\d\-\(\)\s]{7,15}", page_text))
+    has_phone = has_visible_phone(page_text)
     has_address = bool(re.search(r"\d{1,5}\s+\w+\s+(street|st|avenue|ave|road|rd|blvd|drive|dr|lane|ln)", page_text, re.I))
 
     if not has_phone and local_entities:
