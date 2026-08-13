@@ -90,8 +90,10 @@ VALID_REGION_CODES = {
 # Common region mistakes
 COMMON_REGION_MISTAKES = {
     "UK": "GB",   # UK is not a valid ISO 3166-1 code; use GB
-    "LA": None,   # Latin America is not a country
     "EU": None,   # European Union is not a country
+    # NOTE: "LA" is NOT listed here. It is the ISO 3166-1 code for Laos and is
+    # present in VALID_REGION_CODES; treating it as the "Latin America" mistake
+    # made every valid lo-LA / en-LA tag fail.
 }
 
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-hreflang/1.8)"
