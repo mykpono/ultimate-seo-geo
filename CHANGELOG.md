@@ -2,6 +2,36 @@
 
 ## [Unreleased]
 
+## [1.10.2] - 2026-08-12
+
+### Fixed
+
+- **`scripts/robots_checker.py`** — Consecutive User-agent lines now form one group sharing the rules that follow (RFC 9309 sec 2.2.1). Previously only the last agent in a stacked block received the Disallow rule. Also fixed case-sensitive user-agent matching — tokens are now matched case-insensitively per the RFC while preserving original casing for display.
+
+- **`scripts/validate_schema.py`** — JSON-LD extraction regex no longer requires `type` to be the sole attribute on the `<script>` tag. Sites using Yoast (`class="yoast-schema-graph"`), Next.js (`id=`), and Shopify were silently returning no schema. Also fixed: `@graph` members no longer require their own `@context` (they inherit from wrapper per JSON-LD 1.1 §4.9), and the placeholder detector no longer matches articles containing the word "Replace" in ordinary prose.
+
+- **`scripts/link_profile.py`** — Added `validate_url()` to `fetch_page`, closing an SSRF/LFI vector where a malicious sitemap `<loc>file:///etc/passwd</loc>` or `<loc>http://169.254.169.254/...</loc>` entry would be fetched and included in the report.
+
+- **`scripts/redirect_checker.py`** — Added per-hop URL validation in `check_redirects`. Previously followed `Location` headers blindly, allowing an audited host to steer the checker into cloud metadata endpoints via a single 302 redirect.
+
+- **`scripts/drift_monitor.py`** — Fixed tautological severity in rule 3: `"critical" if "noindex" in ... else "critical"` → else branch is now `"warning"`. Benign robots-meta additions (e.g. `max-image-preview:large`) no longer trigger critical alerts.
+
+- **`scripts/hreflang_checker.py`** — Removed "LA" from `COMMON_REGION_MISTAKES`. LA is the valid ISO 3166-1 code for Laos; it was incorrectly mapped to `None` with the comment "Latin America is not a country", breaking all `lo-LA` and `en-LA` hreflang tags.
+
+- **`scripts/entity_checker.py`** — Phone regex `[\+]?[\d\-\(\)\s]{7,15}` matched 7+ whitespace characters as a phone number. Extracted to `has_visible_phone()` with a minimum 7-digit floor.
+
+- **`scripts/backlink_analyzer.py`** — Reports now include `data_source` and `is_sample_data` fields so output from `generate_sample_data()` is clearly labeled rather than being indistinguishable from real backlink profiles.
+
+- **`scripts/readability.py`** — Fallback `sentence_rewrites` contained hardcoded client copy ("Learn practical ethical hacking...") that leaked into unrelated clients' reports. Replaced with domain-neutral placeholder text.
+
+### Added
+
+- **CI: pytest in workflow** — `.github/workflows/validate-plugin.yml` now includes a `tests` job running `pytest tests/ -v` on Python 3.11. `tests/**` and `requirements.txt` added to path triggers. Previously the `tests/` directory existed but nothing executed it.
+
+- **`references/ai-generated-content-artifacts.md`** — New reference for detecting mechanical traces of AI-generated content (unclosed fences, writer-prompt labels, unicode math-bold, heading-dependent openers). Includes severity model separating integrity artifacts from voice/taste, with measured hit rates from a 132-post published corpus.
+
+- **Tests** — 59 new tests across 5 test files: `test_robots_checker.py` (9), `test_fetch_url_validation.py` (13), `test_verified_one_liners.py` (9), `test_validate_schema.py` (17), `test_report_provenance.py` (11).
+
 ## [1.10.1] - 2026-08-11
 
 ### Added — Methodology Upgrades (M1–M4)
