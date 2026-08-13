@@ -19,7 +19,14 @@ from typing import List
 def validate_jsonld(content: str) -> List[str]:
     """Validate JSON-LD blocks in HTML content."""
     errors = []
-    pattern = r'<script\s+type=["\']application/ld\+json["\']\s*>(.*?)</script>'
+    # `type` may sit anywhere in the tag and is rarely the only attribute:
+    # Yoast emits class="yoast-schema-graph", Next.js and Shopify commonly add
+    # id=. Requiring `type` to be the sole attribute silently extracted nothing
+    # on those sites and returned a clean bill of health.
+    pattern = (
+        r'<script\b[^>]*?\btype\s*=\s*["\']application/ld\+json["\'][^>]*>'
+        r'(.*?)</script>'
+    )
     blocks = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
 
     if not blocks:
@@ -38,23 +45,36 @@ def validate_jsonld(content: str) -> List[str]:
                 errors.extend(_validate_schema_object(item, i))
         elif isinstance(data, dict):
             if "@graph" in data and isinstance(data["@graph"], list):
+                # Graph members inherit @context from the wrapper; only the
+                # wrapper is required to declare it (JSON-LD 1.1 sec 4.9).
                 for item in data["@graph"]:
                     if isinstance(item, dict):
-                        errors.extend(_validate_schema_object(item, i))
+                        errors.extend(
+                            _validate_schema_object(item, i, require_context=False)
+                        )
+                if "@context" not in data:
+                    errors.append(f"Block {i}: Missing @context")
             else:
                 errors.extend(_validate_schema_object(data, i))
 
     return errors
 
 
-def _validate_schema_object(obj: dict, block_num: int) -> List[str]:
-    """Validate a single schema object."""
+def _validate_schema_object(
+    obj: dict, block_num: int, require_context: bool = True
+) -> List[str]:
+    """Validate a single schema object.
+
+    ``require_context`` is False for @graph members, which inherit the
+    wrapper's context rather than declaring their own.
+    """
     errors = []
     prefix = f"Block {block_num}"
 
     # Check @context
     if "@context" not in obj:
-        errors.append(f"{prefix}: Missing @context")
+        if require_context:
+            errors.append(f"{prefix}: Missing @context")
     elif obj["@context"] not in ("https://schema.org", "http://schema.org"):
         errors.append(f"{prefix}: @context should be 'https://schema.org'")
 
@@ -70,7 +90,13 @@ def _validate_schema_object(obj: dict, block_num: int) -> List[str]:
         "[Address]",
         "[Your",
         "[INSERT",
-        "REPLACE",
+        # Was the bare string "REPLACE", matched case-insensitively against the
+        # whole serialized object, so an article headlined "How to Replace a
+        # Faucet" was reported as containing placeholder text — which
+        # _is_critical() treats as critical and main() exits 2 on.
+        "[REPLACE",
+        "REPLACE_ME",
+        "REPLACE WITH",
         "[URL]",
         "[Email]",
     ]
