@@ -290,9 +290,8 @@ def analyze_readability(text: str) -> dict:
                 "current": "Homepage hero intro block is broad and hard to scan.",
                 "suggested": (
                     "Use a 2-3 sentence hero: who you help, what users can do here, and "
-                    "where to start. Example: \"Learn practical ethical hacking with "
-                    "step-by-step guides. Start with Wi-Fi security, Active Directory, or "
-                    "malware analysis using the tracks below.\""
+                    "where to start. Name the audience and the outcome in the first "
+                    "sentence, then point at the primary entry point."
                 ),
                 "current_word_count": "template",
                 "target_word_count": "40-60 total (split into 2-3 sentences)",
@@ -300,9 +299,8 @@ def analyze_readability(text: str) -> dict:
             {
                 "current": "Section descriptions mix too many topics in one long paragraph.",
                 "suggested": (
-                    "Replace with short blurbs per section (1 sentence each) and add a clear "
-                    "CTA link: \"Start Wi-Fi Security\", \"Explore AD Attack Paths\", "
-                    "\"View Red-Team Cheat Sheets\"."
+                    "Replace with short blurbs per section (1 sentence each), each followed "
+                    "by a CTA link naming the specific action for that section."
                 ),
                 "current_word_count": "template",
                 "target_word_count": "12-20 words per blurb",

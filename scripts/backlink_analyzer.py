@@ -860,7 +860,8 @@ def generate_issues_and_recommendations(
 # ── Full Analysis ────────────────────────────────────────────────────────
 
 def run_analysis(backlinks: list, competitor_backlinks: list = None,
-                 competitor_url: str = "", target_url: str = "") -> dict:
+                 competitor_url: str = "", target_url: str = "",
+                 data_source: str = "unknown") -> dict:
     if not backlinks:
         return {"error": "No backlink data provided.", "issues": [], "recommendations": []}
 
@@ -891,6 +892,12 @@ def run_analysis(backlinks: list, competitor_backlinks: list = None,
 
     report = {
         "target_url": target_url,
+        # Provenance travels with the payload. Previously the only signal that a
+        # report was built from generate_sample_data() went to stderr, so stdout
+        # JSON from the default invocation was indistinguishable from a real
+        # profile once it reached a downstream consumer or a client deliverable.
+        "data_source": data_source,
+        "is_sample_data": data_source == "sample",
         "backlink_health_score": health["score"],
         "health_score_breakdown": health,
         "section_1_profile_overview": overview,
@@ -1111,6 +1118,7 @@ def main():
             print(f"Error reading CSV: {e}", file=sys.stderr)
             sys.exit(1)
         backlinks = normalize_backlinks(raw)
+        resolved_source = "csv"
         print(f"Loaded {len(backlinks)} backlinks from {args.input}", file=sys.stderr)
 
     elif args.source == "gsc":
@@ -1119,8 +1127,12 @@ def main():
         print("Falling back to sample data.", file=sys.stderr)
         target = args.target_url or "https://example.com"
         backlinks = generate_sample_data(target)
+        # --source gsc silently produces sample data today, so the payload must
+        # say sample rather than echo back what was requested.
+        resolved_source = "sample"
 
     else:
+        resolved_source = "sample"
         target = args.target_url or "https://example.com"
         backlinks = generate_sample_data(target)
         print(f"Generated {len(backlinks)} sample backlinks for demo.", file=sys.stderr)
@@ -1141,6 +1153,7 @@ def main():
         competitor_backlinks=competitor_backlinks,
         competitor_url=args.competitor_url,
         target_url=args.target_url,
+        data_source=resolved_source,
     )
 
     if args.json:
