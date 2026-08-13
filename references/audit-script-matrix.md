@@ -43,6 +43,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | `crawl_adapter.py` | Pluggable fetch backend (urllib / Firecrawl / Playwright) — called internally by other scripts |
 | `backlink_analyzer.py` | 7-section backlink report from CSV exports (Ahrefs, Moz, Semrush) or built-in sample data (`python scripts/backlink_analyzer.py --source csv --input links.csv --json`) |
 | `score_eval_transcript.py` | Score a saved model reply vs `evals/evals.json` (`--eval-id N` or `--all-fixtures`) |
+| `serp_api.py` | Live Google organic results via SerpBase API — complements GSC data with current SERPs (`SERPBASE_API_KEY` or `--api-key`; `python scripts/serp_api.py "keyword" --json`) |
 | `fetch_page.py` | Fetch HTML to disk for manual inspection |
 | `check-plugin-sync.py` | CI / release: verify plugin bundle matches repo root |
 

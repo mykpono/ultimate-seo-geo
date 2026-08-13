@@ -46,6 +46,7 @@ These extensions connect to external SEO data platforms. Each requires its own A
 | Extension | What It Adds | Data Types | Env Var |
 |-----------|-------------|------------|---------|
 | **Ahrefs** | Backlink data, keyword rankings, content gap analysis | Referring domains, DR, keyword difficulty, SERP features | `AHREFS_API_KEY` |
+| **SerpBase** | Live Google organic results via REST API — titles, URLs, snippets, positions for any keyword (`scripts/serp_api.py`) | Organic results, SERP positions, featured snippets | `SERPBASE_API_KEY` |
 | **SE Ranking** | AI Share-of-Voice, GEO visibility tracking | AI citation share, visibility scores, rank tracking | `SE_RANKING_API_KEY` |
 | **Profound** | LLM citation tracking across AI search engines | Citation frequency in ChatGPT, Perplexity, Claude, Gemini | `PROFOUND_API_KEY` |
 | **Bing Webmaster + IndexNow** | Bing-specific indexation and instant submission | Bing crawl stats, indexed pages, URL submission | `BING_WEBMASTER_API_KEY` |
