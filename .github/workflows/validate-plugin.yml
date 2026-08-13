@@ -12,6 +12,8 @@ on:
       - 'evals/**'
       - 'setup-plugin.sh'
       - 'scripts/check-plugin-sync.py'
+      - 'tests/**'
+      - 'requirements.txt'
       - 'RELEASE.md'
       - '.github/workflows/validate-plugin.yml'
   pull_request:
@@ -25,10 +27,31 @@ on:
       - 'evals/**'
       - 'setup-plugin.sh'
       - 'scripts/check-plugin-sync.py'
+      - 'tests/**'
+      - 'requirements.txt'
       - 'RELEASE.md'
       - '.github/workflows/validate-plugin.yml'
 
 jobs:
+  tests:
+    name: Test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+
+      - name: Run pytest
+        run: python -m pytest tests/ -v
+
   validate-json:
     name: Validate JSON files
     runs-on: ubuntu-latest
