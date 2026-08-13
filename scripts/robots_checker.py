@@ -95,6 +95,10 @@ def fetch_robots_txt(url: str, timeout: int = 15) -> dict:
 def _parse_robots(content: str, result: dict):
     """Parse robots.txt content into structured data."""
     current_agents = []
+    # Consecutive User-agent lines form ONE group sharing the rules that follow
+    # (RFC 9309 sec 2.2.1). A rule directive closes the group, so the next
+    # User-agent line starts a new one.
+    in_agent_group = False
 
     for line in content.splitlines():
         line = line.strip()
@@ -112,11 +116,16 @@ def _parse_robots(content: str, result: dict):
         value = value.strip()
 
         if directive == "user-agent":
-            current_agents = [value]
+            if not in_agent_group:
+                current_agents = []
+            in_agent_group = True
+            if value not in current_agents:
+                current_agents.append(value)
             if value not in result["user_agents"]:
                 result["user_agents"][value] = {"allow": [], "disallow": []}
 
         elif directive == "disallow" and current_agents:
+            in_agent_group = False
             for agent in current_agents:
                 if agent not in result["user_agents"]:
                     result["user_agents"][agent] = {"allow": [], "disallow": []}
@@ -124,6 +133,7 @@ def _parse_robots(content: str, result: dict):
                     result["user_agents"][agent]["disallow"].append(value)
 
         elif directive == "allow" and current_agents:
+            in_agent_group = False
             for agent in current_agents:
                 if agent not in result["user_agents"]:
                     result["user_agents"][agent] = {"allow": [], "disallow": []}
@@ -133,18 +143,22 @@ def _parse_robots(content: str, result: dict):
             result["sitemaps"].append(value)
 
         elif directive == "crawl-delay" and current_agents:
+            in_agent_group = False
             for agent in current_agents:
                 try:
                     result["crawl_delays"][agent] = float(value)
                 except ValueError:
                     pass
 
-    # Analyze AI crawler management
-    managed_agents = set(result["user_agents"].keys())
+    # Analyze AI crawler management. User-agent tokens are case-insensitive
+    # (RFC 9309 sec 2.2.1), so match on a folded index while keeping the file's
+    # original casing for display.
+    agents_by_lower = {name.lower(): name for name in result["user_agents"]}
 
     for crawler in AI_CRAWLERS:
-        if crawler in managed_agents:
-            rules = result["user_agents"][crawler]
+        declared = agents_by_lower.get(crawler.lower())
+        if declared is not None:
+            rules = result["user_agents"][declared]
             if rules["disallow"] and "/" in rules["disallow"]:
                 result["ai_crawler_status"][crawler] = "fully blocked"
             elif rules["disallow"]:
@@ -155,8 +169,8 @@ def _parse_robots(content: str, result: dict):
                 result["ai_crawler_status"][crawler] = "declared but no rules"
         else:
             # Check wildcard rules
-            if "*" in managed_agents:
-                wildcard = result["user_agents"]["*"]
+            if "*" in agents_by_lower:
+                wildcard = result["user_agents"][agents_by_lower["*"]]
                 if wildcard["disallow"] and "/" in wildcard["disallow"]:
                     result["ai_crawler_status"][crawler] = "blocked by wildcard (*)"
                 else:
