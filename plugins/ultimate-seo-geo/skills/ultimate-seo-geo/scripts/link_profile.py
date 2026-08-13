@@ -31,6 +31,8 @@ except ImportError:
           file=sys.stderr)
     sys.exit(1)
 
+from url_safety import validate_url
+
 
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-LinkProfile/1.8)"
 
@@ -40,9 +42,21 @@ USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-LinkProfile/1.8)"
 # ---------------------------------------------------------------------------
 
 def fetch_page(url: str, timeout: int = 10) -> tuple:
-    """Return (final_url, html) or (url, '')."""
+    """Return (final_url, html) or (url, '').
+
+    Most URLs reaching this function come from the audited site itself: the
+    <loc> entries of its sitemap and the hrefs of its pages. urlopen serves
+    file:// and ftp:// as happily as http://, so without a scheme check a
+    sitemap entry of <loc>file:///etc/passwd</loc> is read straight into the
+    report. validate_url is the guard this repo already ships for that.
+    """
+    safe = validate_url(url)
+    if not safe.ok:
+        return url, ""
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        req = urllib.request.Request(
+            safe.normalized_url, headers={"User-Agent": USER_AGENT}
+        )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.url, resp.read().decode("utf-8", errors="ignore")
     except Exception:

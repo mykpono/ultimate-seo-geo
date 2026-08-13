@@ -22,6 +22,8 @@ except ImportError:
     sys.exit(1)
 
 
+from url_safety import validate_url
+
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; UltimateSEO/1.8)"}
 
 
@@ -64,8 +66,30 @@ def check_redirects(url: str, max_redirects: int = 10, timeout: int = 10) -> dic
                 break
             seen.add(current)
 
-            resp = requests.head(current, timeout=timeout, headers=HEADERS,
-                                 allow_redirects=False)
+            # Re-validate EVERY hop, not just the seed. `current` is taken from
+            # the previous response's Location header below, so an audited host
+            # can steer this loop wherever it likes: one
+            # `302 Location: http://169.254.169.254/latest/meta-data/` reaches
+            # cloud metadata, and each hop's status and timing is recorded in
+            # result["chain"]. This mirrors the per-hop check fetch_page.py does.
+            safe = validate_url(current)
+            if not safe.ok:
+                result["issues"].append(
+                    f"🔴 Refused to follow step {i+1}: {safe.reason} ({current})"
+                )
+                # Same key shape as a normal hop; downstream readers index
+                # status/time_ms directly.
+                result["chain"].append({
+                    "step": i + 1,
+                    "url": current,
+                    "status": None,
+                    "time_ms": 0,
+                    "blocked": safe.reason,
+                })
+                break
+
+            resp = requests.head(safe.normalized_url, timeout=timeout,
+                                 headers=HEADERS, allow_redirects=False)
 
             hop = {
                 "step": i + 1,
