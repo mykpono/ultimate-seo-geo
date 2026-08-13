@@ -33,6 +33,7 @@ clear fix directive — not just diagnosis.
 | Full scored audit | `references/procedures/02-full-site-audit.md`, `references/procedures/21-script-toolbox.md` | `references/audit-script-matrix.md`, `references/thinking-framework.md`, `generate_report.py` |
 | AI citations / GEO | `references/procedures/03-geo-ai-search.md` | `references/ai-search-geo.md`, `entity_checker.py`, `llms_txt_checker.py`, `robots_checker.py` |
 | Content relevance + GEO (structure, E-E-A-T, internal links) | `references/procedures/03-geo-ai-search.md`, `references/procedures/06-content-eeat-and-pruning.md` | `references/eeat-framework.md`, `article_seo.py`, `readability.py`, `internal_links.py`, `generate_report.py` |
+| AI-drafted content review (artifacts, generated-text tells) | `references/procedures/06-content-eeat-and-pruning.md` | `references/ai-generated-content-artifacts.md`, `content_quality.py`, `readability.py` |
 | Schema only | `references/procedures/05-schema-structured-data.md` | `references/schema-types.md`, `validate_schema.py` |
 | Local | `references/procedures/12-local-seo.md` | `references/local-seo.md`, `local_signals_checker.py` |
 | Crawl / index / performance | `references/procedures/04-technical-seo.md`, `references/procedures/11-crawl-indexation.md` | Matrix scripts (`robots_checker`, `sitemap_checker`, `pagespeed.py` if API works) |
@@ -60,6 +61,7 @@ When a section points to a reference file, read only what you need for the curre
 | Schema markup | `references/schema-types.md` | `validate_schema.py` |
 | Technical / CWV | `references/technical-checklist.md` | `pagespeed.py`, `robots_checker.py`, `security_headers.py` |
 | Content / E-E-A-T | `references/eeat-framework.md`, `references/core-eeat-framework.md` | `readability.py`, `article_seo.py` |
+| AI-drafted content artifacts | `references/ai-generated-content-artifacts.md` | `content_quality.py`, `readability.py` |
 | CITE domain audit | `references/cite-domain-rating.md` | `link_profile.py` |
 | Keywords / clusters | `references/keyword-strategy.md` | — |
 | Links | `references/link-building.md` | `internal_links.py`, `broken_links.py`, `link_profile.py` |
