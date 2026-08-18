@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`.gitignore`** — Added `.axme-code/` (AXME agent session data, audit logs and knowledge base — ~681 files regenerated per session) and `.mcp.json` (MCP server wiring pointing at a locally installed binary). Both sat untracked in the repo root and appeared in every `git status`, making accidental inclusion in unrelated commits easy. Neither was ever tracked, so no history is affected. `.cursor/rules/*.md` is deliberately not ignored — those are authored shared agent rules rather than generated state.
+
 ## [1.11.0] - 2026-08-17
 
 ### Added
