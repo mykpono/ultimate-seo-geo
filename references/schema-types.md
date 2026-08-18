@@ -51,7 +51,7 @@ These types no longer generate Google rich results but are still valid Schema.or
 
 | Type | Status | Since | Keep? | Notes |
 |---|---|---|---|---|
-| **FAQPage** | Google retired FAQ rich results for ALL sites | May 7, 2026 | **Yes — keep as AI/entity signal** | Supersedes the Aug 2023 gov/health restriction. No Google SERP feature benefit for any site. Still provides signal to non-Google AI systems. Flag existing at Info priority (not Critical removal). Use **QAPage** for genuine user Q&A pages. Tooling sunset followed in phases — see below. |
+| **FAQPage** | Google retired FAQ rich results for ALL sites | May 7, 2026 | **Yes — keep as AI/entity signal** | Supersedes the Aug 2023 gov/health restriction. No Google SERP feature benefit for any site. Still provides signal to non-Google AI systems. **Not scored for Google rich results — scored under § 3 GEO citability.** Use **QAPage** for genuine user Q&A pages. Tooling sunset followed in phases — see below. |
 | **HowTo** | Google rich results removed | September 2023 | **Yes — keep** | Bing still renders HowTo rich results; AI systems parse it for citations; valid structured data |
 | **Quiz** (practice problems) | Google retired the practice problem rich result | January 2026 | **Yes — keep** | `Quiz` is the real `@type` behind Google's "practice problem" feature (there is no `PracticeProblem`/`PracticeProblems` type — both 404 on schema.org). Still a valid schema.org type under `LearningResource`. |
 | **Dataset** | Scope clarified, not retired | November 5, 2025 | **Yes — keep** | Consumed by Dataset Search, not general Google Search. Markup remains fully supported — never flag as retired. |
@@ -59,7 +59,7 @@ These types no longer generate Google rich results but are still valid Schema.or
 
 > **Decision tree for FAQPage (post May 2026):**
 > - **Adding new FAQPage for Google rich results?** → No benefit. Retired for all sites May 7, 2026.
-> - **Existing FAQPage on site?** → Keep. Flag at Info priority. Still aids non-Google AI systems.
+> - **Existing FAQPage on site?** → Keep. Not scored for Google rich results; scored under § 3 GEO citability. Still aids non-Google AI systems.
 > - **Genuine user Q&A page?** → Use **QAPage** (the correct type for real user-generated Q&A).
 > - **Removing FAQPage?** → Do not recommend removal. Causes no harm.
 >

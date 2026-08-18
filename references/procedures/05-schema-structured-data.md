@@ -11,7 +11,8 @@ Always use **JSON-LD** (`<script type="application/ld+json">`). Schema improves 
 3. **Identify missing schema** — Compare to Essential Schema table below.
 4. **Generate missing schema** — Use JSON-LD templates in `references/schema-types.md`.
 5. **Check retired types** — See § 19. Remove truly retired schema (SpecialAnnouncement, ClaimReview, etc.). Do NOT remove HowTo or FAQPage — rich results removed but schema still valid for Bing and AI systems.
-6. **FAQPage status** — Google retired FAQ rich results for ALL sites on May 7, 2026 (supersedes the Aug 2023 gov/health restriction). Do not recommend new FAQPage for Google rich results. Keep existing FAQPage as AI/entity signal (Info priority, not Critical removal). Use **QAPage** for genuine user-generated Q&A pages.
+6. **FAQPage status** — Google retired FAQ rich results for ALL sites on May 7, 2026 (supersedes the Aug 2023 gov/health restriction). Do not recommend new FAQPage for Google rich results. Keep existing FAQPage. Use **QAPage** for genuine user-generated Q&A pages.
+   - **Routing: not scored for Google rich results. Scored under § 3 GEO citability.** FAQPage carries no severity in this section — it is neither a defect nor a rich-result opportunity, so it does not appear on the severity ladder here. The finding is not dropped: § 3 step 3 scores the Q&A content as a Citability signal, and § 3 step 4 covers visible-HTML parity for the answer text.
 
 ### Priority Schema by Site Type
 

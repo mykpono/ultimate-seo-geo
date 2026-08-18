@@ -212,3 +212,115 @@ def test_truly_retired_types_still_block(schema_type):
 def test_nonexistent_practice_problem_types_are_not_flagged(bogus):
     """Neither spelling is a real schema.org type; both 404. Only Quiz is real."""
     assert not any(_is_critical(e) for e in _errors_for(bogus))
+
+
+# --- visible-HTML parity for FAQ answers (Task 2.4) -------------------------
+# FAQ answer text present in JSON-LD but absent from the rendered HTML satisfies
+# a parser while users and AI crawlers see nothing. Comparison must survive the
+# tag/entity/whitespace differences that JSON-LD routinely carries.
+
+import subprocess  # noqa: E402
+
+import faq_parity  # noqa: E402
+
+ANSWER = "Standard shipping takes three to five business days after dispatch."
+
+
+def faq_page(answer_text, rendered=None):
+    """FAQPage JSON-LD, optionally with the answer also rendered in the body."""
+    payload = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [{
+            "@type": "Question",
+            "name": "How long does shipping take?",
+            "acceptedAnswer": {"@type": "Answer", "text": answer_text},
+        }],
+    }
+    body = f"<h1>Shipping</h1><p>{rendered}</p>" if rendered else "<h1>Shipping</h1>"
+    return (
+        f'<html><head><script type="application/ld+json">{json.dumps(payload)}'
+        f"</script></head><body>{body}</body></html>"
+    )
+
+
+def parity_errors(content):
+    return [e for e in validate_jsonld(content, check_html_parity=True)
+            if "not in the rendered HTML" in e]
+
+
+def test_parity_match_does_not_flag():
+    assert parity_errors(faq_page(ANSWER, rendered=ANSWER)) == []
+
+
+def test_parity_miss_flags():
+    errors = parity_errors(faq_page(ANSWER))
+    assert len(errors) == 1
+    assert "How long does shipping take?" in errors[0]
+
+
+def test_parity_finding_is_never_blocking():
+    """validate_schema.py has no High vocabulary; parity must stay [info]."""
+    for err in parity_errors(faq_page(ANSWER)):
+        assert err.startswith("[info]")
+        assert _is_critical(err) is False
+
+
+def test_parity_survives_tags_entities_and_whitespace():
+    """JSON-LD carries <p>, entities and &nbsp; the rendered DOM does not."""
+    marked_up = f"<p>{ANSWER.replace(' ', '&nbsp;', 1)}</p>"
+    rendered = f"  {ANSWER}\n\n  "
+    assert parity_errors(faq_page(marked_up, rendered=rendered)) == []
+
+
+def test_parity_is_containment_not_equality():
+    """The answer inside a longer paragraph is present, not missing."""
+    rendered = f"We ship worldwide. {ANSWER} Tracking is included."
+    assert parity_errors(faq_page(ANSWER, rendered=rendered)) == []
+
+
+def test_parity_ignores_jsonld_self_containment():
+    """Script contents are stripped, so markup cannot 'contain' its own answer."""
+    assert parity_errors(faq_page(ANSWER)) != []
+
+
+def test_parity_off_by_default():
+    """Existing callers must be unaffected."""
+    assert [e for e in validate_jsonld(faq_page(ANSWER))
+            if "not in the rendered HTML" in e] == []
+
+
+def test_short_answers_are_skipped():
+    """Very short strings match incidentally; containment would be meaningless."""
+    assert parity_errors(faq_page("Yes.")) == []
+
+
+@pytest.mark.parametrize("ext", [".jsx", ".tsx", ".vue", ".svelte", ".php"])
+def test_framework_files_are_not_parity_checked(tmp_path, ext):
+    """Answer text legitimately lives in props, a .map() or a CMS fetch."""
+    target = tmp_path / f"component{ext}"
+    target.write_text(faq_page(ANSWER), encoding="utf-8")
+    out = subprocess.run(
+        [sys.executable,
+         os.path.join(os.path.dirname(__file__), "..", "scripts", "validate_schema.py"),
+         str(target), "--json"],
+        capture_output=True, text=True,
+    )
+    assert "not in the rendered HTML" not in out.stdout, out.stdout
+
+
+def test_html_files_are_parity_checked(tmp_path):
+    """The same content in a .html file must flag — proves the gate, not silence."""
+    target = tmp_path / "page.html"
+    target.write_text(faq_page(ANSWER), encoding="utf-8")
+    out = subprocess.run(
+        [sys.executable,
+         os.path.join(os.path.dirname(__file__), "..", "scripts", "validate_schema.py"),
+         str(target), "--json"],
+        capture_output=True, text=True,
+    )
+    assert "not in the rendered HTML" in out.stdout, out.stdout
+
+
+def test_normalize_collapses_entities_and_case():
+    assert faq_parity.normalize("<p>Hello&nbsp;&amp;  WORLD</p>") == "hello & world"

@@ -15,10 +15,44 @@ import re
 import sys
 from typing import List
 
+import faq_parity
 
-def validate_jsonld(content: str) -> List[str]:
-    """Validate JSON-LD blocks in HTML content."""
+# Module-level so tests/test_schema_status_parity.py can check these against
+# the tables in references/schema-types.md. Docs and code may only drift by
+# failing CI.
+#
+# Truly retired — Google no longer processes these at all. Safe to remove.
+RETIRED_TYPES = {
+    "SpecialAnnouncement": "retired July 31, 2025 — Google no longer processes this type",
+    "CourseInfo": "retired June 2025",
+    "EstimatedSalary": "retired June 2025",
+    "LearningVideo": "retired June 2025",
+    "ClaimReview": "retired June 2025 — fact-check rich results discontinued",
+    "VehicleListing": "retired June 2025 — vehicle listing structured data discontinued",
+    "EnergyConsumptionDetails": "retired April 24, 2025 — replaced by the Certification type",
+}
+
+# Rich results removed, but the schema is still valid structured data. Keep it:
+# helps Bing, AI systems and content understanding. Never recommend removal
+# (references/procedures/19-quality-gates-hard-rules.md rule 10).
+NO_RICH_RESULTS_TYPES = {
+    "HowTo": "Google removed HowTo rich results (Sept 2023) but schema is still valid — keep for Bing, AI systems, and content understanding",
+    "FAQPage": "Google withdrew FAQ rich results for all sites (May 7, 2026) but schema is still valid — keep as an AI/entity signal; do not remove",
+    "Dataset": "Dataset markup is consumed by Dataset Search only, not general Google Search (clarified Nov 5, 2025) — still valid and supported; keep it",
+    "Quiz": "Google retired the practice problem rich result (Jan 2026) but schema.org Quiz is still valid — keep for Bing, AI systems, and content understanding",
+}
+
+
+def validate_jsonld(content: str, check_html_parity: bool = False) -> List[str]:
+    """Validate JSON-LD blocks in HTML content.
+
+    `check_html_parity` compares FAQ answer text against the rendered HTML.
+    Off by default and gated to .html/.htm by main(): on .jsx/.tsx/.vue/
+    .svelte/.php the answer text legitimately lives in props, a .map() or a
+    CMS fetch, so absence from the file proves nothing.
+    """
     errors = []
+    page_text = faq_parity.visible_text(content) if check_html_parity else None
     # `type` may sit anywhere in the tag and is rarely the only attribute:
     # Yoast emits class="yoast-schema-graph", Next.js and Shopify commonly add
     # id=. Requiring `type` to be the sole attribute silently extracted nothing
@@ -39,6 +73,9 @@ def validate_jsonld(content: str) -> List[str]:
         except json.JSONDecodeError as e:
             errors.append(f"Block {i}: Invalid JSON — {e}")
             continue
+
+        if page_text is not None:
+            errors.extend(_check_faq_parity(data, i, page_text))
 
         if isinstance(data, list):
             for item in data:
@@ -107,32 +144,37 @@ def _validate_schema_object(
 
     schema_type = obj.get("@type", "")
 
-    # Truly retired types — Google no longer processes these at all.
-    # Safe to remove (but not urgent).
-    retired = {
-        "SpecialAnnouncement": "retired July 31, 2025 — Google no longer processes this type",
-        "CourseInfo": "retired June 2025",
-        "EstimatedSalary": "retired June 2025",
-        "LearningVideo": "retired June 2025",
-        "ClaimReview": "retired June 2025 — fact-check rich results discontinued",
-        "VehicleListing": "retired June 2025 — vehicle listing structured data discontinued",
-        "EnergyConsumptionDetails": "retired April 24, 2025 — replaced by the Certification type",
-    }
-    if schema_type in retired:
-        errors.append(f"{prefix}: @type '{schema_type}' is {retired[schema_type]}")
+    if schema_type in RETIRED_TYPES:
+        errors.append(f"{prefix}: @type '{schema_type}' is {RETIRED_TYPES[schema_type]}")
 
-    # Rich-results-removed types — Google no longer shows rich results, but the
-    # schema is still valid structured data. Keep it: helps Bing, AI systems,
-    # and content understanding. Do NOT recommend removal.
-    no_rich_results = {
-        "HowTo": "Google removed HowTo rich results (Sept 2023) but schema is still valid — keep for Bing, AI systems, and content understanding",
-        "FAQPage": "Google withdrew FAQ rich results for all sites (May 7, 2026) but schema is still valid — keep as an AI/entity signal; do not remove",
-        "Dataset": "Dataset markup is consumed by Dataset Search only, not general Google Search (clarified Nov 5, 2025) — still valid and supported; keep it",
-        "Quiz": "Google retired the practice problem rich result (Jan 2026) but schema.org Quiz is still valid — keep for Bing, AI systems, and content understanding",
-    }
-    if schema_type in no_rich_results:
-        errors.append(f"[info] {prefix}: {no_rich_results[schema_type]}")
+    if schema_type in NO_RICH_RESULTS_TYPES:
+        errors.append(f"[info] {prefix}: {NO_RICH_RESULTS_TYPES[schema_type]}")
 
+    return errors
+
+
+def _check_faq_parity(data, block_index: int, page_text: str) -> List[str]:
+    """Flag FAQ answers present in JSON-LD but absent from the rendered HTML.
+
+    Emitted with the [info] prefix so _is_critical() returns False and this
+    check can never block an edit. This script has no High/Medium vocabulary;
+    High severity for the same finding lives in parse_html.py/article_seo.py,
+    which run against fetched pages where absence is a real signal.
+    """
+    candidates = []
+    if isinstance(data, dict):
+        candidates = data.get("@graph") if isinstance(data.get("@graph"), list) else [data]
+    elif isinstance(data, list):
+        candidates = data
+
+    errors = []
+    for obj in candidates:
+        for question in faq_parity.missing_answers(obj, page_text):
+            errors.append(
+                f"[info] Block {block_index}: FAQ answer for {question!r} is in the "
+                f"JSON-LD but not in the rendered HTML — invisible to users and AI "
+                f"crawlers. Render the answer text on the page (see procedures/03 step 4)."
+            )
     return errors
 
 
@@ -186,7 +228,11 @@ def main():
             print(json.dumps({"error": "read_failed", "path": filepath, "schema_errors": []}))
         sys.exit(0)
 
-    errors = validate_jsonld(content)
+    # Parity only on real HTML — framework templates legitimately hold answer
+    # text outside the file (props, .map(), CMS fetch).
+    errors = validate_jsonld(
+        content, check_html_parity=filepath.lower().endswith((".html", ".htm"))
+    )
     block_count = len(
         re.findall(
             r'<script\s+type=["\']application/ld\+json["\']',

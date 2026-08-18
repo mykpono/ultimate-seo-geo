@@ -20,6 +20,8 @@ Usage:
 
 import argparse
 import json
+
+import faq_parity
 import re
 import sys
 import math
@@ -258,7 +260,7 @@ def extract_content(soup: BeautifulSoup, cms: str) -> dict:
 # JSON-LD structured data extraction
 # ---------------------------------------------------------------------------
 
-def extract_structured_data(soup: BeautifulSoup) -> list:
+def extract_structured_data(soup: BeautifulSoup, page_text: str = "") -> list:
     """
     Extract and parse all <script type="application/ld+json"> blocks.
     Flags deprecated / restricted types.
@@ -283,8 +285,13 @@ def extract_structured_data(soup: BeautifulSoup) -> list:
             status = "no_rich_results"
             note = f"{schema_type} no longer produces a Google rich result, but the schema is still valid. Keep it."
 
+        # FAQ answer text in JSON-LD but not in the rendered HTML is
+        # invisible to users and AI crawlers (procedures/03 step 4).
+        missing_faq = faq_parity.missing_answers(data, page_text) if page_text else []
+
         blocks.append({
             "@type": schema_type,
+            "faq_answers_missing_from_html": missing_faq,
             "@context": data.get("@context", ""),
             "status": status,
             "note": note,
@@ -506,6 +513,12 @@ def detect_seo_issues(content: dict, structured_data: list, readability: dict) -
             elif sd.get("status") == "no_rich_results":
                 issues.append({"severity": "Info", "area": "Schema", "finding": sd["note"], "fix": "Keep this markup. Google no longer renders a rich result for it, but the schema remains valid and still aids Bing and AI systems. No action needed."})
 
+            missing_faq = sd.get("faq_answers_missing_from_html") or []
+            if missing_faq:
+                shown = ", ".join(repr(q) for q in missing_faq[:3])
+                more = f" (+{len(missing_faq) - 3} more)" if len(missing_faq) > 3 else ""
+                issues.append({"severity": "High", "area": "Schema", "finding": f"{len(missing_faq)} FAQ answer(s) appear in JSON-LD but not in the rendered HTML: {shown}{more}.", "fix": "Render the answer text on the page. Content present only in structured data is invisible to users and to AI crawlers, and cannot be cited (procedures/03 step 4, Citability)."})
+
     # Readability
     fre = readability.get("flesch_reading_ease")
     if fre is not None and fre < 30:
@@ -543,7 +556,7 @@ def main():
     content = extract_content(soup, cms)
 
     # ── Structured data ────────────────────────────────────────────────────
-    structured_data = extract_structured_data(soup)
+    structured_data = extract_structured_data(soup, faq_parity.visible_text(html))
 
     # ── Full text for keyword extraction + readability ─────────────────────
     all_text_parts = content["h1"] + content["h2s"] + content["h3s"] + content["paragraphs"]
