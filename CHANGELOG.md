@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-08-17
+
+### Added
+
+- **Visible-HTML parity check for FAQ answers** — Flags FAQ answer text that appears in JSON-LD but not in the rendered HTML: the markup satisfies a parser while users and AI crawlers see nothing. A specialisation of `references/procedures/03-geo-ai-search.md` step 4, feeding the Citability dimension of the GEO Score.
+  - New dependency-free module `scripts/faq_parity.py`. `validate_schema.py` is regex/json only and must not grow a BeautifulSoup dependency.
+  - Comparison is **containment over normalised text**, not equality: tags stripped, entities unescaped (including the `U+00A0` that `&nbsp;` produces), whitespace collapsed, casefolded. JSON-LD `answerText` routinely carries markup the rendered DOM does not.
+  - `<script>`/`<style>` contents are stripped before comparison, so JSON-LD cannot trivially "contain" its own answer text.
+  - Severity split by what the script can actually know: **High** in `parse_html.py`/`article_seo.py`, which run against fetched pages where absence is a real signal; **`[info]` only** in `validate_schema.py`, gated to `.html`/`.htm`. On `.jsx`/`.tsx`/`.vue`/`.svelte`/`.php`, answer text legitimately lives in props, a `.map()` or a CMS fetch — flagging there would be a false positive on exactly the frameworks the script advertises support for.
+  - Answers under 25 normalised characters are skipped; short strings match incidentally and containment would be meaningless.
+
+- **`tests/test_schema_status_parity.py`** — Asserts the script-level schema status sets match the tables in `references/schema-types.md`, that the retired and no-rich-results buckets are mutually exclusive, and that all three scripts agree with each other. `check-plugin-sync.py` verifies the two trees are identical but says nothing about whether either is *correct* — a green sync check sat on top of every bug fixed in 1.10.3. Verified by reintroducing each of those bugs in turn; the new test catches all four.
+
+- **Tests** — 27 new tests (117 total, up from 90).
+
+### Changed
+
+- **FAQPage comes off the severity ladder** — `references/procedures/05-schema-structured-data.md` step 6 and the `references/schema-types.md` FAQPage row/decision tree no longer say "Info priority", which implied a defect where none exists. Replaced with a routing statement: *not scored for Google rich results; scored under § 3 GEO citability*.
+  - The finding is rerouted, not dropped. `procedures/03` previously never mentioned FAQPage, so removing the label alone would have made it vanish. Step 3 now scores FAQ Q&A content as a Citability signal and step 4 covers visible-HTML parity, with cross-references in both directions between `03` and `05`.
+
+- **`AGENTS.md` §19 / `19-quality-gates-hard-rules.md` — new rule 10b** — Rule 10 protects the FAQPage *markup*; 10b protects the *content*. Never recommend deleting or trimming FAQ content **on the grounds that Google withdrew FAQ rich results**. Carve-out is explicit so quality-based pruning still works: § 6 may still cut thin, duplicated or keyword-stuffed FAQ blocks, and `ai-generated-content-artifacts.md` may still flag an answer block that does not stand alone. The test is the stated reason, not the action.
+
+- **Schema status sets hoisted to module level** in `validate_schema.py` (`RETIRED_TYPES`, `NO_RICH_RESULTS_TYPES`) and `parse_html.py` (`DEPRECATED_SCHEMA`, `NO_RICH_RESULTS`) so the parity test can import them. Minimal form of the single-source-of-truth refactor; behaviour unchanged.
+
 ## [1.10.3] - 2026-08-17
 
 ### Fixed

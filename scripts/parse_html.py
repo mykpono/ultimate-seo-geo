@@ -15,6 +15,20 @@ import sys
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
+import faq_parity
+
+# Module-level so tests/test_schema_status_parity.py can check these against
+# the tables in references/schema-types.md.
+# Truly retired — Google no longer processes these at all.
+DEPRECATED_SCHEMA = {
+    "SpecialAnnouncement", "CourseInfo", "EstimatedSalary",
+    "LearningVideo", "ClaimReview", "VehicleListing",
+    "EnergyConsumptionDetails",
+}
+# Rich results removed, but the schema is still valid — never recommend removal.
+# "Quiz" is the real @type behind Google's retired "practice problem" feature.
+NO_RICH_RESULTS = {"HowTo", "FAQPage", "Quiz", "Dataset"}
+
 try:
     from bs4 import BeautifulSoup
 except ImportError:
@@ -205,15 +219,11 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
                 result["links"]["external"].append(link_data)
 
     # Schema (JSON-LD) — enhanced with type validation
-    # Truly retired — Google no longer processes these at all.
-    DEPRECATED_SCHEMA = {
-        "SpecialAnnouncement", "CourseInfo", "EstimatedSalary",
-        "LearningVideo", "ClaimReview", "VehicleListing",
-        "EnergyConsumptionDetails",
-    }
-    # Rich results removed, but the schema is still valid — never recommend removal.
-    # "Quiz" is the real @type behind Google's retired "practice problem" feature.
-    NO_RICH_RESULTS = {"HowTo", "FAQPage", "Quiz", "Dataset"}
+
+    # Computed from the raw HTML: the word-count pass below decomposes
+    # script/nav/footer/header out of `soup`, so visible text must be taken
+    # from the original source, not from the mutated tree.
+    page_text = faq_parity.visible_text(html)
 
     for script in soup.find_all("script", type="application/ld+json"):
         try:
@@ -236,8 +246,13 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
             status = "no_rich_results"
             note = f"{schema_type} no longer produces a Google rich result, but the schema is still valid. Keep it."
 
+        # FAQ answer text in JSON-LD but not in the rendered HTML is
+        # invisible to users and AI crawlers (procedures/03 step 4).
+        missing_faq = faq_parity.missing_answers(schema_data, page_text)
+
         result["schema"].append({
             "@type": schema_type,
+            "faq_answers_missing_from_html": missing_faq,
             "@context": schema_data.get("@context", ""),
             "status": status,
             "note": note,

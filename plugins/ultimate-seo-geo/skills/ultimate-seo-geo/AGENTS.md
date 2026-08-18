@@ -2,7 +2,7 @@
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.10.3 |
+| **Version** | 1.11.0 |
 | **Updated** | 2026-08-12 |
 | **License** | MIT |
 | **Author** | Myk Pono |
@@ -456,6 +456,7 @@ Triage: `(Business Impact × Ranking Impact) / Effort`. Map dependencies between
 | 8 | No YMYL schema without verified credentials | Suggest safer alternatives |
 | 9 | No low-value mass changes (10+ pages, zero impact) | Remove or downgrade |
 | 10 | No removing valid schema (e.g. HowTo still valid despite no rich results) | Change to "keep" |
+| 10b | No removing FAQ *content* over the rich-result retirement (rule 10 covers the markup). Quality-based pruning still allowed — see § 6 | Restate on quality grounds or withdraw |
 | 11 | High-Risk deliverables withheld until user confirms | Remove code; describe in plain language |
 | 12 | Assumptions explicitly surfaced in Assumptions Audit section | Add section; revise assumption-dependent findings |
 | 13 | Every recommendation is falsifiable | Add falsifiability or demote to informational note |
