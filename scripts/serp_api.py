@@ -8,7 +8,7 @@ titles, URLs, snippets, and positions for the top N organic results.
 
 Credentials:
   - Set SERPBASE_API_KEY to your SerpBase API key (get one at
-    https://serpbase.dev — free tier available), or pass --api-key.
+    https://serpbase.dev — free tier available).
 
 Usage:
     python scripts/serp_api.py "best seo tools 2026" --json
@@ -33,11 +33,11 @@ except ImportError:
     sys.exit(1)
 
 SERPBASE_ENDPOINT = "https://api.serpbase.dev/google/search"
-USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-SerpBase/1.8)"
+USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-SerpBase/1.9)"
 
 NO_KEY_MSG = (
     "SERPBASE_API_KEY not set. Get a free API key at https://serpbase.dev "
-    "and export it (or pass --api-key)."
+    "and export it."
 )
 
 
@@ -53,10 +53,10 @@ def fetch_serp(
     degrade gracefully when the API is unreachable.
     """
     try:
-        resp = requests.get(
+        resp = requests.post(
             SERPBASE_ENDPOINT,
-            params={"q": query, "api_key": api_key, "num": num},
-            headers={"User-Agent": USER_AGENT},
+            json={"q": query},
+            headers={"X-API-Key": api_key},
             timeout=timeout,
         )
     except requests.RequestException as exc:
@@ -70,8 +70,14 @@ def fetch_serp(
     except ValueError:
         return {"error": "SerpBase API returned invalid JSON."}
 
+    # The API answers 200 and reports failures through the business envelope:
+    # status is 0 on success and non-zero on failure.
+    if data.get("status") != 0:
+        detail = data.get("error") or data.get("message") or "request failed"
+        return {"error": f"SerpBase: {detail} (status={data.get('status')})"}
+
     results = []
-    for item in data.get("organic_results", []):
+    for item in data.get("organic", []):
         if not isinstance(item, dict):
             continue
         results.append(
@@ -82,20 +88,21 @@ def fetch_serp(
                 "snippet": item.get("snippet"),
             }
         )
+    if num > 0:
+        results = results[:num]
     return {"query": query, "count": len(results), "organic_results": results}
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Fetch live Google organic results via the SerpBase API."
     )
     parser.add_argument("query", help="Search query (quote it if it contains spaces)")
-    parser.add_argument("--api-key", help="SerpBase API key (or set SERPBASE_API_KEY)")
     parser.add_argument("--num", type=int, default=10, help="Number of results (default: 10)")
     parser.add_argument("--json", action="store_true", help="Emit JSON on stdout")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    api_key = args.api_key or os.environ.get("SERPBASE_API_KEY", "")
+    api_key = os.environ.get("SERPBASE_API_KEY", "")
     if not api_key:
         print(json.dumps({"error": NO_KEY_MSG}))
         return 1
