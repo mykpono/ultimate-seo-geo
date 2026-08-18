@@ -8,6 +8,10 @@
 
 ## [1.11.0] - 2026-08-17
 
+> Supersedes the 1.10.3 version bump, which was raised and then superseded
+> within the same day and never tagged. Its entries are folded in below, so
+> anything referencing 1.10.3 (PR #17, commit messages) is covered here.
+
 ### Added
 
 - **Visible-HTML parity check for FAQ answers** — Flags FAQ answer text that appears in JSON-LD but not in the rendered HTML: the markup satisfies a parser while users and AI crawlers see nothing. A specialisation of `references/procedures/03-geo-ai-search.md` step 4, feeding the Citability dimension of the GEO Score.
@@ -19,7 +23,7 @@
 
 - **`tests/test_schema_status_parity.py`** — Asserts the script-level schema status sets match the tables in `references/schema-types.md`, that the retired and no-rich-results buckets are mutually exclusive, and that all three scripts agree with each other. `check-plugin-sync.py` verifies the two trees are identical but says nothing about whether either is *correct* — a green sync check sat on top of every bug fixed in 1.10.3. Verified by reintroducing each of those bugs in turn; the new test catches all four.
 
-- **Tests** — 27 new tests (117 total, up from 90).
+- **Tests** — 45 new tests; 117 total, up from 72. Of these, 18 regression tests in `tests/test_validate_schema.py` cover the schema status fixes (rich-results-removed types stay `[info]` and never block, `FAQPage` carries no gov/health restriction, `Dataset` never triggers `_is_critical()`, truly retired types still block, and neither bogus practice-problem spelling is flagged) and all 18 fail against the pre-fix code. The remaining 27 cover FAQ visible-HTML parity and doc/code status parity.
 
 ### Changed
 
@@ -30,7 +34,9 @@
 
 - **Schema status sets hoisted to module level** in `validate_schema.py` (`RETIRED_TYPES`, `NO_RICH_RESULTS_TYPES`) and `parse_html.py` (`DEPRECATED_SCHEMA`, `NO_RICH_RESULTS`) so the parity test can import them. Minimal form of the single-source-of-truth refactor; behaviour unchanged.
 
-## [1.10.3] - 2026-08-17
+- **`references/schema-types.md`** — `Practice Problem` and `Dataset` removed from the RETIRED table (both contradicted the rich-results-removed table above it); `Quiz` and `Dataset` rows added to RICH RESULTS REMOVED; `EnergyConsumptionDetails` added to RETIRED. FAQ tooling-sunset phases (search appearance filter, rich result report, and Rich Results Test in June 2026; Search Console API in August 2026) recorded and **explicitly attributed to secondary reporting** — Google deleted the FAQ documentation on June 15, 2026, so only the May 7, 2026 withdrawal is confirmable against Google's own changelog.
+
+- **`AGENTS.md` §19 and `references/procedures/19-quality-gates-hard-rules.md`** — Retired-schema list no longer lists Practice Problem; Dataset and Quiz notes clarified so docs and scripts agree.
 
 ### Fixed
 
@@ -47,16 +53,6 @@
 - **Practice problem schema type corrected to `Quiz`** — `validate_schema.py` used `"PracticeProblem"` and the other two used `"PracticeProblems"`. Neither is a real schema.org type (both 404); the markup behind Google's retired practice-problem feature is `@type: Quiz`, which remains valid under `LearningResource`. Both dead strings never matched real markup. Now keyed on `Quiz` and treated as rich-results-removed, not retired.
 
 - **`EnergyConsumptionDetails` added to the retired sets** — Documented in `AGENTS.md` and `references/schema-types.md` but present in no script. Confirmed retired April 24, 2025, replaced by the `Certification` type.
-
-### Changed
-
-- **`references/schema-types.md`** — `Practice Problem` and `Dataset` removed from the RETIRED table (both contradicted the rich-results-removed table above it); `Quiz` and `Dataset` rows added to RICH RESULTS REMOVED; `EnergyConsumptionDetails` added to RETIRED. FAQ tooling-sunset phases (search appearance filter, rich result report, and Rich Results Test in June 2026; Search Console API in August 2026) recorded and **explicitly attributed to secondary reporting** — Google deleted the FAQ documentation on June 15, 2026, so only the May 7, 2026 withdrawal is confirmable against Google's own changelog.
-
-- **`AGENTS.md` §19 and `references/procedures/19-quality-gates-hard-rules.md`** — Retired-schema list no longer lists Practice Problem; Dataset and Quiz notes clarified so docs and scripts agree.
-
-### Added
-
-- **Tests** — 18 regression tests in `tests/test_validate_schema.py` covering: rich-results-removed types stay `[info]` and never block, `FAQPage` carries no gov/health restriction, `Dataset` never triggers `_is_critical()`, truly retired types still block, and neither bogus practice-problem spelling is flagged. All 18 fail against the pre-fix code.
 
 ## [1.10.2] - 2026-08-12
 
