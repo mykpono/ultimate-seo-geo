@@ -14,6 +14,13 @@ article-*.md
 # Claude Code local settings
 .claude/
 
+# AXME Code agent storage (sessions, audit logs, knowledge base) — machine-local,
+# regenerated per session; 681 files / ~3.2 MB at time of writing
+.axme-code/
+
+# Local MCP server wiring — points at binaries installed on this machine
+.mcp.json
+
 # OS files
 .DS_Store
 Thumbs.db
