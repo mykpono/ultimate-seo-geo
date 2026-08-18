@@ -2,7 +2,7 @@
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.10.2 |
+| **Version** | 1.10.3 |
 | **Updated** | 2026-08-12 |
 | **License** | MIT |
 | **Author** | Myk Pono |
@@ -475,7 +475,7 @@ Triage: `(Business Impact × Ranking Impact) / Effort`. Map dependencies between
 - **Content recency boosts AI citations** — content under 3 months old receives ~3x citation rate (SE Ranking, 2026).
 - **Back-button hijacking** — Google spam policy. Sites manipulating browser back-button behavior risk manual action.
 - **FAQ rich results retired** — Google retired FAQ rich results for ALL sites on May 7, 2026. Keep existing FAQPage as AI/entity signal; do not recommend for Google rich results. Use QAPage for genuine Q&A.
-- **Retired schema (safe to remove):** SpecialAnnouncement, ClaimReview, VehicleListing, Practice Problem, EstimatedSalary, LearningVideo, EnergyConsumptionDetails, CourseInfo. Note: Dataset is NOT discontinued.
+- **Retired schema (safe to remove):** SpecialAnnouncement, ClaimReview, VehicleListing, EstimatedSalary, LearningVideo, EnergyConsumptionDetails, CourseInfo. Note: Dataset is NOT discontinued (Dataset Search still consumes it). Practice Problem is not removable either — its markup is `@type: Quiz`, which remains a valid schema.org type; treat it as rich-results-removed, not retired.
 - **HowTo / FAQPage:** Rich results removed but schema still valid — do NOT recommend removal.
 
 ---

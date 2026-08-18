@@ -116,8 +116,7 @@ def _validate_schema_object(
         "LearningVideo": "retired June 2025",
         "ClaimReview": "retired June 2025 — fact-check rich results discontinued",
         "VehicleListing": "retired June 2025 — vehicle listing structured data discontinued",
-        "PracticeProblem": "retired late 2025 — rich results discontinued",
-        "Dataset": "retired late 2025 — rich results discontinued",
+        "EnergyConsumptionDetails": "retired April 24, 2025 — replaced by the Certification type",
     }
     if schema_type in retired:
         errors.append(f"{prefix}: @type '{schema_type}' is {retired[schema_type]}")
@@ -127,14 +126,12 @@ def _validate_schema_object(
     # and content understanding. Do NOT recommend removal.
     no_rich_results = {
         "HowTo": "Google removed HowTo rich results (Sept 2023) but schema is still valid — keep for Bing, AI systems, and content understanding",
+        "FAQPage": "Google withdrew FAQ rich results for all sites (May 7, 2026) but schema is still valid — keep as an AI/entity signal; do not remove",
+        "Dataset": "Dataset markup is consumed by Dataset Search only, not general Google Search (clarified Nov 5, 2025) — still valid and supported; keep it",
+        "Quiz": "Google retired the practice problem rich result (Jan 2026) but schema.org Quiz is still valid — keep for Bing, AI systems, and content understanding",
     }
     if schema_type in no_rich_results:
         errors.append(f"[info] {prefix}: {no_rich_results[schema_type]}")
-
-    # Check for restricted types used incorrectly
-    restricted = {"FAQPage": "restricted to government and healthcare sites only (Aug 2023)"}
-    if schema_type in restricted:
-        errors.append(f"{prefix}: @type '{schema_type}' is {restricted[schema_type]} — verify site qualifies")
 
     return errors
 

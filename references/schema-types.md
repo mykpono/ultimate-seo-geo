@@ -51,8 +51,10 @@ These types no longer generate Google rich results but are still valid Schema.or
 
 | Type | Status | Since | Keep? | Notes |
 |---|---|---|---|---|
-| **FAQPage** | Google retired FAQ rich results for ALL sites | May 7, 2026 | **Yes — keep as AI/entity signal** | Supersedes the Aug 2023 gov/health restriction. No Google SERP feature benefit for any site. Still provides signal to non-Google AI systems. Flag existing at Info priority (not Critical removal). Use **QAPage** for genuine user Q&A pages. |
+| **FAQPage** | Google retired FAQ rich results for ALL sites | May 7, 2026 | **Yes — keep as AI/entity signal** | Supersedes the Aug 2023 gov/health restriction. No Google SERP feature benefit for any site. Still provides signal to non-Google AI systems. Flag existing at Info priority (not Critical removal). Use **QAPage** for genuine user Q&A pages. Tooling sunset followed in phases — see below. |
 | **HowTo** | Google rich results removed | September 2023 | **Yes — keep** | Bing still renders HowTo rich results; AI systems parse it for citations; valid structured data |
+| **Quiz** (practice problems) | Google retired the practice problem rich result | January 2026 | **Yes — keep** | `Quiz` is the real `@type` behind Google's "practice problem" feature (there is no `PracticeProblem`/`PracticeProblems` type — both 404 on schema.org). Still a valid schema.org type under `LearningResource`. |
+| **Dataset** | Scope clarified, not retired | November 5, 2025 | **Yes — keep** | Consumed by Dataset Search, not general Google Search. Markup remains fully supported — never flag as retired. |
 | **Sitelinks Search Box** | Removed from Search UI | Jan 2026 | Optional | WebSite SearchAction no longer shows in results but causes no harm |
 
 > **Decision tree for FAQPage (post May 2026):**
@@ -60,6 +62,14 @@ These types no longer generate Google rich results but are still valid Schema.or
 > - **Existing FAQPage on site?** → Keep. Flag at Info priority. Still aids non-Google AI systems.
 > - **Genuine user Q&A page?** → Use **QAPage** (the correct type for real user-generated Q&A).
 > - **Removing FAQPage?** → Do not recommend removal. Causes no harm.
+>
+> **FAQ tooling sunset phases.** Google removed the FAQ documentation itself on June 15, 2026, so the
+> phase dates below can no longer be confirmed against Google Search Central and are recorded here from
+> **secondary reporting only** (Search Engine Journal, May 2026) — treat as unverified:
+> - *Reported June 2026* — FAQ search appearance filter, rich result report, and Rich Results Test support removed.
+> - *Reported August 2026* — Search Console API stops returning FAQ data.
+>
+> Only the May 7, 2026 rich-result withdrawal is confirmed by Google's own changelog.
 
 ## RETIRED — Safe to remove (no longer processed)
 
@@ -73,8 +83,11 @@ These types are truly retired — search engines no longer process them at all. 
 | **LearningVideo** | Retired from rich results | June 2025 | Use VideoObject instead |
 | **VehicleListing** | Retired from rich results | June 2025 | Discontinued |
 | **CourseInfo** | Merged into Course | June 2025 | Use Course instead |
-| **Practice Problem** | Retired from rich results | Late 2025 | |
-| **Dataset** | Active for Dataset Search (not discontinued) | N/A | Move to Active if using Dataset Search |
+| **EnergyConsumptionDetails** | Replaced by Certification | April 24, 2025 | Migrate to the `Certification` type |
+
+**Not in this table, despite common belief:** `Dataset` (scope-limited to Dataset Search, still fully
+supported) and `Quiz` / "practice problems" (the rich result ended, the schema.org type did not). Both
+are listed under RICH RESULTS REMOVED above — never flag either as retired.
 
 ## YMYL-SENSITIVE — Require verified credentials before recommending
 
