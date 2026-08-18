@@ -58,12 +58,15 @@ STOP_WORDS = {
     "than", "then", "there", "their", "they", "would", "could", "here",
 }
 
-# Deprecated / restricted schema types (as of Feb 2026)
+# Truly retired schema types — Google no longer processes these at all.
 DEPRECATED_SCHEMA = {
-    "HowTo", "SpecialAnnouncement", "CourseInfo", "EstimatedSalary",
-    "LearningVideo", "ClaimReview", "VehicleListing", "PracticeProblems",
+    "SpecialAnnouncement", "CourseInfo", "EstimatedSalary",
+    "LearningVideo", "ClaimReview", "VehicleListing",
+    "EnergyConsumptionDetails",
 }
-RESTRICTED_SCHEMA = {"FAQPage"}  # government / healthcare only
+# Rich results removed, but the schema is still valid — never recommend removal.
+# "Quiz" is the real @type behind Google's retired "practice problem" feature.
+NO_RICH_RESULTS = {"HowTo", "FAQPage", "Quiz", "Dataset"}
 
 
 # ---------------------------------------------------------------------------
@@ -275,10 +278,10 @@ def extract_structured_data(soup: BeautifulSoup) -> list:
 
         if schema_type in DEPRECATED_SCHEMA:
             status = "deprecated"
-            note = f"{schema_type} was deprecated/removed from rich results. Remove or replace."
-        elif schema_type in RESTRICTED_SCHEMA:
-            status = "restricted"
-            note = f"{schema_type} is restricted to government/healthcare authority sites only."
+            note = f"{schema_type} is retired — Google no longer processes this type. Remove or replace."
+        elif schema_type in NO_RICH_RESULTS:
+            status = "no_rich_results"
+            note = f"{schema_type} no longer produces a Google rich result, but the schema is still valid. Keep it."
 
         blocks.append({
             "@type": schema_type,
@@ -500,8 +503,8 @@ def detect_seo_issues(content: dict, structured_data: list, readability: dict) -
         for sd in structured_data:
             if sd.get("status") == "deprecated":
                 issues.append({"severity": "Critical", "area": "Schema", "finding": sd["note"], "fix": "Remove deprecated schema type immediately."})
-            elif sd.get("status") == "restricted":
-                issues.append({"severity": "Warning", "area": "Schema", "finding": sd["note"], "fix": "Remove FAQPage schema unless you are a government or healthcare authority site."})
+            elif sd.get("status") == "no_rich_results":
+                issues.append({"severity": "Info", "area": "Schema", "finding": sd["note"], "fix": "Keep this markup. Google no longer renders a rich result for it, but the schema remains valid and still aids Bing and AI systems. No action needed."})
 
     # Readability
     fre = readability.get("flesch_reading_ease")
@@ -622,7 +625,7 @@ def main():
 
     print(f"\nStructured Data ({len(structured_data)} block(s))")
     for sd in structured_data:
-        flag = "✅" if sd.get("status") == "active" else "🔴" if sd.get("status") == "deprecated" else "⚠️"
+        flag = "✅" if sd.get("status") == "active" else "🔴" if sd.get("status") == "deprecated" else "ℹ️" if sd.get("status") == "no_rich_results" else "⚠️"
         print(f"  {flag} @type: {sd.get('@type', 'Unknown')}  ({sd.get('status', 'unknown')})")
         if sd.get("note"):
             print(f"     → {sd['note']}")

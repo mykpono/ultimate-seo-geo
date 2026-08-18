@@ -129,3 +129,86 @@ def test_bracketed_placeholders_still_caught():
     errors = validate_jsonld(page('type="application/ld+json"', payload))
 
     assert any("placeholder" in e.lower() for e in errors), errors
+
+
+# --- schema status correctness (Task 1) -------------------------------------
+# Google retired several rich-result *features* without retiring the underlying
+# schema.org *types*. Conflating the two made the validator recommend deleting
+# valid markup, and made Dataset hard-block edits. Each test below fails against
+# the code as it stood before the accompanying fix.
+
+from validate_schema import _is_critical  # noqa: E402
+
+# Rich result gone, schema.org type still valid — must never block, never
+# advise removal. "Quiz" is the real @type behind Google's "practice problem"
+# feature; "PracticeProblem"/"PracticeProblems" are not schema.org types at all.
+KEEP_TYPES = ["FAQPage", "HowTo", "Quiz", "Dataset"]
+
+# Truly retired — Google no longer processes these, so blocking is correct.
+RETIRED_TYPES = ["SpecialAnnouncement", "EnergyConsumptionDetails"]
+
+
+def _errors_for(schema_type):
+    return validate_jsonld(page(
+        'type="application/ld+json"',
+        {"@context": "https://schema.org", "@type": schema_type, "name": "A real name"},
+    ))
+
+
+@pytest.mark.parametrize("schema_type", KEEP_TYPES)
+def test_keep_types_are_informational_only(schema_type):
+    """Valid-but-no-rich-result types must not be critical (exit code 2)."""
+    errors = _errors_for(schema_type)
+    assert errors, f"{schema_type} should still produce an informational note"
+    assert all(e.startswith("[info]") for e in errors), errors
+    assert not any(_is_critical(e) for e in errors), errors
+
+
+@pytest.mark.parametrize("schema_type", KEEP_TYPES)
+def test_keep_types_advise_keeping(schema_type):
+    """§19 hard rule 10: the note must tell the user to keep the markup.
+
+    Asserted positively on purpose. These notes legitimately contain the words
+    "removed"/"retired" when describing what Google did to the *rich result*
+    ("Google removed HowTo rich results", "do not remove"), so a bare substring
+    ban cannot separate description from advice.
+    """
+    joined = " ".join(_errors_for(schema_type)).lower()
+    assert "keep" in joined, joined
+    assert "still valid" in joined or "still supported" in joined, joined
+
+
+@pytest.mark.parametrize("schema_type", KEEP_TYPES)
+def test_keep_types_survive_retired_keyword_matching(schema_type):
+    """The [info] prefix short-circuits _is_critical() before keyword matching.
+
+    Guards the Dataset/Quiz regression specifically: a note may describe a
+    retirement without the message itself being treated as critical.
+    """
+    for err in _errors_for(schema_type):
+        assert err.startswith("[info]")
+        assert _is_critical(err) is False
+
+
+def test_faqpage_has_no_government_healthcare_restriction():
+    """The Aug 2023 gov/health restriction was superseded on May 7, 2026."""
+    joined = " ".join(_errors_for("FAQPage")).lower()
+    assert "government" not in joined and "healthcare" not in joined, joined
+    assert "verify site qualifies" not in joined, joined
+
+
+def test_dataset_does_not_block_edits():
+    """Dataset was never retired — it is scope-limited to Dataset Search."""
+    assert not any(_is_critical(e) for e in _errors_for("Dataset"))
+
+
+@pytest.mark.parametrize("schema_type", RETIRED_TYPES)
+def test_truly_retired_types_still_block(schema_type):
+    """The fix must not blunt detection of genuinely retired types."""
+    assert any(_is_critical(e) for e in _errors_for(schema_type))
+
+
+@pytest.mark.parametrize("bogus", ["PracticeProblem", "PracticeProblems"])
+def test_nonexistent_practice_problem_types_are_not_flagged(bogus):
+    """Neither spelling is a real schema.org type; both 404. Only Quiz is real."""
+    assert not any(_is_critical(e) for e in _errors_for(bogus))

@@ -205,11 +205,15 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
                 result["links"]["external"].append(link_data)
 
     # Schema (JSON-LD) — enhanced with type validation
+    # Truly retired — Google no longer processes these at all.
     DEPRECATED_SCHEMA = {
-        "HowTo", "SpecialAnnouncement", "CourseInfo", "EstimatedSalary",
-        "LearningVideo", "ClaimReview", "VehicleListing", "PracticeProblems",
+        "SpecialAnnouncement", "CourseInfo", "EstimatedSalary",
+        "LearningVideo", "ClaimReview", "VehicleListing",
+        "EnergyConsumptionDetails",
     }
-    RESTRICTED_SCHEMA = {"FAQPage"}  # government/healthcare only
+    # Rich results removed, but the schema is still valid — never recommend removal.
+    # "Quiz" is the real @type behind Google's retired "practice problem" feature.
+    NO_RICH_RESULTS = {"HowTo", "FAQPage", "Quiz", "Dataset"}
 
     for script in soup.find_all("script", type="application/ld+json"):
         try:
@@ -227,10 +231,10 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
 
         if schema_type in DEPRECATED_SCHEMA:
             status = "deprecated"
-            note = f"{schema_type} was deprecated/removed from rich results. Remove or replace."
-        elif schema_type in RESTRICTED_SCHEMA:
-            status = "restricted"
-            note = f"{schema_type} is restricted to government/healthcare authority sites only."
+            note = f"{schema_type} is retired — Google no longer processes this type. Remove or replace."
+        elif schema_type in NO_RICH_RESULTS:
+            status = "no_rich_results"
+            note = f"{schema_type} no longer produces a Google rich result, but the schema is still valid. Keep it."
 
         result["schema"].append({
             "@type": schema_type,
