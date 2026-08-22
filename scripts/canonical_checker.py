@@ -709,6 +709,14 @@ def main():
         for rec in result["recommendations"]:
             print(f"  💡 {rec}")
 
+    if result.get("issues") or result.get("warnings"):
+        print(
+            "\nTimeframe: Google's canonicalization guide (updated 2026-07-10) states that after"
+            "\nthe underlying content issues are fixed, re-evaluation can take UP TO TWO WEEKS."
+            "\nThat is a ceiling, not an estimate — Google publishes no median. Do not re-fix or"
+            "\nre-diagnose inside that window; you would be reading pre-change state."
+        )
+
 
 if __name__ == "__main__":
     main()

@@ -93,8 +93,14 @@ python scripts/validate_schema.py page.html --json
 # Check AI crawler access
 python scripts/robots_checker.py https://example.com
 
-# Check llms.txt
+# Check llms.txt (non-Google engines only — Google Search ignores it)
 python scripts/llms_txt_checker.py https://example.com
+
+# Check the preferred sources opt-in (news/publisher sites)
+python scripts/preferred_sources_checker.py https://example.com
+
+# Import a hand-exported GSC generative-AI performance CSV (no API exists)
+python scripts/gsc_ai_import.py ai-performance-export.csv --json
 
 # Regression: score a transcript against eval fixtures
 python scripts/score_eval_transcript.py --all-fixtures

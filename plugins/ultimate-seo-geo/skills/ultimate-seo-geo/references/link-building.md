@@ -88,6 +88,7 @@ Concentrate internal links toward:
 - Exact-match anchor text concentration > 20% of profile
 - Links from foreign-language spam networks
 - Links acquired via link farms, PBNs, or paid link schemes (violates Google's spam policy)
+- **Paid or placed *citations* aimed at AI answers** — since May 15, 2026 Google's spam policy explicitly covers attempts to manipulate generative AI responses, so buying a mention to be cited in AI Overviews or AI Mode carries the same penalties as buying a link. See § 19 rule 10c
 - Sudden unexplained spike from low-quality domains
 
 **Disavow file format:**

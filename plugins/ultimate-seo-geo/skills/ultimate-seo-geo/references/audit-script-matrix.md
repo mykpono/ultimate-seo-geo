@@ -1,4 +1,4 @@
-<!-- Updated: 2026-03-26 | Review: 2026-06-26 -->
+<!-- Updated: 2026-08-22 | Review: 2027-02-22 -->
 
 # Audit steps ↔ diagnostic scripts
 
@@ -11,7 +11,9 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Security headers | §4 | `security_headers.py` | `python scripts/security_headers.py URL --json` |
 | Open Graph / Twitter | §4 | `social_meta.py` | `python scripts/social_meta.py URL --json` |
 | Redirect chains | §4, §20 | `redirect_checker.py` | `python scripts/redirect_checker.py URL --json` |
-| llms.txt | §3 | `llms_txt_checker.py` | `python scripts/llms_txt_checker.py URL --json` |
+| llms.txt (non-Google engines; Google ignores it) | §3 | `llms_txt_checker.py` | `python scripts/llms_txt_checker.py URL --json` |
+| Preferred sources opt-in (publishers) | §3 | `preferred_sources_checker.py` | `python scripts/preferred_sources_checker.py URL --json` |
+| GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |
 | Broken links (single page) | §9 | `broken_links.py` | `python scripts/broken_links.py URL --json` |
 | Broken links (site-wide) | §9, §11 | `broken_links.py` | `python scripts/broken_links.py URL --crawl --depth 2 --json` |
 | Internal links / orphans / redirects | §9, §11 | `internal_links.py` | `python scripts/internal_links.py URL --depth 1 --json` |

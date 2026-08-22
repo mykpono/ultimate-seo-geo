@@ -5,6 +5,13 @@ Check for llms.txt file and validate its format.
 llms.txt is a proposed standard for providing LLM-friendly site information.
 See: https://llmstxt.org/
 
+NOT a Google Search signal. Google confirmed in June 2026 that Search ignores
+llms.txt entirely -- it neither helps nor hurts visibility, including in AI
+Overviews and AI Mode. This checker reports presence and format quality for the
+benefit of non-Google systems that read the file. A missing or low-scoring
+llms.txt is informational: it must never be scored as a Google SEO or Google AI
+citation defect. See references/ai-search-geo.md, "llms.txt Standard".
+
 Usage:
     python llms_txt_checker.py https://example.com
     python llms_txt_checker.py https://example.com --json
@@ -77,7 +84,9 @@ def check_llms_txt(url: str, timeout: int = 15) -> dict:
             _parse_llms_txt(resp.text, result)
             _score_quality(result)
         elif resp.status_code == 404:
-            result["quality"]["issues"].append("🔴 No llms.txt found")
+            result["quality"]["issues"].append(
+                "➖ No llms.txt found — informational; Google Search ignores llms.txt"
+            )
             result["quality"]["suggestions"].append(
                 "Create /llms.txt with site name, description, and key page links"
             )
@@ -207,6 +216,12 @@ def main():
 
     if args.json:
         output = {k: v for k, v in result.items() if k != "content"}
+        output["google_search_signal"] = False
+        output["note"] = (
+            "Google Search ignores llms.txt (confirmed June 2026): it neither helps nor "
+            "hurts visibility, including AI Overviews and AI Mode. Report absence as "
+            "informational only, never as a Google SEO or Google AI citation defect."
+        )
         print(json.dumps(output, indent=2))
         return
 
@@ -225,7 +240,7 @@ def main():
         print(f"Links: {len(result['parsed']['links'])}")
         print(f"Quality Score: {result['quality']['score']}/100")
     else:
-        print(f"Status: 🔴 Not found (HTTP {result['status']})")
+        print(f"Status: ➖ Not found (HTTP {result['status']}) — not a Google Search defect")
 
     if result["full_exists"]:
         print(f"\nllms-full.txt: ✅ Found")
@@ -236,6 +251,13 @@ def main():
         print(f"\nIssues:")
         for issue in result["quality"]["issues"]:
             print(f"  {issue}")
+
+    print(
+        "\nNote: Google Search ignores llms.txt (confirmed June 2026) — it neither helps"
+        "\nnor hurts visibility, including in AI Overviews and AI Mode. These results are"
+        "\ninformational, for non-Google systems that read the file. Do not score them as"
+        "\na Google SEO or Google AI citation defect."
+    )
 
     if result["quality"]["suggestions"]:
         print(f"\nSuggestions:")

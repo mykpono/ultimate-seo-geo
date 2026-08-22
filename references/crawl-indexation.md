@@ -134,6 +134,24 @@ How often Google wants to crawl a URL based on:
 - Canonical should always use HTTPS
 - Canonical must match exactly (trailing slash consistency matters)
 
+### How Long a Canonical Fix Takes to Register
+
+Google's canonicalization troubleshooting guide was updated on **July 10, 2026** to set expectations:
+after the content issues behind a duplicate-page cluster are fixed, Google's systems can take **up to
+two weeks** to recognise the change and split the pages apart. Pages separate faster when the new
+content is more distinctly different from the rest of the cluster.
+
+**Read this precisely.** "Up to two weeks" is a ceiling, not an estimate. Google publishes no minimum,
+no median and no distribution, so it does **not** support "this usually takes two weeks", "most pages
+resolve in a week", or any average-case claim. State it as the ceiling it is.
+
+**What this changes in practice:**
+- Do not re-diagnose or re-fix a canonical change inside the two-week window — you will be reading
+  pre-change state and are likely to stack a second, conflicting fix on top of the first
+- Sequence canonical work early in a roadmap; it has the longest feedback delay of any on-page fix
+- When a client asks why nothing moved after three days, this is the answer — not a failed fix
+- If nothing has changed after two weeks, *then* treat the fix as ineffective and re-diagnose
+
 ### Canonical Decision Tree
 
 ```

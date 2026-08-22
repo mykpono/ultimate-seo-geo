@@ -120,6 +120,8 @@ Within `offers`, check:
 | Unique descriptions | ≥150 words of original content per product | Duplicate/thin content penalty if using manufacturer copy |
 | Review markup | `AggregateRating` only with real customer reviews | Google policy violation if fake or imported reviews |
 | Price signals | `priceValidUntil` set, `hasMerchantReturnPolicy` linked | Enables price drop rich results |
+| Product category | `Product.category` present | Added to merchant listing docs July 7, 2026 — accepts **Text** *or* **CategoryCode**; align with the Google Merchant Center feed spec so feed and markup agree |
+| Sale duration | Sale prices carry `priceSpecification` with `validFrom` / `validThrough` | Added July 7, 2026 — an open-ended sale price with no end date cannot be shown as a time-bound sale |
 | Product images | Multiple angles, WebP format, alt text with product name | Image search traffic, AI citation likelihood |
 | Internal linking | Link to related products, parent category, buying guides | Distributes link equity, improves crawl |
 
@@ -127,7 +129,35 @@ Within `offers`, check:
 - Only mark up reviews collected on your own site
 - Third-party review aggregation (imported from Amazon, etc.) is NOT allowed in schema
 - `AggregateRating` requires actual `reviewCount` and `ratingValue` from real reviews
-- Synthetic or incentivized reviews without disclosure → spam policy violation
+- **Fake and undisclosed incentivized reviews are barred outright** (review snippet guideline, added July 24, 2026). This is a **global Google Search guideline**, not only an EU UCP matter — it applies wherever the site operates. Two prohibited cases:
+  - Reviews not based on genuine experience of the product or service
+  - Reviews given in exchange for money, discounts, vouchers or free products **without clear and prominent disclosure**
+- The rule covers **both the visible page and the structured data** — disclosure buried in the markup while the page shows an unqualified rating still fails
+- Incentivised reviews are permitted *when disclosed clearly and prominently*. The defect is the missing disclosure, not the incentive — do not tell a client to delete a compliant incentivised-review programme
+
+**Sale pricing (July 7, 2026 guidance)** — a sale price needs its effective range stated, otherwise
+it is just a price. Use a nested `priceSpecification`:
+
+```json
+{
+  "@type": "Offer",
+  "price": "24.99",
+  "priceCurrency": "USD",
+  "priceValidUntil": "2026-12-31",
+  "priceSpecification": {
+    "@type": "UnitPriceSpecification",
+    "priceType": "https://schema.org/SalePrice",
+    "price": "24.99",
+    "priceCurrency": "USD",
+    "validFrom": "2026-08-01",
+    "validThrough": "2026-08-31"
+  }
+}
+```
+
+`Product.category` accepts either a free-text path or a `CategoryCode`. Whichever is used, it must
+match what the Merchant Center feed sends — a feed and markup that disagree on category is a
+consistency defect, not two independent signals.
 
 #### Step 7: Inventory & Availability Signals
 
