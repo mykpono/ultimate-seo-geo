@@ -205,6 +205,7 @@ Matters at >10,000 programmatic pages:
 | Location service pages | High | Genuinely unique local content per location |
 | City + keyword pages (no local data) | Very High | Only city name substituted = scaled content abuse |
 | Doorway pages (redirect to same content) | 🚫 Never | Google spam policy violation |
+| Pages generated at scale to capture AI citations | 🚫 Never | Google's spam policy has covered manipulation of generative AI responses since May 15, 2026; the Aug 18–21, 2026 spam update targeted scaled content. See § 19 rule 10c |
 
 ---
 

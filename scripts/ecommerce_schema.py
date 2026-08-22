@@ -180,6 +180,19 @@ def validate_product_schema(obj: dict) -> list[dict]:
             "fix": "Add at least one of: sku, gtin, or mpn. Required for Google Merchant features.",
         })
 
+    # Added to the merchant listing documentation on 2026-07-07. Accepts either a
+    # Text path or a CategoryCode; both are valid, so only absence is reportable.
+    if "category" not in obj:
+        findings.append({
+            "finding": "Product schema missing 'category'",
+            "severity": "info",
+            "fix": (
+                "Add 'category' to Product schema (documented 2026-07-07). Accepts Text "
+                "(e.g. 'Apparel > Shoes > Running') or a CategoryCode. Match the value the "
+                "Merchant Center feed sends — a feed and markup that disagree is a defect."
+            ),
+        })
+
     offers = obj.get("offers")
     if offers:
         if isinstance(offers, dict):
@@ -188,6 +201,41 @@ def validate_product_schema(obj: dict) -> list[dict]:
             for offer in offers:
                 if isinstance(offer, dict):
                     findings.extend(validate_offer_schema(offer))
+
+    return findings
+
+
+def _validate_sale_duration(obj: dict) -> list[dict]:
+    """Check sale-price effective dates.
+
+    Google documented a "Sale duration" section on 2026-07-07: a sale price is
+    expressed with a nested priceSpecification carrying validFrom/validThrough.
+    An open-ended sale price cannot be shown as a time-bound sale.
+
+    Only fires when the markup actually claims a sale. A plain price needs no
+    date range, so absence of priceSpecification is not itself a finding.
+    """
+    findings = []
+    spec = obj.get("priceSpecification")
+    specs = [spec] if isinstance(spec, dict) else [s for s in (spec or []) if isinstance(s, dict)]
+
+    for s in specs:
+        price_type = str(s.get("priceType", ""))
+        if "SalePrice" not in price_type:
+            continue
+        missing = [f for f in ("validFrom", "validThrough") if f not in s]
+        if missing:
+            findings.append({
+                "finding": (
+                    f"Sale priceSpecification missing {' and '.join(missing)}"
+                ),
+                "severity": "warning",
+                "fix": (
+                    "Add 'validFrom' and 'validThrough' (ISO 8601) to the SalePrice "
+                    "priceSpecification. Documented 2026-07-07 — without an effective range "
+                    "the sale price cannot be presented as time-bound."
+                ),
+            })
 
     return findings
 
@@ -226,6 +274,8 @@ def validate_offer_schema(obj: dict) -> list[dict]:
                 "severity": "critical",
                 "fix": "Add 'priceCurrency' (ISO 4217 code, e.g. 'USD') to Offer schema",
             })
+
+    findings.extend(_validate_sale_duration(obj))
 
     if "availability" not in obj:
         findings.append({
@@ -326,6 +376,26 @@ def validate_aggregate_rating(obj: dict) -> list[dict]:
             "severity": "warning",
             "fix": "Add 'reviewCount' (number of reviews) or 'ratingCount' (number of ratings)",
         })
+
+    # Google added a review snippet guideline on 2026-07-24 barring fake and
+    # undisclosed incentivized reviews, globally rather than only under EU UCP.
+    # No script can tell from markup whether a review was incentivized or whether
+    # the page discloses it, so this is a manual verification prompt, not a
+    # detected defect -- reporting it as a defect would violate the evidence rule
+    # in references/procedures/19-quality-gates-hard-rules.md (rule 1).
+    findings.append({
+        "finding": "Review policy requires manual verification (not detectable from markup)",
+        "severity": "info",
+        "requires_manual_check": True,
+        "fix": (
+            "Confirm with the site owner: (1) every marked-up review reflects genuine "
+            "experience of the product; (2) any review given in exchange for money, "
+            "discounts, vouchers or free products is disclosed clearly and prominently on "
+            "the page, not only in the markup. Guideline added 2026-07-24, global. "
+            "Disclosed incentivized reviews are permitted -- the defect is missing "
+            "disclosure, so do not recommend deleting a compliant programme."
+        ),
+    })
 
     return findings
 

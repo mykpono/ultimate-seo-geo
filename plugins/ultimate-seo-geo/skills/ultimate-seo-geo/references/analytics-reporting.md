@@ -1,12 +1,12 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-22 | Review: 2027-02-22 -->
 
 # Analytics & SEO Reporting
-## Updated: March 2026
+## Updated: August 2026
 
 ---
 
 
-**Contents:** Updated: March 2026 · Core Analytics Stack · Google Search Console — Key Reports · GA4 — SEO Reporting Setup · Rank Tracking · Algorithm Update Response Protocol · SEO ROI Reporting · SEO Performance Report — [Month YYYY] · GEO / AI Search Analytics · Analytics Scoring · Monthly Maintenance Checklist · Google's Official Stance — Myths & Misconceptions
+**Contents:** Updated: August 2026 · Core Analytics Stack · Google Search Console — Key Reports · Search Generative AI Performance Reports · GA4 — SEO Reporting Setup · Rank Tracking · Algorithm Update Response Protocol · SEO ROI Reporting · SEO Performance Report — [Month YYYY] · GEO / AI Search Analytics · Analytics Scoring · Monthly Maintenance Checklist · Google's Official Stance — Myths & Misconceptions
 
 ## Core Analytics Stack
 
@@ -50,6 +50,54 @@
 1. Sort pages by impressions descending → high impression / low clicks = CTR problem
 2. Sort by clicks descending → top performers to protect and expand
 3. Identify pages losing click share YoY → content audit candidates
+
+### Search Generative AI Performance Reports
+
+**Launched June 3, 2026.** The first direct measurement of how a site appears inside Google's AI
+surfaces. Before this, AI visibility on Google could only be inferred from proxies — that era is over
+for Google (it continues for every other engine; see § GEO / AI Search Analytics).
+
+**Two reports**, one for Search and one for Discover, covering impressions in generative AI features:
+AI Overviews, AI Mode, and Discover's AI features.
+
+| Available | Not available |
+|---|---|
+| Impressions | Clicks |
+| Breakdown by page | CTR |
+| Breakdown by country | Queries / prompts |
+| Breakdown by device | Conversions |
+| Date range, hourly to monthly | Position |
+
+**How to read it.** This is a *visibility* report, not a performance report. It answers "is my content
+being surfaced inside AI answers, and is that rising or falling" — it cannot answer "what is that
+worth". Pair it with GA4 for the downstream traffic question, and never present AI impressions as if
+they were sessions.
+
+> **⚠ No programmatic access.** These reports are **UI and manual CSV export only**. There is no
+> Search Console API endpoint, no BigQuery export, and no MCP that returns this data.
+> `searchanalytics.query`'s `type` field is **unchanged** — it still accepts only the pre-existing
+> search types and will never return AI Overviews or AI Mode impressions. Any workflow, dashboard, or
+> script claiming to pull AI impressions via the API is fabricating them. To use this data in an
+> audit, export the CSV by hand and ingest it with `scripts/gsc_ai_import.py`.
+
+**Rollout is partial.** Availability is limited to a subset of properties — a UK tranche went first
+under CMA pressure — and Google has published no completion timeline. **If the reports are absent from
+a property, that is a rollout gap, not a finding.** Do not report it as a site defect, and do not tell
+the user their site is excluded from AI features because of it.
+
+**AI features controls.** Search Console also exposes a control to remove a site's content from AI
+Overviews, AI Mode, and Discover AI. Opting out forfeits AI impressions and any traffic they produce
+but does **not** change ordinary Search ranking. Treat this as a **High-Risk deliverable** under § 19
+rule 11, alongside robots.txt and noindex: describe the consequence in plain language and never set it
+without explicit user confirmation.
+
+### Analysing social and video platform performance
+
+**Added July 29, 2026.** Google published a guide on using Search Console to analyse how a site's
+social and video platform content performs in Search. This is the measurement counterpart to the brand
+signal channels in `references/ai-search-geo.md` § Brand Mention Channels — where that reference says
+YouTube and Reddit presence correlates with AI citation, this report is how the resulting Search
+visibility gets measured rather than assumed.
 
 ### Coverage / Index Report
 
@@ -166,10 +214,25 @@ GSC shows CrUX (real user) data, which is what Google uses for rankings:
 
 | Update Type | Signals | Response |
 |---|---|---|
-| **Core update** | Broad traffic loss across site | E-E-A-T audit, content quality improvement |
-| **Helpful Content** | Thin, low-value pages hit hardest | Consolidate, rewrite, or delete thin content |
-| **Spam update** | Sudden dramatic loss | Check for manual action in GSC; backlink audit |
-| **SERP feature shift** | Impressions stable, clicks fall | AI Overview or featured snippet now present — optimize for these |
+| **Core update** | Broad traffic loss across site | E-E-A-T audit, content quality improvement. The helpful-content system was folded into core in 2024 — thin, low-value pages are handled here, via consolidation and rewriting, not as a separate update type |
+| **Spam update** | Sudden dramatic loss | Check for manual action in GSC; backlink audit; check scaled-content and AI-manipulation exposure (row below) |
+| **AI-answer manipulation** | Loss concentrated after a spam update, on pages or campaigns built to capture AI citations | Since May 15, 2026 Google's spam policy covers *"attempting to manipulate generative AI responses in Google Search."* Audit for bought or placed citations, recommendation-poisoning listicles, and coordinated posting aimed at citation capture. See § 19 rule 10c |
+| **SERP feature shift** | Impressions stable, clicks fall | AI Overview or featured snippet now present — optimize for these; confirm against the GSC Generative AI report rather than inferring |
+
+**Recent update history** (verify current state at the [Search Status Dashboard](https://status.search.google.com/summary), which is authoritative — third-party trackers routinely report updates Google never confirmed):
+
+| Update | Dates | Notes |
+|---|---|---|
+| **August 2026 spam update** | Aug 18–21, 2026 | Global, all languages. Most recent update of any kind |
+| **June 2026 spam update** | Jun 24–26, 2026 | First enforcement pass after the May 15 AI-manipulation policy change |
+| **May 2026 core update** | May 21 – Jun 2, 2026 | **The most recent core update.** There was no core update in July or August 2026 |
+| **March 2026 core update** | Mar 27 – Apr 8, 2026 | |
+| **March 2026 spam update** | Mar 24, 2026 | |
+| **February 2026 Discover update** | Feb 5–27, 2026 | |
+
+**Do not attribute a traffic change to an update that is not on the dashboard.** If a client reports a
+drop and no confirmed update covers the window, it is unconfirmed volatility or a site-side cause —
+say so rather than naming an update that Google never announced.
 
 ---
 
@@ -233,19 +296,34 @@ Organic Value = Organic Conversions × Avg. Lead Value
 
 ## GEO / AI Search Analytics
 
-Traditional analytics cannot capture AI-driven traffic directly. Use these proxies:
+AI visibility now splits into two cases, and conflating them produces bad reporting.
+
+**Google surfaces are measured directly.** Since June 3, 2026, AI Overviews and AI Mode impressions
+appear in Search Console's Search Generative AI performance reports. Use that report — do not infer
+Google AI visibility from proxies when a direct measurement exists. See § Search Generative AI
+Performance Reports above, including its no-API constraint.
+
+**Every other engine is still dark.** ChatGPT, Perplexity, Claude and Copilot publish nothing. The
+proxies below remain the only option there.
 
 ### What to Track
 
 | Metric | Tool | What It Indicates |
 |---|---|---|
+| **AI Overviews / AI Mode impressions** | GSC Generative AI report | **Direct measurement** on Google — impressions only, no clicks or queries |
 | **Perplexity referral traffic** | GA4 (source: perplexity.ai) | Perplexity citations — trackable |
 | **Direct traffic uplift** | GA4 | ChatGPT citations (no referrer header; appears as Direct) |
 | **Branded search impressions** | GSC | Brand visibility in AI-driven discovery |
-| **Zero-click impressions** | GSC | AI Overview presence (impressions without clicks) |
 | **Brand mention volume** | Google Alerts, Ahrefs Mentions | AI training signal health |
 
+> **Retired proxy:** "zero-click impressions in GSC ⇒ AI Overview presence" was the standard
+> workaround before June 2026. It is superseded and should no longer be used or recommended — zero-click
+> impressions have many causes, and the real number is now reported directly. Keep it only for
+> analysing date ranges that predate the report's availability on the property.
+
 ### Interpreting the "Dark Traffic" Problem
+
+This applies to **non-Google engines only**. For Google, use the Generative AI report above.
 
 ChatGPT Search does NOT pass referrer headers — traffic appears as **Direct** in GA4.
 

@@ -2,9 +2,123 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.12.0] - 2026-08-22
+
+Refresh of the Google-facing guidance against everything Google shipped between the last content
+update and 2026-08-22, verified against primary sources (the Search Status Dashboard and
+`developers.google.com/search/updates`) rather than third-party reporting. Two internal
+contradictions are resolved and a parity test added so they cannot silently return.
+
+### Added
+
+- **Search Generative AI performance reports** (`references/analytics-reporting.md`) — Google launched
+  direct measurement of AI Overviews / AI Mode impressions on June 3, 2026. The reference was dated
+  March 2026 and still taught that Google AI visibility could only be inferred from proxies. Documents
+  what the report does and does not contain (impressions by page/country/device/date; **no** clicks,
+  CTR, queries or position), that rollout is partial, and that the AI-features opt-out control is a
+  High-Risk deliverable under § 19 rule 11.
+  - **No-API warning recorded explicitly.** There is no Search Console API endpoint, no BigQuery
+    export, and `searchanalytics.query`'s `type` field is unchanged. Without this stated, the skill
+    would confidently invent an API call — a fabrication guard, not a footnote.
+
+- **`scripts/gsc_ai_import.py`** — Ingests the hand-exported generative-AI CSV and normalises it into
+  the row shape `gsc_query.py:format_rows()` produces. Manual export is the *only* mechanically
+  possible path, so `gsc_query.py` was deliberately **not** extended. Rejects a standard Performance
+  export rather than silently mis-reading it, and never synthesises the absent metrics.
+
+- **Preferred sources** (`references/ai-search-geo.md`, new § under Platform-Specific Optimization) —
+  Previously zero coverage. The Top Stories carousel went live *inside* AI Overviews on July 17, 2026
+  and surfaces the searcher's preferred sources, making this the only AI-answer visibility lever the
+  reader controls rather than the ranking system. Covers all three documented integration routes and
+  the host-level eligibility rule (`example.com` and `code.example.com` qualify; `example.com/blog`
+  does not).
+
+- **`scripts/preferred_sources_checker.py`** — Dependency-free, standard library only, matching
+  `faq_parity.py`. Detects the publisher.js tag, the button element, the deeplink and the advanced JS
+  API, and reports host-level eligibility. Catches the silent-failure case where the button element is
+  present but publisher.js is not loaded. Gated in `generate_report.py` on a publisher schema signal
+  (`NewsArticle`/`NewsMediaOrganization`/`LiveBlogPosting`) so it does not fire on every site.
+
+- **`AGENTS.md` § 19 / `19-quality-gates-hard-rules.md` — new rule 10c** — Google's spam policy
+  definition was rewritten on May 15, 2026 to cover *"attempting to manipulate generative AI responses
+  in Google Search"*, and the June 24 and August 18–21, 2026 spam updates enforced it. Bought or placed
+  citations, recommendation-poisoning listicles, and coordinated posting for citation capture are now
+  spam. **The carve-out is stated as a test, mirroring rule 10b:** the barred thing is the *stated
+  purpose*, not the channel. § 3's Quora, Reddit, YouTube and Wikipedia playbooks remain fully in
+  scope; the same action flips to spam when the goal becomes placement rather than usefulness.
+
+- **`tests/test_geo_signal_parity.py`** — 13 tests guarding the llms.txt fixes below across both trees.
+  Validated the way `test_schema_status_parity.py` was: each drift reintroduced one at a time and
+  confirmed caught (rubric row in either file, report severity re-escalation, and complete removal of
+  the checker's disclaimer).
+
+- **Product `category` and sale duration** (July 7, 2026) — `Product.category` (Text *or* CategoryCode)
+  and the `priceSpecification` `validFrom`/`validThrough` sale range were absent from the repo entirely.
+  Added to `references/procedures/24-ecommerce-seo.md` with markup examples, and validated in
+  `scripts/ecommerce_schema.py`. The sale-duration check only fires on markup that actually claims a
+  `SalePrice` — a plain price needs no date range.
+
+- **Canonical re-evaluation timeframe** (`references/crawl-indexation.md`, `canonical_checker.py`) —
+  Google's canonicalization guide was updated July 10, 2026: re-evaluation can take **up to two weeks**.
+  Recorded as the ceiling it is — Google publishes no minimum, median or distribution, so it does not
+  support "usually two weeks" or any average-case claim.
+
+- **Social and video platform performance guide** (July 29, 2026) — cross-linked to § Brand Mention
+  Channels, which asserted the YouTube/Reddit correlation without naming how the resulting Search
+  visibility gets measured.
+
 ### Changed
 
+- **llms.txt comes off the GEO scoring rubric** — The prose in `ai-search-geo.md` and
+  `03-geo-ai-search.md` already said Google ignores llms.txt (June 2026), while the GEO Health Score
+  rubric in **both** files still listed "llms.txt present" as a Technical Accessibility signal, and
+  "Create /llms.txt" sat at **#1** under GEO Medium Effort. This is the same doc/code drift 1.11.0
+  fixed for schema status: a green `check-plugin-sync.py` proves the trees are *identical*, never that
+  either is *correct*. Removed from both rubrics, demoted to last under Medium Effort and labelled
+  non-Google-only, and the GEO error-handling row rewritten from "note the absence" to "not a finding
+  for Google".
+
+- **Incentivized reviews promoted from EU-UCP framing to a global Google guideline**
+  (`24-ecommerce-seo.md`) — the review snippet guideline added July 24, 2026 applies wherever the site
+  operates. The rule covers the visible page *and* the structured data. Disclosed incentivized reviews
+  remain permitted — the defect is the missing disclosure, so the doc explicitly bars recommending
+  deletion of a compliant programme.
+
+- **Algorithm Update Response Protocol** (`analytics-reporting.md`) — added the Aug 18–21, 2026 spam
+  update and an AI-manipulation response row; folded the standalone "Helpful Content" row into core,
+  where it has belonged since 2024. Added a dated update-history table sourced from the Search Status
+  Dashboard, with an explicit instruction not to attribute a drop to an update Google never confirmed.
+  **There was no core update in July or August 2026** — the most recent is May 2026 — and several
+  third-party trackers claim otherwise.
+
 - **`.gitignore`** — Added `.axme-code/` (AXME agent session data, audit logs and knowledge base — ~681 files regenerated per session) and `.mcp.json` (MCP server wiring pointing at a locally installed binary). Both sat untracked in the repo root and appeared in every `git status`, making accidental inclusion in unrelated commits easy. Neither was ever tracked, so no history is affected. `.cursor/rules/*.md` is deliberately not ignored — those are authored shared agent rules rather than generated state.
+
+- **Retired the "zero-click impressions ⇒ AI Overview presence" proxy** — superseded by direct
+  measurement. Retained only for date ranges predating the report's availability on a property.
+
+- **`references/schema-types.md`** — the FAQ Search Console API sunset window (August 2026) is now
+  current. Re-checked and still not confirmable against any Google primary source, so the secondary
+  attribution stands. Added the actionable part: the documented failure mode is **silent nulls, not an
+  error**, so a pipeline that "still runs" is not evidence the data is still arriving.
+
+- **`scripts/llms_txt_checker.py`** — the Google position now travels with the script's own output
+  (docstring, human footer, and a `google_search_signal: false` field in JSON), because script output
+  is routinely pasted into reports without the surrounding reference docs. The `🔴` critical-failure
+  marker was replaced for a file whose absence has no Google Search effect.
+
+### Fixed
+
+- **`scripts/generate_report.py`** — the "No llms.txt found" finding was emitted at `warning`,
+  consuming Health Score and reviewer attention for a file Google does not read. Demoted to `info`
+  and retitled, with the June 2026 confirmation stated in the finding itself.
+
+- **`README.md` version badge** — stuck at 1.10.2 since the 1.11.0 release; now tracks the current
+  version.
+
+- **`references/audit-script-matrix.md`** — review date had lapsed (2026-06-26); refreshed along with
+  the two new script registrations.
 
 ## [1.11.0] - 2026-08-17
 

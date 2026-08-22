@@ -70,6 +70,13 @@ These types no longer generate Google rich results but are still valid Schema.or
 > - *Reported August 2026* — Search Console API stops returning FAQ data.
 >
 > Only the May 7, 2026 rich-result withdrawal is confirmed by Google's own changelog.
+>
+> **Status as of 2026-08-22.** The reported API window is now current, and re-checking found no Google
+> primary source either confirming or retracting it — the attribution above stands as secondary. Do not
+> report the API sunset as confirmed fact. What *is* actionable: any dashboard, BigQuery export or
+> scheduled job still querying FAQ rich-result data should be checked against live responses now, since
+> the documented failure mode is **silent nulls rather than an error**. A pipeline that "still runs"
+> is not evidence the data is still arriving.
 
 ## RETIRED — Safe to remove (no longer processed)
 

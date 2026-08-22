@@ -30,7 +30,7 @@
 | Citability | 25% | 134-167 word self-contained answer blocks, direct answer in first 40-60 words of section |
 | Structural Readability | 20% | Clean H1→H2→H3, question-based headings, 2-4 sentence paragraphs, tables, lists |
 | Authority & Brand Signals | 20% | Author bio + credentials, publication dates, citations, entity presence across platforms |
-| Technical Accessibility | 20% | AI crawlers allowed in robots.txt, server-side rendering, llms.txt present |
+| Technical Accessibility | 20% | AI crawlers allowed in robots.txt, server-side rendering, key content present in raw HTML |
 | Multi-Modal Content | 15% | Text + images + video + structured data (78% of cited sources combine these) |
 
 ### Platform-to-Dimension Mapping
@@ -134,6 +134,16 @@ Content under 3 months old receives approximately **3x the AI citation rate** co
 6. **arXiv / research** — for scientific/technical domains
 
 ### Tactical Playbooks per Channel
+
+> **⚠ Spam-policy boundary (§ 19 rule 10c).** Since **May 15, 2026** Google's spam policy covers
+> *"attempting to manipulate generative AI responses in Google Search"* — and the June 24 and
+> August 18–21, 2026 spam updates enforced it. **The test is the stated purpose, not the channel.**
+> Every playbook below is written around genuine contribution and stays in scope on that basis. The
+> same action flips to spam the moment the goal becomes placement rather than usefulness: answering a
+> Quora question well is fine, posting into threads *so that the AI cites you* is not. Coordinated
+> posting for citation capture, bought or placed citations, and recommendation-poisoning listicles
+> carry demotion, manual action, or deindexing. If a tactic only makes sense as a way to get cited,
+> it is the barred kind.
 
 **Quora**
 1. Search Quora for questions your content directly answers.
@@ -307,6 +317,53 @@ Content with multi-modal elements sees **156% higher AI selection rates**.
 - Question-based H2/H3 headings closely match AI Overview triggers
 - First 30% of content provides 44.2% of citations — front-load your answers
 - Semantic completeness (r=0.89): self-contained sections score 4.2× more citations
+- **Top Stories carousel inside AI Overviews** (live July 17, 2026, US mobile) surfaces the searcher's preferred sources on developing-news queries — see § Preferred Sources below
+
+### Preferred Sources — the one reader-controlled lever inside AI answers
+
+**Why this matters now.** On **July 17, 2026** the Top Stories carousel went live *inside* AI Overviews
+(US, mobile) for developing-news queries, and it surfaces each searcher's **preferred sources**. That
+changed preferred sources from a Top Stories nicety into a direct AI-answer visibility lever — the only
+one where the *reader*, not the ranking system, decides a publisher gets shown. Google documented a
+custom interactive button for it on **August 20, 2026**.
+
+**Who this is for.** News and publisher sites producing timely, dated content. It is **not** a general
+recommendation — on a site that never appears in Top Stories there is nothing to opt into, and raising
+it as a finding there is noise. Gate on the site actually publishing news-style content.
+
+**Eligibility — the part most often got wrong:**
+
+| Eligible | Not eligible |
+|---|---|
+| `https://www.example.com/` (domain) | `https://www.example.com/blog` (subdirectory) |
+| `https://code.example.com/` (subdomain) | any path below the host |
+
+Selection is host-level. A publication living in a subdirectory cannot be chosen as a preferred source;
+if that matters to the site, moving it to a subdomain is the structural prerequisite, and that is a
+migration decision (§ 20), not a quick win.
+
+**Implementation — recommended (auto-translated button, two lines):**
+```html
+<script async src="https://news.google.com/swg/js/v1/publisher.js"></script>
+<div google-add-preferred-source-btn></div>
+```
+
+**Advanced:** import the ES module or use the script callback to trigger the flow from custom UI, when
+the default button does not fit the design system.
+
+**Deeplink** (no JavaScript — use where scripts are constrained, e.g. AMP or an email footer):
+```
+https://www.google.com/preferences/source?q=https://www.example.com/
+```
+
+**Placement.** The button converts where reader intent already exists: article footers, the newsletter
+signup module, and the "thanks for reading" slot. A sitewide header button placed before the reader has
+read anything converts poorly. Users are returned to their previous location after selecting, so it is
+safe mid-article.
+
+**How to audit it:** `scripts/preferred_sources_checker.py <url>` detects all three integration routes
+and reports host-level eligibility. Reported at Info severity — its absence is a missed opportunity,
+never a defect.
 
 ### Google AI Mode (launched May 2025, powered by custom Gemini 2.5)
 - **Distinct citation engine** from AI Overviews — only 13.7% URL overlap (Ahrefs, 540K query pairs). Optimize separately.
@@ -352,13 +409,13 @@ Content with multi-modal elements sees **156% higher AI selection rates**.
 
 ## GEO Medium Effort
 
-1. Create `/llms.txt` file
-2. Expand author bio: years of experience, companies, publications, external links
-3. Build entity presence: LinkedIn articles, Reddit participation, YouTube channel
-4. Create Wikidata/Wikipedia entity for brand/key people
-5. Publish comparison tables on every decision-making post
-6. Add FAQ sections to top 5 long-form guides
-7. Pursue 3-5 guest posts/bylines on high-DA publications in your niche
+1. Expand author bio: years of experience, companies, publications, external links
+2. Build entity presence: LinkedIn articles, Reddit participation, YouTube channel
+3. Create Wikidata/Wikipedia entity for brand/key people
+4. Publish comparison tables on every decision-making post
+5. Add FAQ sections to top 5 long-form guides
+6. Pursue 3-5 guest posts/bylines on high-DA publications in your niche
+7. Create `/llms.txt` — **non-Google engines only**; Google Search ignores it (June 2026). Rank it last: it earns no Google visibility and no platform has confirmed it influences citation selection.
 
 ## GEO High Impact
 
@@ -503,7 +560,7 @@ How each AI platform selects sources differently:
 |---|---|
 | URL unreachable (DNS failure, connection refused) | Report the error clearly. Do not guess site content. Ask user to verify URL. |
 | AI crawlers blocked by robots.txt | Report exactly which crawlers are blocked and which are allowed. Provide specific robots.txt directives to add. |
-| No llms.txt found | Note the absence and generate a ready-to-use llms.txt template based on the site's content structure. |
+| No llms.txt found | **Not a finding for Google** — Google Search ignores llms.txt (June 2026), so absence costs nothing and presence earns nothing. Do not score it and do not raise it unscoped. Offer a generated template only if the user has named a non-Google AI engine as a target. |
 | No structured data detected | Report the gap and provide specific schema recommendations (Article, Organization, Person) for AI discoverability. |
 | Content is JS-rendered only | Flag that AI crawlers cannot execute JavaScript. Recommend SSR or pre-rendering. Test raw HTML vs. rendered DOM. |
 | Brand has zero external platform presence | Prioritize YouTube and Reddit first (highest correlation). Provide a 30-day brand mention launch plan. |

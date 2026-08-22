@@ -280,12 +280,49 @@ def build_environment_fixes(data: dict) -> list:
 
     if not llm.get("exists"):
         add(
-            "warning",
-            "No llms.txt found",
-            "AI coding agents have no curated machine-readable guidance for key pages. Do not treat llms.txt as a confirmed AI-search ranking or citation lever.",
+            "info",
+            "No llms.txt found (not a Google Search signal)",
+            "Google confirmed in June 2026 that Search ignores llms.txt: it neither helps nor hurts "
+            "visibility, including in AI Overviews and AI Mode. Absence costs nothing on Google. "
+            "Some non-Google systems read the file, but no platform has confirmed it influences "
+            "citation selection. Informational only — do not prioritise this over crawler access, "
+            "indexation, citability, or entity signals.",
             _platform_hint(platform, "llms"),
-            leading_indicator="/llms.txt returns 200 and is well-formed; AI-search visibility is still measured through crawler access, indexation, entities, and citations.",
+            leading_indicator="Not applicable — llms.txt has no measurable Google Search effect. Track AI visibility through crawler access, indexation, entities, and citations instead.",
         )
+
+    # Preferred sources is a news/publisher lever (see references/ai-search-geo.md).
+    # Raising it on a site that never appears in Top Stories is noise, so gate the
+    # finding on a publisher signal rather than reporting it everywhere.
+    ps = data["sections"].get("preferred_sources", {})
+    schema_types = {
+        str(s.get("@type", "")) for s in (op.get("schema") or []) if isinstance(s, dict)
+    }
+    looks_like_publisher = bool(schema_types & {"NewsArticle", "NewsMediaOrganization", "LiveBlogPosting"})
+    if ps and not ps.get("error") and looks_like_publisher:
+        integ = ps.get("integration", {})
+        if integ.get("button_element") and not integ.get("publisher_js"):
+            add(
+                "warning",
+                "Preferred sources button present but publisher.js is not loaded",
+                "The <div google-add-preferred-source-btn> placeholder renders nothing without the "
+                "Google publisher script, so the opt-in is silently broken for every reader.",
+                'Add <script async src="https://news.google.com/swg/js/v1/publisher.js"></script> before the button element.',
+                leading_indicator="The button renders and readers can select the site as a preferred source.",
+            )
+        elif not ps.get("implemented"):
+            add(
+                "info",
+                "No preferred sources opt-in found",
+                "This site publishes news-style content but offers readers no way to mark it as a "
+                "preferred source. Preferred sources drive the 'preferred' badge and more prominent "
+                "Top Stories placement, and since July 17, 2026 can surface inside AI Overviews on "
+                "developing-news queries — the only AI-answer lever the reader controls.",
+                "Add the documented two-line button near existing reader intent (article footer or "
+                'newsletter module): <script async src="https://news.google.com/swg/js/v1/publisher.js">'
+                "</script> followed by <div google-add-preferred-source-btn></div>.",
+                leading_indicator="Preferred-source selections rise; Top Stories placement carries the 'preferred' badge.",
+            )
 
     broken_count = bl.get("summary", {}).get("broken", 0)
     soft_404_count = bl.get("summary", {}).get("soft_404s", 0)
@@ -588,6 +625,7 @@ def collect_data(
         ("canonical", "canonical_checker.py", canonical_args),
         ("programmatic_seo", "programmatic_seo_auditor.py", [url, "--max-pages", "80"]),
         ("local_signals", "local_signals_checker.py", [url]),
+        ("preferred_sources", "preferred_sources_checker.py", [url]),
         ("indexnow_probe", "indexnow_checker.py", [url, "--probe"]),
     ]
 
