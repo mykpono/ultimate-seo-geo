@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![AGENTS.md](https://img.shields.io/badge/AGENTS.md-compatible-blue)](https://agents.md)
-[![Version](https://img.shields.io/badge/version-1.12.0-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.12.1-green.svg)](CHANGELOG.md)
 [![LLM-Agnostic](https://img.shields.io/badge/LLM--Agnostic-7%2B%20platforms-purple.svg)](#platform-compatibility)
 
 The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML, Excel, and PDF reports.
@@ -80,6 +80,22 @@ Built for **developers, founders, and marketers using AI coding agents** who wan
 | **Claude Desktop (claude.ai)** | Upload `SKILL.md` to Project Knowledge | No shell access | Manual upload |
 
 `AGENTS.md` is the [cross-tool standard](https://agents.md) (Linux Foundation, 20+ tools). One file covers all AGENTS.md-compatible platforms.
+
+> **Codex users — instruction budget.** Codex loads instruction files up to `project_doc_max_bytes`
+> (**32 KiB** by default) and **truncates silently** past that point: no warning in the TUI, `/stats`,
+> `exec`, or the VS Code extension, and everything after the cutoff is never sent to the model.
+>
+> That budget is **combined across every instruction file Codex loads in the directory hierarchy** —
+> this repo's `AGENTS.md` *plus* any `AGENTS.md` of your own further up the tree. `AGENTS.md` here is
+> kept under the default on its own, and a test (`tests/test_agents_md_size.py`) enforces it, but if
+> you also carry your own instruction files you may still hit the cap. Raise it in `~/.codex/config.toml`:
+>
+> ```toml
+> project_doc_max_bytes = 65536
+> ```
+>
+> Symptom to watch for: Codex behaving as though it has never heard of §§22–25 (drift monitoring,
+> semantic clustering, e-commerce, maps) — those sit at the end of the file and truncate first.
 
 ## Installation
 
@@ -239,7 +255,7 @@ ultimate-seo-geo/
 ```
 
 **Progressive disclosure for cross-platform support:**
-- **Layer 1** — `AGENTS.md` (~27KB): auto-loaded by AGENTS.md-compatible tools. Routing, condensed procedures, script reference, quality gates.
+- **Layer 1** — `AGENTS.md` (~32KB, held under Codex's 32 KiB default): auto-loaded by AGENTS.md-compatible tools. Routing index, condensed procedures, quality gates. The full script index lives in `references/audit-script-matrix.md`.
 - **Layer 2** — `SKILL.md` (routing shell) + `references/procedures/*.md` (detailed steps per §, now §1–§25) + topical `references/*.md` + `scripts/`: load only what the task needs.
 
 For Claude Code and Cursor, `SKILL.md` is loaded natively as a skill (small shell); hosts pull `references/procedures/` when a section’s detail is required. Other platforms use `AGENTS.md` plus explicit reads of procedure files as needed.

@@ -34,6 +34,17 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | JSON-LD validation | §5 | `validate_schema.py` | `python scripts/validate_schema.py file.html --json` |
 | Image alt coverage | §13 | `image_checker.py` | `python scripts/image_checker.py page.html --base-url URL --json` |
 | Programmatic SEO audit | §15 | `programmatic_seo_auditor.py` | `python scripts/programmatic_seo_auditor.py URL --depth 2 --max-pages 100 --json` |
+| Content quality signals | §6 | `content_quality.py` | `python scripts/content_quality.py URL --json` |
+| Content brief generation | §7 | `content_brief.py` | `python scripts/content_brief.py "target keyword" --json` |
+| Topic clustering (SERP overlap) | §23 | `topic_cluster.py` | `python scripts/topic_cluster.py --input serp_data.csv --format serp_overlap --json` |
+| E-commerce schema (Product/Offer) | §24 | `ecommerce_schema.py` | `python scripts/ecommerce_schema.py URL --json` |
+| Maps / GBP intelligence | §25 | `maps_checker.py` | `python scripts/maps_checker.py URL --json` |
+| Core Web Vitals history (CrUX) | §4 | `crux_history.py` | `python scripts/crux_history.py URL --metric lcp --json` |
+| SEO drift baseline / compare | §22 | `drift_monitor.py` | `python scripts/drift_monitor.py baseline URL` then `compare URL` |
+| GSC performance query (Tier 1) | §10 | `gsc_query.py` | `python scripts/gsc_query.py --property SITE --dimension page --json` |
+| GSC URL inspection export (Tier 1) | §10 | `gsc_export.py` | `python scripts/gsc_export.py --property SITE --sitemap-url URL` |
+| GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |
+| GA4 organic reporting (Tier 1) | §10 | `ga4_report.py` | `python scripts/ga4_report.py --property 123456789 --organic-only --json` |
 | Finding deduplication | §2 | `finding_verifier.py` | `python scripts/finding_verifier.py --findings-json references/finding-verifier-example.json --json` (see `references/finding-verifier-context-example.json` for optional `--context-json`) |
 
 ## Utilities (supporting tools)
@@ -46,6 +57,8 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | `backlink_analyzer.py` | 7-section backlink report from CSV exports (Ahrefs, Moz, Semrush) or built-in sample data (`python scripts/backlink_analyzer.py --source csv --input links.csv --json`) |
 | `score_eval_transcript.py` | Score a saved model reply vs `evals/evals.json` (`--eval-id N` or `--all-fixtures`) |
 | `fetch_page.py` | Fetch HTML to disk for manual inspection |
+| `render_page.py` | Render a page with Playwright (JS-heavy sites) so client-rendered content is visible to the other checkers |
+| `google_api_tier.py` | Report which Google API tier is available from configured credentials (`python scripts/google_api_tier.py --check`) |
 | `check-plugin-sync.py` | CI / release: verify plugin bundle matches repo root |
 
 ## Reference-only areas (no dedicated `.py` checker)
