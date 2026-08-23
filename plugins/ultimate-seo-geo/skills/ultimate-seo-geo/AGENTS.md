@@ -2,7 +2,7 @@
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.12.2 |
+| **Version** | 1.12.3 |
 | **Updated** | 2026-08-22 |
 | **License** | MIT |
 | **Author** | Myk Pono |

@@ -2,37 +2,78 @@
 
 ## [Unreleased]
 
-### Fixed
+_Nothing yet._
 
-Ran the arithmetic on every scoring rubric in the repo, after three of them were found unable to
-produce their own top grades. **All 24 weight columns across 13 files sum to 100%** — no weight bugs.
-The failures were all in aggregation and in worked examples.
+## [1.12.3] - 2026-08-23
+
+Two audits, both prompted by the same discovery: the previous release's "verified, no change needed"
+verdicts came from grepping for dates and statistics, and that cannot see a wrong fact, a broken
+formula, or a security regression. Reading the five files found defects in **all five**. Running the
+arithmetic on every scoring rubric found four more. None of the nine contained a date or an
+out-of-range number.
+
+### Fixed
 
 - **The canonical GEO worked example was wrong twice** (`audit-output-example.md`) — its headline
   said 41/100 while its own five rows compute to 42.5, and its Technical Accessibility row was docked
   to 70 with *"no llms.txt ❌"* given as a reason. That is a **fourth copy** of the llms.txt scoring
   contradiction, in the one place that propagates furthest: worked examples get copied verbatim.
   Corrected to 90 on that dimension and 47/100 overall.
-
 - **The Health Score example demonstrated a procedure and then did not follow it** — it computed
   `base=61, Critical −15×0, Warning −5×2 = 51`, then reported **61**, the pre-deduction base, via an
   unexplained *"→ adjusted 61."* The deductions were performed and silently discarded. Recomputed
   against the example's own findings (2 High + 1 Quick Win): 61 − 16 − 1 = **44**.
-
 - **Three different deduction schedules for one score** — `AGENTS.md` and `02-full-site-audit.md`
   said *Critical −15, Warning −5*; `19-quality-gates-hard-rules.md` rule 3, which **validates** the
   Health Score, said *Critical −15, High −8, Medium −3, Low −1*. The gate checked against a schedule
   the instructions did not use, and "Warning" is not a severity the audit output template emits at
   all. All three now carry the four-severity schedule, including the chain-of-thought template.
-
 - **The GEO Score and `content-eeat.md` stated weights but no aggregation formula** — the same
   ambiguity that let CITE and CORE-EEAT grade a perfect score as "Poor". Both now state: score each
   dimension 0–100, `Σ(weight × score)`, no further division.
-
 - **Verified correct, no change**: `eeat-framework.md` (states the formula and carries a worked
   example that computes exactly), `backlink-quality.md` (*"each factor scored 0–100 independently,
   then weighted"*). Reported because a negative result on a rubric that was checked is worth
   distinguishing from one that was not.
+- **A § 19 hard rule was factually wrong** (`19-quality-gates-hard-rules.md`, `AGENTS.md` § 18) —
+  *"GPTBot ≠ training only. Blocking it also limits ChatGPT Search citation. Users who block GPTBot
+  expecting only training-opt-out lose live search visibility."* OpenAI runs three independent
+  agents: `GPTBot` (training), `OAI-SearchBot` (ChatGPT Search index), `ChatGPT-User` (live
+  fetches). **Blocking one has no effect on the others.** `04-technical-seo.md` stated this
+  correctly a few files away. The rule told site owners that opting out of model training costs
+  them ChatGPT visibility — foreclosing a real licensing decision on a false premise. It survived in
+  the *myths* section, where readers go specifically to have misconceptions corrected.
+  - `tests/test_crawler_claims.py` added: 14 tests across both trees barring the false phrasing and
+    requiring the § 19 rule to name `OAI-SearchBot`. Validated by reintroducing the original wording.
+- **`keyword-strategy.md` priority formula could never produce its own top tier** — documented as
+  `Σ(Factor Weight × Score) / 5` with weights summing to 100% and scores 1–5. The weighted sum
+  already lands on 1–5; the `÷5` capped the maximum at **1.00**, which the priority table classifies
+  as *"P3 — track but don't prioritize."* A perfect keyword scored lowest. Division removed.
+- **`cite-domain-rating.md` and `core-eeat-framework.md` graded perfection as "Poor"** — items score
+  0/5/10, so dimension averages and the weighted total land on **0–10**, while the grade bands are
+  **0–100**. No normalisation was stated. A page or domain passing every item scores 10 and reads as
+  *"0–39 Poor"*. Both now specify ×10 before reading the bands.
+- **`site-migration.md` shipped an SSRF vector the repo had already closed** — an inline redirect
+  validator looping a migration map through `requests.get(old_url, allow_redirects=True)` with no
+  URL validation. That is exactly what `validate_url()` was added to `redirect_checker.py` to
+  prevent in v1.10.2: a redirect map is attacker-influenced input, and one `Location:` header
+  pointing at `169.254.169.254` walks the checker into a cloud metadata endpoint. Replaced with the
+  shipped `redirect_checker.py`, which validates per hop.
+  - Also: `scripts/crawl_urls.py` does not exist (→ `site_mapper.py`), and "resolve in ≤ 2 hops"
+    contradicted the same file's redirect-map rule and Common Mistakes table, both requiring
+    single-hop.
+- **`entity-optimization.md` signal 36 named the training-only crawler** — measuring AI *recognition*
+  (signals 28–29) while checking `GPTBot`, which has no bearing on it. Now names `OAI-SearchBot`,
+  `ChatGPT-User`, `PerplexityBot` and `ClaudeBot`.
+  - Its AI Entity Resolution Test also collapsed AI Overviews and AI Mode into one column, though
+    this repo documents them as distinct citation engines sharing only 13.7% URL overlap — hiding
+    exactly the gap the test exists to find. Split into separate columns; bands rescaled /48 → /60
+    with the original proportions preserved (75/50/25%).
+- **Sitelinks Searchbox presented as a live feature in three places** — `schema-types.md` records it
+  as removed from the Search UI in January 2026, yet `industry-templates.md` recommended `WebSite`
+  schema *for* it (×2), `schema-types.md` itself described it in the present tense, and
+  `analytics-reporting.md` listed its Search Console enhancement report. Corrected without
+  recommending removal of the markup, per § 19 rule 10.
 
 ### Added
 
@@ -47,51 +88,6 @@ Re-review of the five reference files that v1.12.2's predecessor marked *"verifi
 needed."* That verdict came from a grep for date-bearing and externally-sourced claims. Reading the
 files end to end found defects in **all five**, plus three contradictions they exposed elsewhere.
 The labels are corrected in place to say what the earlier pass actually did.
-
-- **A § 19 hard rule was factually wrong** (`19-quality-gates-hard-rules.md`, `AGENTS.md` § 18) —
-  *"GPTBot ≠ training only. Blocking it also limits ChatGPT Search citation. Users who block GPTBot
-  expecting only training-opt-out lose live search visibility."* OpenAI runs three independent
-  agents: `GPTBot` (training), `OAI-SearchBot` (ChatGPT Search index), `ChatGPT-User` (live
-  fetches). **Blocking one has no effect on the others.** `04-technical-seo.md` stated this
-  correctly a few files away. The rule told site owners that opting out of model training costs
-  them ChatGPT visibility — foreclosing a real licensing decision on a false premise. It survived in
-  the *myths* section, where readers go specifically to have misconceptions corrected.
-  - `tests/test_crawler_claims.py` added: 14 tests across both trees barring the false phrasing and
-    requiring the § 19 rule to name `OAI-SearchBot`. Validated by reintroducing the original wording.
-
-- **`keyword-strategy.md` priority formula could never produce its own top tier** — documented as
-  `Σ(Factor Weight × Score) / 5` with weights summing to 100% and scores 1–5. The weighted sum
-  already lands on 1–5; the `÷5` capped the maximum at **1.00**, which the priority table classifies
-  as *"P3 — track but don't prioritize."* A perfect keyword scored lowest. Division removed.
-
-- **`cite-domain-rating.md` and `core-eeat-framework.md` graded perfection as "Poor"** — items score
-  0/5/10, so dimension averages and the weighted total land on **0–10**, while the grade bands are
-  **0–100**. No normalisation was stated. A page or domain passing every item scores 10 and reads as
-  *"0–39 Poor"*. Both now specify ×10 before reading the bands.
-
-- **`site-migration.md` shipped an SSRF vector the repo had already closed** — an inline redirect
-  validator looping a migration map through `requests.get(old_url, allow_redirects=True)` with no
-  URL validation. That is exactly what `validate_url()` was added to `redirect_checker.py` to
-  prevent in v1.10.2: a redirect map is attacker-influenced input, and one `Location:` header
-  pointing at `169.254.169.254` walks the checker into a cloud metadata endpoint. Replaced with the
-  shipped `redirect_checker.py`, which validates per hop.
-  - Also: `scripts/crawl_urls.py` does not exist (→ `site_mapper.py`), and "resolve in ≤ 2 hops"
-    contradicted the same file's redirect-map rule and Common Mistakes table, both requiring
-    single-hop.
-
-- **`entity-optimization.md` signal 36 named the training-only crawler** — measuring AI *recognition*
-  (signals 28–29) while checking `GPTBot`, which has no bearing on it. Now names `OAI-SearchBot`,
-  `ChatGPT-User`, `PerplexityBot` and `ClaudeBot`.
-  - Its AI Entity Resolution Test also collapsed AI Overviews and AI Mode into one column, though
-    this repo documents them as distinct citation engines sharing only 13.7% URL overlap — hiding
-    exactly the gap the test exists to find. Split into separate columns; bands rescaled /48 → /60
-    with the original proportions preserved (75/50/25%).
-
-- **Sitelinks Searchbox presented as a live feature in three places** — `schema-types.md` records it
-  as removed from the Search UI in January 2026, yet `industry-templates.md` recommended `WebSite`
-  schema *for* it (×2), `schema-types.md` itself described it in the present tense, and
-  `analytics-reporting.md` listed its Search Console enhancement report. Corrected without
-  recommending removal of the markup, per § 19 rule 10.
 
 ## [1.12.2] - 2026-08-23
 
