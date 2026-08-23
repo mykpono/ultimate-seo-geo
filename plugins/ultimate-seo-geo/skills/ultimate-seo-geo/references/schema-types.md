@@ -71,28 +71,38 @@ These types no longer generate Google rich results but are still valid Schema.or
 >
 > Only the May 7, 2026 rich-result withdrawal is confirmed by Google's own changelog.
 >
-> **Status as of 2026-08-23 (re-checked).** Still **not confirmable**. Google's own changelog carries
-> only two FAQ entries — May 8, 2026 (deprecation notice; feature gone from Search as of May 7) and
-> June 15, 2026 (FAQ documentation removed). **Neither mentions Search Console, the Rich Results Test,
-> or the Search Console API.** The June/August phase dates exist only in secondary reporting.
+> **Status: CLOSED as unanswerable from available evidence (2026-08-23).**
 >
-> ⚠ **Known trap — do not "confirm" this by accident.** Searching Google's changelog for FAQ + Search
-> Console API returns text that looks like confirmation:
+> The reported August 2026 API sunset was investigated and **could not be confirmed or refuted**.
+> Treat the phase dates above as secondary reporting permanently — not as a question awaiting an
+> answer. Nothing further is pending.
+>
+> **What was established.** Google's changelog carries exactly two FAQ entries: **May 8, 2026**
+> (deprecation notice; feature gone from Search as of May 7) and **June 15, 2026** (FAQ documentation
+> removed). **Neither mentions Search Console, the Rich Results Test, or the Search Console API.**
+> The June and August phase dates exist only in secondary reporting, and the primary source that
+> would have carried them was deleted.
+>
+> **Why it cannot be settled here.** Confirming it requires an authenticated `searchAppearance`
+> query against a property that earned FAQ rich results before May 7, 2026. That is a property
+> requirement, not a tooling gap — no amount of work on this repo produces the data. The procedure
+> is preserved below for anyone who has such a property; running it is optional, and the conclusion
+> does not change until someone does.
+>
+> ⚠ **Known trap — do not "confirm" this by accident.** Searching Google's changelog for FAQ plus
+> Search Console API returns text that reads like confirmation:
 > *"we'll also be removing support for that feature in Search Console rich result reporting, the Rich
 > Result Test, and the list of Search appearance filters"* and *"The Search Console API will continue
 > to support the practice problem type through January 2026."*
 > **Those sentences are about the practice-problem deprecation, not FAQ.** That deprecation has an
-> identical phased shape (SERP feature → Search Console + Rich Results Test → API last) and near-identical
-> boilerplate, so it is easy to misattribute — and it is the most likely reason the secondary reporting
-> states the FAQ phases with such confidence. Check which feature an entry names before treating it as
-> evidence.
+> identical phased shape (SERP feature → Search Console + Rich Results Test → API last) and
+> near-identical boilerplate, so it misattributes easily — and it is the likeliest reason the
+> secondary reporting states the FAQ phases so confidently. Check which feature an entry names before
+> treating it as evidence. **This is the standing rule; it outlives the question.**
 >
-> **What would actually settle it — two queries over different windows, not one.**
->
-> The obvious framing ("find a property with FAQ history, then test it") is circular: whether a
-> property *had* FAQ impressions is itself only answerable through the same authenticated API, and
-> the Search Console UI cannot help — its FAQ search-appearance filter was removed in June 2026.
-> Run both windows in one sitting:
+> **The procedure, if you ever have the data** — two windows, run together. The single-query framing
+> is circular: whether a property *had* FAQ impressions is only answerable through the same API, and
+> Search Console's FAQ search-appearance filter was itself removed in June 2026.
 >
 > ```bash
 > # 1. Historical — did this property ever earn FAQ rich results?
@@ -103,43 +113,25 @@ These types no longer generate Google rich results but are still valid Schema.or
 > python scripts/gsc_query.py sc-domain:example.com --dimension searchAppearance --days 90 --json
 > ```
 >
-> Both need `GSC_CREDENTIALS` or `GOOGLE_APPLICATION_CREDENTIALS`. Window 1 ends **2026-05-06**, the
-> day before FAQ rich results were withdrawn. Window 2 uses 90 days because a shorter one can return
-> nothing simply for lack of impressions, which looks identical to withdrawal.
->
-> **Reading the pair:**
->
 > | Window 1 (historical) | Window 2 (current) | Conclusion |
 > |---|---|---|
-> | FAQ row present | FAQ row present | **API sunset did not happen** — or has not yet |
+> | FAQ row present | FAQ row present | API sunset did not happen, or has not yet |
 > | FAQ row present | FAQ row absent | **Sunset confirmed** for this property |
-> | FAQ row absent | FAQ row absent | **Ambiguous** — either the property never earned FAQ results, or the removal was applied retroactively to historical data |
-> | FAQ row absent | FAQ row present | Contradictory; re-check the date range before concluding anything |
+> | FAQ row absent | FAQ row absent | Ambiguous — either the property never earned FAQ results, or removal reached historical data |
+> | FAQ row absent | FAQ row present | Contradictory; re-check the date range |
 >
-> **Disambiguating the ambiguous row is the one part that works without credentials.** FAQ rich
-> results required `FAQPage` markup, so a site that never had the markup certainly never earned
-> them:
+> Disambiguating row 3 is the only part that works without credentials: FAQ rich results required
+> `FAQPage` markup, so a site that never carried it certainly never earned them. Run
+> `python scripts/validate_schema.py saved-page.html --json` against **archived** copies of pages that
+> ranked before May 2026 — markup removed since would make an eligible property look ineligible. The
+> hit is the `[info]` line about the FAQ withdrawal; the output never prints the literal string
+> `FAQPage`.
 >
-> ```bash
-> python scripts/validate_schema.py saved-page.html --json
-> ```
->
-> The hit to look for is the `[info]` line reading *"Google withdrew FAQ rich results for all sites
-> (May 7, 2026) but schema is still valid"* — the output does **not** print the literal string
-> `FAQPage`, so grepping for that finds nothing on a page that has it. Check archived copies
-> (Wayback) of pages that ranked before May 2026, not just the live site: markup removed since then
-> would make a property look ineligible when it was not.
->
-> If the site demonstrably carried `FAQPage` markup on indexed pages before May 2026 **and** window 1
-> returns no FAQ row, that is evidence the removal reached historical data — a materially different
-> finding from the reported sunset, and worth recording separately.
->
-> Absence of the markup makes the whole exercise moot on that property: pick a different one.
->
-> **Actionable regardless of confirmation**: any dashboard, BigQuery export or scheduled job still
-> querying FAQ rich-result data should be checked against live responses, because the documented
-> failure mode is **silent nulls rather than an error**. A pipeline that "still runs" is not evidence
-> the data is still arriving.
+> **Actionable regardless, and the reason this matters at all**: any dashboard, BigQuery export or
+> scheduled job still querying FAQ rich-result data should be checked against live responses. The
+> documented failure mode is **silent nulls rather than an error** — a pipeline that "still runs" is
+> not evidence the data is still arriving. This holds whether or not the sunset is ever confirmed,
+> which is why closing the question costs nothing operationally.
 
 ## RETIRED — Safe to remove (no longer processed)
 
