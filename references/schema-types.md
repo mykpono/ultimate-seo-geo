@@ -71,12 +71,31 @@ These types no longer generate Google rich results but are still valid Schema.or
 >
 > Only the May 7, 2026 rich-result withdrawal is confirmed by Google's own changelog.
 >
-> **Status as of 2026-08-22.** The reported API window is now current, and re-checking found no Google
-> primary source either confirming or retracting it — the attribution above stands as secondary. Do not
-> report the API sunset as confirmed fact. What *is* actionable: any dashboard, BigQuery export or
-> scheduled job still querying FAQ rich-result data should be checked against live responses now, since
-> the documented failure mode is **silent nulls rather than an error**. A pipeline that "still runs"
-> is not evidence the data is still arriving.
+> **Status as of 2026-08-23 (re-checked).** Still **not confirmable**. Google's own changelog carries
+> only two FAQ entries — May 8, 2026 (deprecation notice; feature gone from Search as of May 7) and
+> June 15, 2026 (FAQ documentation removed). **Neither mentions Search Console, the Rich Results Test,
+> or the Search Console API.** The June/August phase dates exist only in secondary reporting.
+>
+> ⚠ **Known trap — do not "confirm" this by accident.** Searching Google's changelog for FAQ + Search
+> Console API returns text that looks like confirmation:
+> *"we'll also be removing support for that feature in Search Console rich result reporting, the Rich
+> Result Test, and the list of Search appearance filters"* and *"The Search Console API will continue
+> to support the practice problem type through January 2026."*
+> **Those sentences are about the practice-problem deprecation, not FAQ.** That deprecation has an
+> identical phased shape (SERP feature → Search Console + Rich Results Test → API last) and near-identical
+> boilerplate, so it is easy to misattribute — and it is the most likely reason the secondary reporting
+> states the FAQ phases with such confidence. Check which feature an entry names before treating it as
+> evidence.
+>
+> **What would actually settle it**: an authenticated `searchanalytics.query` grouped by
+> `searchAppearance` against a property with FAQ history, checking whether an FAQ value is still
+> returned. `scripts/gsc_query.py` can run it once credentials are configured (`GSC_CREDENTIALS`);
+> unauthenticated checks cannot answer this.
+>
+> **Actionable regardless of confirmation**: any dashboard, BigQuery export or scheduled job still
+> querying FAQ rich-result data should be checked against live responses, because the documented
+> failure mode is **silent nulls rather than an error**. A pipeline that "still runs" is not evidence
+> the data is still arriving.
 
 ## RETIRED — Safe to remove (no longer processed)
 
