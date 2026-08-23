@@ -139,12 +139,20 @@ https://mixedsite.com/spammy-page
 
 ### Workflow
 
-1. Export toxic links from `link_profile.py` output.
-2. Filter: keep only high_risk (auto-disavow) + manually confirmed medium_risk.
-3. Group by domain — if ≥ 3 toxic URLs from same domain, escalate to `domain:`.
-4. Generate file with comments.
-5. Submit via Google Search Console > Security & Manual Actions > Disavow Links.
-6. Re-check in 4–8 weeks for impact.
+> **Gate first — do not run this workflow by default.** Google's guidance is that most sites never
+> need a disavow file. Proceed only with (1) an active **manual action** for unnatural links, or
+> (2) a documented negative-SEO campaign. Without one of those, Google already discounts these links
+> and disavowing on a computed score strips credit from borderline-but-legitimate domains for no
+> gain. The "toxic" scoring in this file is a **triage aid for deciding what to stop doing**, not a
+> disavow trigger — Google publishes no toxicity metric and does not use the term.
+
+1. Confirm the gate above applies. If it does not, stop here.
+2. Export the flagged links from `link_profile.py` output.
+3. Filter: high_risk **plus manual confirmation of every entry** — nothing is auto-disavowed.
+4. Group by domain — if ≥ 3 flagged URLs from the same domain, escalate to `domain:`.
+5. Generate file with comments.
+6. Submit at [search.google.com/search-console/disavow-links](https://search.google.com/search-console/disavow-links) — it is a standalone tool, not a page inside the Search Console navigation.
+7. Re-check in 4–8 weeks for impact.
 
 ---
 

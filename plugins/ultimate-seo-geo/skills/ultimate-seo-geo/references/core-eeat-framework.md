@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: corrected — September 2025 QRG re-verified as the current version -->
+<!-- 2026-08-23 review: re-read end to end 2026-08-23: no further defects — scale normalisation fixed in 1.12.3; weight columns verified to sum to 100% -->
 <!-- Source: content-quality-auditor skill (aaron-he-zhu/core-eeat-content-benchmark) -->
 
 # CORE-EEAT Content Quality Framework

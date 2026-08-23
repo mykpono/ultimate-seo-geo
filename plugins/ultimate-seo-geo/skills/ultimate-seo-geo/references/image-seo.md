@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: corrected — JPEG XL browser-support row corrected against Chrome 145 status -->
+<!-- 2026-08-23 review: re-read end to end 2026-08-23: no further defects — sub-scores sum to 100, and the AVIF/WebP compression claims are mutually consistent against the JPEG baseline -->
 
 # Image SEO — Optimization Framework
 ## Updated: August 2026

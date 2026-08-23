@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: corrected — canonical re-evaluation ceiling added in 1.12.0; Googlebot-mobile and rel=next/prev claims re-checked -->
+<!-- 2026-08-23 review: re-read end to end 2026-08-23: four pointers to removed Google tooling — Crawl-delay (never supported by Googlebot), the crawl-rate limiter (removed 2024-01-08), the URL Parameters tool (removed 2022-04-28) and the preferred-domain setting (retired 2019) -->
 
 # Crawl Budget, Indexation & Canonicalization
 ## Updated: August 2026
@@ -25,9 +25,9 @@ Googlebot has a finite crawl budget per site — it determines how many pages ar
 
 ### 1. Crawl Rate Limit
 How fast Googlebot crawls without overloading your server. Controlled by:
-- Server health and response time (TTFB < 200ms = healthy)
-- `Crawl-delay` in robots.txt (use sparingly — can slow legitimate crawling)
-- GSC Crawl Stats report → "Crawl rate" setting (legacy; Google mostly ignores this now)
+- Server health and response time (TTFB < 200ms = healthy) — **this is the lever that actually works.** Googlebot backs off automatically on slow responses and 5xx/429 rates, and speeds up when the server is fast and healthy
+- **`Crawl-delay` is not supported by Googlebot** — Google has never honoured it. Bing and Yandex do. Never present it as a way to control Google's crawl rate
+- **The Search Console crawl-rate limiter was removed on January 8, 2024.** There is no setting to adjust. To slow Googlebot in an emergency, return `503`/`429` on the affected paths — and only briefly, since sustained 5xx leads to deindexing
 
 ### 2. Crawl Demand
 How often Google wants to crawl a URL based on:
@@ -52,10 +52,10 @@ How often Google wants to crawl a URL based on:
 |---|---|---|
 | Faceted navigation URLs | Crawl site, count `/color=red&size=M` style URLs | `noindex` or canonical → master category |
 | Paginated archive pages | Pages like `/blog/page/47` | Noindex paginated pages OR canonical all to page 1 (if content is largely duplicate) |
-| Session IDs / tracking parameters | URLs with `?utm_source=`, `?sessionid=` | Canonical to canonical URL; configure URL parameters in GSC (legacy tool, still available) |
+| Session IDs / tracking parameters | URLs with `?utm_source=`, `?sessionid=` | Canonical to canonical URL. **The GSC URL Parameters tool was removed on April 28, 2022** — do not send anyone there. Google handles parameters automatically; control them with canonicals, `robots.txt` patterns, and internal linking |
 | Thin tag / category pages | `/tag/red/`, `/category/all/` pages with < 300 words and no unique value | Noindex or consolidate |
 | Infinite scroll artifacts | Dynamic `?page=2`, `?offset=100` URLs | Proper pagination with `rel=next`/`prev` is deprecated — use view-all + canonical instead |
-| Duplicate HTTP/HTTPS or www/non-www | Four versions of homepage | 301 redirect all to single canonical; set preferred domain in GSC |
+| Duplicate HTTP/HTTPS or www/non-www | Four versions of homepage | 301 redirect all to a single canonical, and self-reference that canonical. **The GSC preferred-domain setting was retired in 2019** — redirects and canonicals are the only signals available |
 | Staging site crawlable | Staging URLs in search results | Block with robots.txt on staging; add noindex meta; do NOT rely on robots.txt alone |
 
 ### Medium-Priority Crawl Waste
