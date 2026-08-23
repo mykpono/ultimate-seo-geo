@@ -53,6 +53,12 @@ __pycache__/
 .venv/
 venv/
 
+# Planning brief written against v1.10.0; contains a personal machine path.
+# Every feature it proposed (F1-F8, S1-S2) has since shipped, so it is a record
+# of completed work rather than a plan. Named explicitly, not globbed — a
+# *brief*.md pattern would also swallow output from scripts/content_brief.py.
+tier-3-4-implementation-brief.md
+
 # Cursor rules that contain personal machine paths
 .cursor/rules/filesystem-access.mdc
 ultimate-seo-geo-workspace/
