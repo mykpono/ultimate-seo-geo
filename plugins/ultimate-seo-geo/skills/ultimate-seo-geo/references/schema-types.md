@@ -372,7 +372,12 @@ Add to homepage Organization schema to strengthen entity signals:
 
 ### Sitelinks Searchbox
 
-Allows users to search within the site directly from Google results. Add to homepage:
+> **Removed from the Search UI in January 2026** — the `WebSite` `SearchAction` no longer renders a
+> search box in results. The markup is still valid and causes no harm, so **do not recommend removing
+> it** (§ 19 rule 10), but do not present it as a live feature or a reason to add `WebSite` schema.
+> `WebSite` remains worth having for site-level entity signals. Retained below for reference.
+
+Formerly allowed users to search within the site directly from Google results. Homepage markup:
 
 ```json
 {

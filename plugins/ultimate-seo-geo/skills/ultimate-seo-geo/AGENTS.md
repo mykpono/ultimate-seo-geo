@@ -454,7 +454,7 @@ Condensed below; full rule text and rationale in `references/procedures/19-quali
 - **AI citation ≠ ranking** — 85% of retrieved pages never cited. Being retrieved is necessary but not sufficient.
 - **Mentions > Backlinks for AI** — 0.664 vs. 0.218 correlation.
 - **Blocking AI crawlers harms GEO** — removes site from AI search entirely.
-- **GPTBot ≠ training only** — blocking also limits ChatGPT Search citation.
+- **GPTBot *is* training-only** — blocking it does **not** affect ChatGPT Search citation. `OAI-SearchBot` governs that; `ChatGPT-User` handles live fetches. Blocking one has no effect on the others.
 - **Google Search ignores llms.txt** — confirmed June 2026. Implement as non-Google AI hygiene only.
 - **AI Mode is a distinct citation engine** — only 13.7% URL overlap with AI Overviews (Ahrefs, 540K query pairs). Optimize separately.
 - **Content recency boosts AI citations** — content under 3 months old receives ~3x citation rate (SE Ranking, 2026).
