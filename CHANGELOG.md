@@ -2,7 +2,29 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **FAQ Search Console API sunset — closed as unanswerable** (`references/schema-types.md`). The
+  reported August 2026 window was investigated and **can be neither confirmed nor refuted**. It is
+  now recorded as a settled position rather than a question awaiting an answer, so nobody re-opens
+  it expecting a resolution that is not available.
+  - **What was established**: Google's changelog carries exactly two FAQ entries — May 8, 2026
+    (deprecation notice) and June 15, 2026 (documentation removed). Neither mentions Search Console,
+    the Rich Results Test, or the Search Console API. The June and August phase dates exist only in
+    secondary reporting, and the primary source that would have carried them was deleted.
+  - **Why it cannot be settled here**: confirming it needs an authenticated `searchAppearance` query
+    against a property that earned FAQ rich results before 2026-05-07. That is a *property*
+    requirement, not a tooling gap — no work on this repo produces the data.
+  - **What survives the closure**: the practice-problem conflation trap is retained as a **standing
+    rule**, not a footnote to an open question. Searching Google's changelog for FAQ plus Search
+    Console API surfaces boilerplate belonging to the practice-problem deprecation, which has an
+    identical phased shape; it is the likeliest source of the secondary reporting's confidence, and
+    the trap outlives the question. The two-window procedure and the unauthenticated `FAQPage`
+    markup precondition are preserved for anyone who does have a suitable property.
+  - **The operational advice is unchanged and unconditional**: any dashboard, BigQuery export or
+    scheduled job still querying FAQ rich-result data should be checked against live responses,
+    because the documented failure mode is silent nulls rather than an error. That holds whether or
+    not the sunset is ever confirmed — which is why closing the question costs nothing.
 
 ## [1.12.6] - 2026-08-23
 
