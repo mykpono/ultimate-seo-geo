@@ -2,7 +2,24 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **`references/schema-types.md` — FAQ Search Console API sunset re-checked (2026-08-23)** — the reported
+  August 2026 window is now current, so it was re-verified rather than left carried. **Still not
+  confirmable**: Google's changelog has exactly two FAQ entries (May 8, deprecation notice; June 15,
+  documentation removed) and **neither mentions Search Console, the Rich Results Test, or the Search
+  Console API**. The secondary attribution stands.
+  - Recorded the reason this keeps *looking* confirmed: searching Google's changelog for FAQ plus
+    Search Console API surfaces the phased-removal boilerplate and the line *"The Search Console API
+    will continue to support the practice problem type through January 2026"* — which belong to the
+    **practice-problem** deprecation, not FAQ. That deprecation has an identical phased shape (SERP
+    feature → Search Console + Rich Results Test → API last), so it is easy to misattribute, and it is
+    the likeliest source of the secondary reporting's confidence. Documented as a named trap so the
+    next reader does not "confirm" it by accident.
+  - Recorded what would actually settle it: an authenticated `searchanalytics.query` grouped by
+    `searchAppearance` against a property with FAQ history, via `scripts/gsc_query.py` with
+    `GSC_CREDENTIALS` set. No credentials are configured in this repo, and unauthenticated checks
+    cannot answer it.
 
 ## [1.12.1] - 2026-08-23
 
