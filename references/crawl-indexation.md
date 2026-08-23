@@ -1,12 +1,13 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: corrected — canonical re-evaluation ceiling added in 1.12.0; Googlebot-mobile and rel=next/prev claims re-checked -->
 
 # Crawl Budget, Indexation & Canonicalization
-## Updated: March 2026
+## Updated: August 2026
 
 ---
 
 
-**Contents:** Updated: March 2026 · Why Crawl Management Matters · Crawl Budget Components · Crawl Budget Waste — What to Fix · XML Sitemap Strategy · Canonicalization · Log File Analysis · Indexation Health Checks · International SEO: hreflang · Crawl & Indexation Scoring
+**Contents:** Updated: August 2026 · Why Crawl Management Matters · Crawl Budget Components · Crawl Budget Waste — What to Fix · XML Sitemap Strategy · Canonicalization · Log File Analysis · Indexation Health Checks · International SEO: hreflang · Crawl & Indexation Scoring
 
 ## Why Crawl Management Matters
 

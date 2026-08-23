@@ -1,7 +1,8 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: corrected — corrected 'Helpful Content' framing (merged into core, March 2024) -->
 
 # Local SEO
-## Updated: March 2026
+## Updated: August 2026
 
 **Contents:** Local SEO Overview · Google Business Profile · Review Strategy · NAP Consistency · Local Landing Pages · Local Schema Markup · AI Search & Local SEO · Local SEO Scoring
 
@@ -225,7 +226,7 @@ Each page must have **genuinely unique content** (not 90%+ duplicated):
 - [ ] LocalBusiness schema with location-specific address/phone
 - [ ] Internal links from homepage and service pages
 
-**Thin location pages (< 300 unique words, > 80% duplicated across locations)** are a Helpful Content risk. Either add genuine value or use a single consolidated page with service area mentions.
+**Thin location pages (< 300 unique words, > 80% duplicated across locations)** are a core-update quality risk — helpfulness assessment merged into core in March 2024, so this surfaces through core updates rather than a separate Helpful Content event. Either add genuine value or use a single consolidated page with service area mentions.
 
 ---
 

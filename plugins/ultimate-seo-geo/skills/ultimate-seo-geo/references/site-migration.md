@@ -1,7 +1,8 @@
-<!-- Updated: 2026-03-23 | Review: 2026-09-23 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: verified, no change needed — audited for Google-behaviour claims and externally-sourced statistics; contains neither. All numeric values are internal rubric thresholds, which do not decay. Date reflects that audit, not a rewrite. -->
 
 # Site Migration SEO Checklist
-## Updated: March 2026
+## Updated: August 2026
 
 A site migration is any change that risks altering how Google crawls, indexes, or ranks your pages. The biggest risk is losing organic traffic by forgetting a step.
 
@@ -16,7 +17,7 @@ A site migration is any change that risks altering how Google crawls, indexes, o
 ---
 
 
-**Contents:** Updated: March 2026 · Pre-Migration: 6 Steps (Do Before Launch) · Migration Day: 5 Steps · Post-Migration: Monitoring Schedule · Common Migration Mistakes · Platform-Specific Notes · Redirect Map Validation Script
+**Contents:** Updated: August 2026 · Pre-Migration: 6 Steps (Do Before Launch) · Migration Day: 5 Steps · Post-Migration: Monitoring Schedule · Common Migration Mistakes · Platform-Specific Notes · Redirect Map Validation Script
 
 ## Pre-Migration: 6 Steps (Do Before Launch)
 

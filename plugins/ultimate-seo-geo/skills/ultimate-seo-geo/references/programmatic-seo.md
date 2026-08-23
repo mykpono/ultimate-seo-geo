@@ -1,12 +1,13 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: corrected — corrected 'Helpful Content System' framing; AI-citation scaled-content row added in 1.12.0 -->
 
 # Programmatic SEO — Planning, Quality, & Execution
-## Updated: March 2026
+## Updated: August 2026
 
 ---
 
 
-**Contents:** Updated: March 2026 · What Is Programmatic SEO? · Google Enforcement Context (2026) · Quality Gates (Non-Negotiable) · Data Source Assessment · Template Engine Planning · URL Pattern Strategy · Internal Linking Architecture · Index Management · Safe vs. Risky Programmatic Page Types · Pre-Launch Checklist · Post-Launch Monitoring · 12 Programmatic SEO Playbooks · Scaled Content Abuse — Enforcement Timeline
+**Contents:** Updated: August 2026 · What Is Programmatic SEO? · Google Enforcement Context (2026) · Quality Gates (Non-Negotiable) · Data Source Assessment · Template Engine Planning · URL Pattern Strategy · Internal Linking Architecture · Index Management · Safe vs. Risky Programmatic Page Types · Pre-Launch Checklist · Post-Launch Monitoring · 12 Programmatic SEO Playbooks · Scaled Content Abuse — Enforcement Timeline
 
 ## What Is Programmatic SEO?
 
@@ -18,7 +19,7 @@ Programmatic SEO = generating many pages from structured data at scale, targetin
 - **Template pages**: "[Action] template" → dozens of downloadable templates
 
 **High reward**: Can capture enormous long-tail traffic with relatively low per-page effort.
-**High risk**: Google's Helpful Content assessment directly targets thin, repetitive programmatic content.
+**High risk**: Google's core ranking systems directly target thin, repetitive programmatic content — helpfulness assessment has been part of core since March 2024, and the August 2026 spam update went after scaled content specifically.
 
 ---
 
@@ -28,7 +29,7 @@ Google has escalated action against scaled content abuse:
 
 | Update | Impact |
 |---|---|
-| **Helpful Content System (2022-ongoing)** | Site-wide quality signal — if a significant portion of a site is unhelpful, all content may be deprioritized |
+| **Helpful content system (2022 – merged into core, March 2024)** | No longer a separate system or a separate update to watch for. Helpfulness is now weighted continuously inside core, so the site-wide effect persists — a significant portion of unhelpful content can still deprioritize the rest — but it arrives through core updates, not a distinct HCU event. Do not tell a client to "wait for the next Helpful Content update" |
 | **March 2024 Core Update** | Explicitly targeted "scaled content abuse" — pages created at scale to manipulate rankings with little unique value |
 | **2025 Continued Enforcement** | Sites with >40% thin programmatic content saw 60-80% traffic declines |
 

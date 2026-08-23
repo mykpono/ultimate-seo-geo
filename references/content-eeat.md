@@ -1,7 +1,8 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: corrected — September 2025 QRG re-verified as the current version -->
 
 # Content Quality & AI Citation Analysis
-## Updated: March 2026
+## Updated: August 2026
 
 **Contents:** Content Quality Score · Word Count Floors · On-Page Optimization · AI Citation Readiness · Content Freshness · Content Pruning & Refresh · AI Content Assessment · Readability Guidelines · Content Audit Scoring · Freshness Thresholds
 

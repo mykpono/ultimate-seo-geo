@@ -1,15 +1,16 @@
-<!-- Updated: 2026-03-24 | Review: 2026-09-24 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: verified, no change needed — audited for Google-behaviour claims and externally-sourced statistics; contains neither. All numeric values are internal rubric thresholds, which do not decay. Date reflects that audit, not a rewrite. -->
 <!-- Source: entity-optimizer skill (aaron-he-zhu) -->
 
 # Entity Optimization — Knowledge Graph, Brand Entity & AI Recognition
-## Updated: March 2026
+## Updated: August 2026
 
 Structured framework for building and optimizing brand/person entity presence across Google Knowledge Graph, Wikidata, Wikipedia, and AI systems. Includes a 47-signal audit checklist, AI Entity Resolution Test protocol, and implementation roadmap.
 
 ---
 
 
-**Contents:** Updated: March 2026 · AI Entity Resolution Test · 47-Signal Entity Checklist · Priority Action Matrix · Entity Building Roadmap · Entity Type Reference · Disambiguation Strategies · Cross-Reference to Other Frameworks
+**Contents:** Updated: August 2026 · AI Entity Resolution Test · 47-Signal Entity Checklist · Priority Action Matrix · Entity Building Roadmap · Entity Type Reference · Disambiguation Strategies · Cross-Reference to Other Frameworks
 
 ## AI Entity Resolution Test
 

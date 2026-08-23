@@ -1,12 +1,13 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: corrected — JPEG XL browser-support row corrected against Chrome 145 status -->
 
 # Image SEO — Optimization Framework
-## Updated: March 2026
+## Updated: August 2026
 
 ---
 
 
-**Contents:** Updated: March 2026 · Why Image SEO Matters · Complete Image Audit Checklist · CLS Prevention (Images) · Image SEO for Google Images · Image SEO for AI Citations · Audit Output Format · Image SEO Score: XX/100 · Priority Fixes
+**Contents:** Updated: August 2026 · Why Image SEO Matters · Complete Image Audit Checklist · CLS Prevention (Images) · Image SEO for Google Images · Image SEO for AI Citations · Audit Output Format · Image SEO Score: XX/100 · Priority Fixes
 
 ## Why Image SEO Matters
 
@@ -60,7 +61,7 @@ Is this a photo or complex image?
 |---|---|---|---|
 | **WebP** | 97%+ | 25-35% smaller | Default for all photos |
 | **AVIF** | 92%+ | 40-50% smaller | Maximum compression priority |
-| **JPEG XL** | Emerging (Chrome roadmap restored late 2025) | 60%+ smaller | Monitor; not production-ready yet |
+| **JPEG XL** | Safari default; Chrome 145+ (Feb 2026) behind `chrome://flags/#enable-jxl-image-format`, **not on by default**; Firefox Nightly | 60%+ smaller | Still not production-ready. Chrome default is expected H2 2026 but Google has not confirmed its stated conditions are met — do not ship JXL as a sole format |
 | **SVG** | Universal | N/A (vector) | Logos, icons, simple graphics |
 | **PNG** | Universal | Larger than WebP | Fallback only; avoid for photos |
 
