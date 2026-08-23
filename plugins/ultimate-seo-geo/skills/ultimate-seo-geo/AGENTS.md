@@ -200,7 +200,7 @@ First-Principle Observation: [the raw observable fact that triggered this findin
 Dependency: [what other findings this blocks, enables, or depends on]
 ```
 
-**Scoring:** `base_score = (positive_signals / (positive_signals + deficit_signals)) × 100`. Deduct: Critical −15 pts, Warning −5 pts.
+**Scoring:** `base_score = (positive_signals / (positive_signals + deficit_signals)) × 100`. Deduct by finding severity: **Critical −15, High −8, Medium −3, Low −1** (matches § 19 rule 3, which validates the score against this schedule).
 
 ### Audit Output Template
 

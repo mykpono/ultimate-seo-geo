@@ -92,7 +92,7 @@ Dependency: [what other findings this blocks, enables, or depends on — use fin
 - **Likely**: Strong inference from partial data (2–3 signals)
 - **Hypothesis**: Pattern-based assumption; limited page access
 
-**Scoring formula:** `base_score = (positive_signals / (positive_signals + deficit_signals)) × 100`. Deduct: Critical −15 pts, Warning −5 pts.
+**Scoring formula:** `base_score = (positive_signals / (positive_signals + deficit_signals)) × 100`. Deduct by finding severity: **Critical −15, High −8, Medium −3, Low −1** (matches § 19 rule 3, which validates the score against this schedule).
 
 ### Audit Output Format
 
@@ -103,7 +103,7 @@ Use this exact template:
 Date: [date] | Business Type: [type] | Audited Pages: [N] | Confidence: High/Medium/Low
 
 ## SEO Health Score: XX/100
-[chain-of-thought: positive_signals=N, deficit_signals=N, base=XX, Critical −15×N, Warning −5×N = final]
+[chain-of-thought: positive_signals=N, deficit_signals=N, base=XX, Critical −15×N, High −8×N, Medium −3×N, Low −1×N = final]
 
 | Category | Score | Status |
 |---|---|---|

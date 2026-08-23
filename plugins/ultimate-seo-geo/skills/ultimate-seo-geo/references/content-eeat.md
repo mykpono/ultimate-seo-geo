@@ -18,6 +18,9 @@
 | AI citation readiness | 10% | Passage structure, answer-first format |
 | Freshness | 10% | Publication date, last-updated, recency |
 
+**Scoring formula**: score each category **0–100**, then `Σ(category weight × category score)`. Weights sum to 100%, so the result lands on the 0–100 scale used by the Content Audit Scoring Matrix below — no further division.
+
+
 ---
 
 ## Word Count Floors

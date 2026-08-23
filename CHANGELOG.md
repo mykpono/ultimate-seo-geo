@@ -4,6 +4,45 @@
 
 ### Fixed
 
+Ran the arithmetic on every scoring rubric in the repo, after three of them were found unable to
+produce their own top grades. **All 24 weight columns across 13 files sum to 100%** — no weight bugs.
+The failures were all in aggregation and in worked examples.
+
+- **The canonical GEO worked example was wrong twice** (`audit-output-example.md`) — its headline
+  said 41/100 while its own five rows compute to 42.5, and its Technical Accessibility row was docked
+  to 70 with *"no llms.txt ❌"* given as a reason. That is a **fourth copy** of the llms.txt scoring
+  contradiction, in the one place that propagates furthest: worked examples get copied verbatim.
+  Corrected to 90 on that dimension and 47/100 overall.
+
+- **The Health Score example demonstrated a procedure and then did not follow it** — it computed
+  `base=61, Critical −15×0, Warning −5×2 = 51`, then reported **61**, the pre-deduction base, via an
+  unexplained *"→ adjusted 61."* The deductions were performed and silently discarded. Recomputed
+  against the example's own findings (2 High + 1 Quick Win): 61 − 16 − 1 = **44**.
+
+- **Three different deduction schedules for one score** — `AGENTS.md` and `02-full-site-audit.md`
+  said *Critical −15, Warning −5*; `19-quality-gates-hard-rules.md` rule 3, which **validates** the
+  Health Score, said *Critical −15, High −8, Medium −3, Low −1*. The gate checked against a schedule
+  the instructions did not use, and "Warning" is not a severity the audit output template emits at
+  all. All three now carry the four-severity schedule, including the chain-of-thought template.
+
+- **The GEO Score and `content-eeat.md` stated weights but no aggregation formula** — the same
+  ambiguity that let CITE and CORE-EEAT grade a perfect score as "Poor". Both now state: score each
+  dimension 0–100, `Σ(weight × score)`, no further division.
+
+- **Verified correct, no change**: `eeat-framework.md` (states the formula and carries a worked
+  example that computes exactly), `backlink-quality.md` (*"each factor scored 0–100 independently,
+  then weighted"*). Reported because a negative result on a rubric that was checked is worth
+  distinguishing from one that was not.
+
+### Added
+
+- **`tests/test_scoring_rubrics.py`** — 54 tests. Asserts every weight column in every reference file
+  sums to 100%, that the GEO worked example equals its own rows, that no worked example deducts for a
+  missing llms.txt, and that the Health Score example applies the deduction schedule it prints.
+  Validated by reintroducing each of the three example bugs in turn. None of these defects contained
+  a date or an out-of-range value, which is why every previous sweep missed them — this suite runs
+  the maths instead of reading for suspicious-looking numbers.
+
 Re-review of the five reference files that v1.12.2's predecessor marked *"verified, no change
 needed."* That verdict came from a grep for date-bearing and externally-sourced claims. Reading the
 files end to end found defects in **all five**, plus three contradictions they exposed elsewhere.
