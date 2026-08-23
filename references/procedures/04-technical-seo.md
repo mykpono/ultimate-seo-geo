@@ -24,8 +24,8 @@ Measured at 75th percentile (CrUX/PageSpeed Insights). Speed is also a GEO facto
 8. **Check soft 404s** — Run `scripts/broken_links.py` on key pages; it detects pages returning 200 but showing "not found" in `<title>`. Also check `scripts/sitemap_checker.py` output for soft 404s in sitemap. Fix: return real 404/410 or add genuine content.
 9. **Check for broken internal pages** — Run `scripts/internal_links.py` (now reports 404/5xx pages found during crawl) or `scripts/broken_links.py --crawl` for site-wide broken link scan.
 10. **Check JavaScript rendering** — Compare raw source to rendered DOM. Key content JS-only = invisible to AI bots.
-10. **Check Open Graph + Twitter Card** — `og:title`, `og:description`, `og:image`, `twitter:card` on all shareable pages.
-11. **Check security headers** — HSTS, X-Frame-Options, X-Content-Type-Options. ✅ Pass: `Strict-Transport-Security: max-age=31536000; includeSubDomains`. ❌ Fail: header absent or `max-age=0`.
+11. **Check Open Graph + Twitter Card** — `og:title`, `og:description`, `og:image`, `twitter:card` on all shareable pages.
+12. **Check security headers** — HSTS, X-Frame-Options, X-Content-Type-Options. ✅ Pass: `Strict-Transport-Security: max-age=31536000; includeSubDomains`. ❌ Fail: header absent or `max-age=0`.
 
 For the full Critical Technical Issues + Fix Directives table (9 issues with detection methods and fixes), JavaScript SEO December 2025 clarifications (canonical conflicts, noindex behavior, JS-rendered structured data), and the mobile-first indexing note, see `references/technical-checklist.md`.
 

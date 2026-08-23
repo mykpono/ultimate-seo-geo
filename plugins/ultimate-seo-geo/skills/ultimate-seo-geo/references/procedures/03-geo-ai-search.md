@@ -49,6 +49,12 @@ For Google AI Mode–specific optimization (zero blue links, follow-up queries, 
 
 For the AI crawler allow/block table (OAI-SearchBot, PerplexityBot, ClaudeBot, GPTBot, Google-Extended) and the llms.txt quick template, see `references/ai-search-geo.md`.
 
+### robots.txt: GEO vs traditional crawl directives
+
+- **GEO guidance applies to AI-named crawlers** (e.g. OAI-SearchBot, PerplexityBot, GPTBot, ClaudeBot) and to `User-agent: *` rules that effectively block them from important content.
+- **Do not** recommend removing **Googlebot/Bingbot** `Disallow` rules used for facets (`/*?`), filtered URLs, pagination, category/author paths, or other intentional crawl hygiene **unless** the user explicitly asks for a crawl-budget or indexation review of those rules.
+- `robots_checker.py` focuses on AI crawler status; it does **not** flag facet or low-value-path disallows as errors — do not over-generalize GEO fixes into “remove all Disallow.”
+
 ### GEO Finding Example
 
 ```

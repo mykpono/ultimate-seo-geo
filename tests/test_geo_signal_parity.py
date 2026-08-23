@@ -122,9 +122,48 @@ def test_llms_checker_states_it_is_not_a_google_signal(tree_name, tree):
     )
 
 
+@pytest.mark.parametrize("tree_name,tree", TREES)
+def test_agents_md_geo_rubric_excludes_llms_txt(tree_name, tree):
+    """AGENTS.md carries a third copy of the GEO rubric, and it was missed.
+
+    v1.12.0 removed llms.txt from the rubrics in ai-search-geo.md and
+    03-geo-ai-search.md, but AGENTS.md § 3 still read
+    "Technical Accessibility (AI crawlers, SSR, llms.txt) | 20%" -- with the
+    correct prose ("Search ignores llms.txt") four lines below it, the exact
+    prose-vs-scoring split this file exists to catch. The original tests only
+    looked at the two reference files, so they passed over it.
+
+    AGENTS.md matters more than either, not less: it is the file Codex and every
+    other AGENTS.md-compatible tool loads automatically.
+    """
+    text = _read(tree, "AGENTS.md")
+    offenders = [
+        line for line in text.splitlines()
+        if "llms" in line.lower()
+        and "%" in line
+        and re.search(r"technical accessibility", line, re.I)
+    ]
+    assert not offenders, (
+        f"{tree_name}/AGENTS.md scores llms.txt as a Technical Accessibility signal, but "
+        f"Google Search ignores it (June 2026).\nOffending line(s): {offenders}"
+    )
+
+
+@pytest.mark.parametrize("tree_name,tree", TREES)
+def test_agents_md_states_google_ignores_llms_txt(tree_name, tree):
+    """Wherever AGENTS.md raises llms.txt, the Google position travels with it."""
+    text = _read(tree, "AGENTS.md")
+    if "llms.txt" not in text:
+        pytest.skip(f"{tree_name}/AGENTS.md does not mention llms.txt")
+    assert any(re.search(p, text, re.I) for p in DISCLAIMER_PATTERNS), (
+        f"{tree_name}/AGENTS.md mentions llms.txt without stating that Google Search ignores it."
+    )
+
+
 def test_both_trees_agree_on_geo_signal_files():
     """Root and plugin bundle must be byte-identical for every file guarded here."""
     guarded = [rel for _, rel in RUBRIC_FILES] + [
+        "AGENTS.md",
         os.path.join("scripts", "generate_report.py"),
         os.path.join("scripts", "llms_txt_checker.py"),
     ]
