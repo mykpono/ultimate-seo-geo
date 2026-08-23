@@ -32,6 +32,20 @@ chatgpt/knowledge/
 gsc-oauth-token.json
 gsc-client-secrets.json
 
+# Google service-account keys. scripts/gsc_query.py and gsc_export.py accept
+# GOOGLE_APPLICATION_CREDENTIALS pointing at an arbitrary path, and the common
+# habit is to drop the key in the repo root. These are long-lived credentials
+# with no expiry — worse to leak than the OAuth token above, which at least
+# refreshes. Patterns checked against every tracked .json: none collide.
+service-account*.json
+*-service-account.json
+sa.json
+credentials.json
+*-credentials.json
+client_secret*.json
+*.pem
+*.p12
+
 # Python
 __pycache__/
 *.pyc
