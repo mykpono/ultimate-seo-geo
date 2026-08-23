@@ -23,7 +23,12 @@
 
 **GEO Score** = average of CORE dimensions (C + O + R + E) / 4
 **SEO Score** = average of EEAT dimensions (Exp + Ept + A + T) / 4
-**Total Score** = weighted average using content-type weights below
+**Total Score** = weighted average using content-type weights below, **×10** to put it on the 0–100 band scale
+
+> **Scale note.** Items score 0/5/10, so a dimension average and the weighted total both land on a
+> **0–10** scale. The grade bands below are **0–100**. Multiply the weighted total by 10 before
+> reading the bands — otherwise a page passing every item scores 10 and reads as "Poor".
+
 
 **N/A handling**: If >50% of items in a dimension are N/A, mark the dimension as "Insufficient Data" and exclude it — redistribute its weight proportionally to remaining dimensions.
 

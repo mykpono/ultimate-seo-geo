@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: verified, no change needed — audited for Google-behaviour claims and externally-sourced statistics; contains neither. All numeric values are internal rubric thresholds, which do not decay. Date reflects that audit, not a rewrite. -->
+<!-- 2026-08-23 review: SUPERSEDED by the 2026-08-23 re-review. The earlier pass marked this file 'verified, no change needed' on the basis of a grep for date-bearing and externally-sourced claims. Reading it end to end found: priority-scoring formula divided by 5, capping the maximum at 1.0 and making every tier above P3 unreachable. Scanning is not review. -->
 
 # Keyword Research & Content Strategy Guide
 ## Updated: August 2026
@@ -228,7 +228,11 @@ Quantitative prioritization for content calendar decisions:
 | **Long-term** | High | High | Transactional | Medium — requires authority |
 | **Research** | Low | Low | Informational | Low — good for topic clusters |
 
-**Priority Scoring** (weighted): Score each keyword 1–5 on these factors, then calculate `Σ(Factor Weight × Score) / 5`:
+**Priority Scoring** (weighted): Score each keyword 1–5 on these factors, then calculate `Σ(Factor Weight × Score)`:
+
+The weights sum to 100%, so the weighted sum already lands on the same 1–5 scale as the scores —
+there is no further division. (A previous version divided by 5, which capped the maximum achievable
+score at 1.0 and made every keyword fall into P3 regardless of merit.)
 
 | Factor | Weight |
 |---|---|

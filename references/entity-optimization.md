@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: verified, no change needed — audited for Google-behaviour claims and externally-sourced statistics; contains neither. All numeric values are internal rubric thresholds, which do not decay. Date reflects that audit, not a rewrite. -->
+<!-- 2026-08-23 review: SUPERSEDED by the 2026-08-23 re-review. The earlier pass marked this file 'verified, no change needed' on the basis of a grep for date-bearing and externally-sourced claims. Reading it end to end found: signal 36 named the training-only crawler; AI Overviews/AI Mode collapsed into one column despite being distinct citation engines (bands rescaled /48 -> /60). Scanning is not review. -->
 <!-- Source: entity-optimizer skill (aaron-he-zhu) -->
 
 # Entity Optimization — Knowledge Graph, Brand Entity & AI Recognition
@@ -38,22 +38,27 @@ For each query × platform combination, score:
 
 ### Results Template
 
-| Query | ChatGPT | Perplexity | Google AI Overview | Claude |
-|---|---|---|---|---|
-| "What is [Entity]?" | X/3 | X/3 | X/3 | X/3 |
-| "Who founded [Entity]?" | X/3 | X/3 | X/3 | X/3 |
-| "How does [Entity] compare to [Competitor]?" | X/3 | X/3 | X/3 | X/3 |
-| "[Entity]'s approach to [Topic]" | X/3 | X/3 | X/3 | X/3 |
-| **Platform Total** | /12 | /12 | /12 | /12 |
+| Query | ChatGPT | Perplexity | Google AI Overviews | Google AI Mode | Claude |
+|---|---|---|---|---|---|
+| "What is [Entity]?" | X/3 | X/3 | X/3 | X/3 | X/3 |
+| "Who founded [Entity]?" | X/3 | X/3 | X/3 | X/3 | X/3 |
+| "How does [Entity] compare to [Competitor]?" | X/3 | X/3 | X/3 | X/3 | X/3 |
+| "[Entity]'s approach to [Topic]" | X/3 | X/3 | X/3 | X/3 | X/3 |
+| **Platform Total** | /12 | /12 | /12 | /12 | /12 |
 
-**Overall Entity Recognition Score**: /48
+**Overall Entity Recognition Score**: /60
+
+**AI Overviews and AI Mode are scored separately on purpose.** They share only 13.7% URL overlap
+(Ahrefs, 540K query pairs), so they are distinct citation engines — an entity can be well recognised
+in one and absent from the other. Collapsing them into a single "Google" column hides exactly the
+gap this test exists to find.
 
 | Score Range | Assessment | Action |
 |---|---|---|
-| 36–48 | Strong recognition | Maintain and refine accuracy |
-| 24–35 | Moderate recognition | Fill specific gaps identified |
-| 12–23 | Weak recognition | Prioritize foundation signals |
-| 0–11 | Not recognized | Full entity building program needed |
+| 45–60 | Strong recognition | Maintain and refine accuracy |
+| 30–44 | Moderate recognition | Fill specific gaps identified |
+| 15–29 | Weak recognition | Prioritize foundation signals |
+| 0–14 | Not recognized | Full entity building program needed |
 
 ---
 
@@ -139,7 +144,7 @@ For each query × platform combination, score:
 | 33 | Entity definition quotable in first paragraph | Clear "X is..." definition in opening of about/homepage | Definition buried or missing |
 | 34 | Factual claims verifiable | Key claims have authoritative sources | Unsourced claims |
 | 35 | Entity name used consistently | Same entity name across all platforms and content | Name variations causing confusion |
-| 36 | Content crawlable by AI systems | AI crawlers (GPTBot, PerplexityBot) allowed in robots.txt | AI crawlers blocked |
+| 36 | Content crawlable by AI systems | The crawlers that govern *recognition* are allowed: `OAI-SearchBot` (ChatGPT Search), `ChatGPT-User` (live fetches), `PerplexityBot`, `ClaudeBot`. `GPTBot` is training-only and does **not** affect signals 28–29 | Search/fetch crawlers blocked |
 | 37 | Fresh information available | Key pages updated within last 6 months | Stale content (12+ months) |
 
 ### Priority 4: Advanced Signals (Nice-to-Have) — Signals 38–47

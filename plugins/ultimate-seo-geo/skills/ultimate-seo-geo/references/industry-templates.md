@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: verified, no change needed — audited for Google-behaviour claims and externally-sourced statistics; contains neither. All numeric values are internal rubric thresholds, which do not decay. Date reflects that audit, not a rewrite. -->
+<!-- 2026-08-23 review: SUPERSEDED by the 2026-08-23 re-review. The earlier pass marked this file 'verified, no change needed' on the basis of a grep for date-bearing and externally-sourced claims. Reading it end to end found: recommended WebSite schema *for* the Sitelinks Searchbox, removed from the Search UI in January 2026. Scanning is not review. -->
 
 # Industry-Specific SEO Templates
 
@@ -38,7 +38,7 @@ Load when § 2 business type detection identifies a specific industry.
 
 | Page Type | Schema |
 |---|---|
-| Homepage | `WebApplication` or `SoftwareApplication`, `Organization`, `WebSite` (Sitelinks Searchbox) |
+| Homepage | `WebApplication` or `SoftwareApplication`, `Organization`, `WebSite` |
 | Feature pages | `SoftwareApplication`, `FAQPage` |
 | Pricing | `Offer`, `FAQPage` |
 | Blog posts | `Article` or `BlogPosting`, `Person` (author), `BreadcrumbList` |
@@ -89,7 +89,7 @@ Load when § 2 business type detection identifies a specific industry.
 | Products with certs | `Certification` (energy ratings, safety marks) — replaces `EnergyConsumptionDetails` |
 | Products with shipping | `OfferShippingDetails` nested in `Offer` |
 | Category pages | `ItemList`, `BreadcrumbList` |
-| Homepage | `Organization`, `WebSite` (Sitelinks Searchbox) |
+| Homepage | `Organization`, `WebSite` |
 | Buying guides | `Article`, `ItemList` |
 
 ### ProductGroup Example (Variants)

@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: verified, no change needed — audited for Google-behaviour claims and externally-sourced statistics; contains neither. All numeric values are internal rubric thresholds, which do not decay. Date reflects that audit, not a rewrite. -->
+<!-- 2026-08-23 review: SUPERSEDED by the 2026-08-23 re-review. The earlier pass marked this file 'verified, no change needed' on the basis of a grep for date-bearing and externally-sourced claims. Reading it end to end found: broken script reference (crawl_urls.py), hop-count self-contradiction, and an inline redirect script that reintroduced the SSRF vector closed in v1.10.2. Scanning is not review. -->
 
 # Site Migration SEO Checklist
 ## Updated: August 2026
@@ -24,7 +24,8 @@ A site migration is any change that risks altering how Google crawls, indexes, o
 ### Step 1: Full URL Crawl Baseline
 Capture the full current URL inventory so you have a source of truth for every URL that needs a redirect.
 
-**Tools:** Screaming Frog, Sitebulb, or `scripts/crawl_urls.py`
+**Tools:** Screaming Frog, Sitebulb, or `scripts/site_mapper.py` (sitemap + BFS crawl:
+`python scripts/site_mapper.py URL --max-pages 500 --json`)
 
 **What to capture:**
 - All indexable URLs (HTTP 200, in sitemap, not noindex)
@@ -119,7 +120,7 @@ curl -I https://olddomain.com/old-path/
 # Location: https://newdomain.com/new-path/
 ```
 
-Check redirect chains: `curl -L -I` should resolve in ≤ 2 hops.
+Check redirect chains: `curl -L -I` should resolve in **one hop** — matching the redirect-map rule above and the Common Mistakes table below, both of which require single-hop. Any second hop is a chain to flatten, not an acceptable outcome.
 
 ### Step 2: Submit Updated Sitemap
 - Submit new sitemap to Google Search Console
@@ -203,28 +204,20 @@ Watch Google Search Console → Coverage report for the first 24–48 hours. Loo
 
 ---
 
-## Redirect Map Validation Script
+## Redirect Map Validation
 
-```python
-# Quick redirect validation (run from command line)
-# Usage: python validate_redirects.py migration-map.csv
+Use the shipped checker — it validates each hop against `scripts/url_safety.py` before fetching:
 
-import csv, requests, sys
-
-with open(sys.argv[1]) as f:
-    rows = list(csv.reader(f))
-
-errors = []
-for old_url, expected_new in rows[1:]:
-    r = requests.get(old_url, allow_redirects=True, timeout=10)
-    final = r.url.rstrip('/')
-    expected = expected_new.rstrip('/')
-    if final != expected:
-        errors.append(f"FAIL: {old_url} → {final} (expected {expected})")
-
-if errors:
-    print('\n'.join(errors))
-    sys.exit(1)
-else:
-    print(f"All {len(rows)-1} redirects validated.")
+```bash
+python scripts/redirect_checker.py https://olddomain.com/old-path/ --json
 ```
+
+> **Do not hand-roll this.** An earlier version of this file carried an inline snippet that looped a
+> redirect map through `requests.get(old_url, allow_redirects=True)` with no URL validation. That is
+> the exact SSRF vector closed in `redirect_checker.py` in v1.10.2: a redirect map is attacker-
+> influenced input, and a single `Location:` header pointing at `http://169.254.169.254/` walks the
+> checker into a cloud metadata endpoint. `redirect_checker.py` calls `validate_url()` per hop;
+> a bare `requests` loop does not.
+
+To validate a whole map, feed the checker each source URL and compare against the expected
+destination — do not re-implement the fetch.

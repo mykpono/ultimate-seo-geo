@@ -125,7 +125,7 @@ GSC shows CrUX (real user) data, which is what Google uses for rankings:
 
 - **Rich results**: Eligible vs. Valid vs. Error by schema type
 - **Breadcrumbs**: Structured data parsing errors
-- **Sitelinks searchbox**: If applicable
+- ~~**Sitelinks searchbox**~~: retired — the feature was removed from the Search UI in January 2026, so this enhancement report no longer appears
 
 ---
 

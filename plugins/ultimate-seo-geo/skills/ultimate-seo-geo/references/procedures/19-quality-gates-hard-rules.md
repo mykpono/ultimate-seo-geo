@@ -53,5 +53,5 @@ This pattern is adapted from Anthropic's [Evaluator-Optimizer workflow](https://
 
 **Blocking AI crawlers harms GEO** — Blocking OAI-SearchBot/PerplexityBot removes the site from AI search results entirely.
 
-**GPTBot ≠ training only** — Blocking it also limits ChatGPT Search citation. Users who block GPTBot expecting only training-opt-out lose live search visibility.
+**GPTBot is training-only — do not claim otherwise** — OpenAI runs three separate agents: `GPTBot` (model training), `OAI-SearchBot` (ChatGPT Search index), and `ChatGPT-User` (user-triggered fetches). **Blocking one has no effect on the others.** Blocking `GPTBot` does **not** remove a site from ChatGPT Search citations. Never tell a user that opting out of training costs them ChatGPT visibility — that forecloses a legitimate licensing decision on a false premise. The crawler that actually governs ChatGPT Search visibility is `OAI-SearchBot`; blocking *that* does remove the site from ChatGPT answers.
 
