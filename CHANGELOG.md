@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.12.2] - 2026-08-23
+
+Follow-up to 1.12.1, which landed the Codex size fix but left `AGENTS.md` 42 bytes under a cap that
+is **combined** across every instruction file Codex loads — still truncating for anyone carrying
+their own root `AGENTS.md`. This takes the margin to 2.5 KiB and fixes a third copy of the llms.txt
+scoring contradiction that the trim exposed inside `AGENTS.md` itself.
+
 ### Changed
 
 - **`AGENTS.md` trimmed 32,726 → 30,235 bytes (2.5 KiB headroom, was 42 bytes)** — v1.12.1 got the file
@@ -20,23 +29,6 @@
   filtered URLs) existed **only** in `AGENTS.md`. Deleting it would have lost it; it is now in the
   procedure file, with §3's quick-check table repointed at its new home.
 
-### Fixed
-
-- **A third copy of the llms.txt scoring contradiction, in `AGENTS.md` itself** — v1.12.0 removed
-  llms.txt from the GEO rubrics in `ai-search-geo.md` and `03-geo-ai-search.md`, but `AGENTS.md` §3
-  still read *"Technical Accessibility (AI crawlers, SSR, llms.txt) | 20%"* — with the correct prose
-  ("Search ignores llms.txt") four lines below it. The exact prose-vs-scoring split that file's parity
-  test exists to catch, missed because the test only looked at the two reference files.
-  **`AGENTS.md` is the copy that matters most**, not least: it is what Codex and every other
-  AGENTS.md-compatible tool loads automatically. Surfaced only because the trim required reading the
-  section closely.
-  - `tests/test_geo_signal_parity.py` extended with two `AGENTS.md` guards (rubric excludes llms.txt;
-    the Google position travels with any mention) and `AGENTS.md` added to the byte-identical
-    both-trees check. Validated by reintroducing the exact v1.12.0 bug and confirming it fails.
-
-- **Duplicate step number in `references/procedures/04-technical-seo.md`** — two steps numbered `10`;
-  renumbered to 10/11/12. Spotted while verifying the section was a superset of what `AGENTS.md` carried.
-
 - **`references/schema-types.md` — FAQ Search Console API sunset re-checked (2026-08-23)** — the reported
   August 2026 window is now current, so it was re-verified rather than left carried. **Still not
   confirmable**: Google's changelog has exactly two FAQ entries (May 8, deprecation notice; June 15,
@@ -53,6 +45,23 @@
     `searchAppearance` against a property with FAQ history, via `scripts/gsc_query.py` with
     `GSC_CREDENTIALS` set. No credentials are configured in this repo, and unauthenticated checks
     cannot answer it.
+
+### Fixed
+
+- **A third copy of the llms.txt scoring contradiction, in `AGENTS.md` itself** — v1.12.0 removed
+  llms.txt from the GEO rubrics in `ai-search-geo.md` and `03-geo-ai-search.md`, but `AGENTS.md` §3
+  still read *"Technical Accessibility (AI crawlers, SSR, llms.txt) | 20%"* — with the correct prose
+  ("Search ignores llms.txt") four lines below it. The exact prose-vs-scoring split that file's parity
+  test exists to catch, missed because the test only looked at the two reference files.
+  **`AGENTS.md` is the copy that matters most**, not least: it is what Codex and every other
+  AGENTS.md-compatible tool loads automatically. Surfaced only because the trim required reading the
+  section closely.
+  - `tests/test_geo_signal_parity.py` extended with two `AGENTS.md` guards (rubric excludes llms.txt;
+    the Google position travels with any mention) and `AGENTS.md` added to the byte-identical
+    both-trees check. Validated by reintroducing the exact v1.12.0 bug and confirming it fails.
+
+- **Duplicate step number in `references/procedures/04-technical-seo.md`** — two steps numbered `10`;
+  renumbered to 10/11/12. Spotted while verifying the section was a superset of what `AGENTS.md` carried.
 
 ## [1.12.1] - 2026-08-23
 
