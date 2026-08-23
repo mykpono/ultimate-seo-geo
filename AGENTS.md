@@ -166,16 +166,6 @@ Do not state metrics unless the corresponding script ran:
 
 **When data is absent:** replace with `[metric] not measured — run [script] for actual data`.
 
-### Audit Process
-
-1. **Fetch** homepage + 5–10 representative pages.
-2. **Detect business type** (SaaS, E-commerce, Local, Publisher, Agency). Load `references/industry-templates.md`.
-3. **Run all audit modules** in sequence.
-4. **Score** using Health Score weights below.
-5. **Assign confidence**: High (8+ pages + analytics) / Medium (4–7 pages) / Low (1–3 pages).
-6. **Audit assumptions** — Before assembling recommendations, list every assumption the audit relies on (e.g., "homepage represents site quality", "CMS is server-rendered"). Surface in the report so the user can reject or correct them. See `references/thinking-framework.md`.
-7. **Prioritize** — Critical → High → Medium → Quick Wins. Apply the PERCEIVE → ANALYZE → VALIDATE → ACT framework to ensure findings are grounded, falsifiable, and dependency-mapped.
-
 ### SEO Health Score Weights
 
 | Category | Weight |
@@ -260,39 +250,22 @@ GEO = getting content cited by AI engines: Google AI Overviews, AI Mode, ChatGPT
 
 | # | Question | If No → Fix |
 |---|---|---|
-| 1 | AI crawlers (OAI-SearchBot, PerplexityBot) allowed in robots.txt? | Remove **only** Disallow rules (or `*` blocks) that block those AI crawlers — see scoped rule below |
+| 1 | AI crawlers (OAI-SearchBot, PerplexityBot) allowed in robots.txt? | Remove **only** Disallow rules (or `*` blocks) that block those AI crawlers — scoped rule in `references/procedures/03-geo-ai-search.md` |
 | 2 | Page answers target query in first 60 words? | Move answer to opening paragraph |
 | 3 | Content in raw HTML (not JS-only)? | Implement SSR |
 | 4 | Named author with credentials + publication date? | Add author bio + date |
 | 5 | Brand mentioned on YouTube or Reddit? | Start presence on missing platform |
 
-### robots.txt: GEO vs traditional crawl directives
-
-- **GEO guidance applies to AI-named crawlers** (e.g. OAI-SearchBot, PerplexityBot, GPTBot, ClaudeBot) and to `User-agent: *` rules that effectively block them from important content.
-- **Do not** recommend removing **Googlebot/Bingbot** `Disallow` rules used for facets (`/*?`), filtered URLs, pagination, category/author paths, or other intentional crawl hygiene **unless** the user explicitly asks for a crawl-budget or indexation review of those rules.
-- `robots_checker.py` focuses on AI crawler status; it does **not** flag facet or low-value-path disallows as errors — do not over-generalize GEO fixes into “remove all Disallow.”
-
 ### GEO Score Components
 
-| Dimension | Weight |
-|---|---|
-| Citability (answer in first 40–60 words, 134–167 word blocks) | 25% |
-| Structural Readability (H1→H2→H3, question headings, tables) | 20% |
-| Authority & Brand Signals (author, date, Wikipedia/Reddit/YouTube) | 20% |
-| Technical Accessibility (AI crawlers, SSR, llms.txt) | 20% |
-| Multi-Modal Content (text + images + video) | 15% |
+Citability 25% · Structural Readability 20% · Authority & Brand Signals 20% · Technical Accessibility
+20% · Multi-Modal Content 15%. Per-dimension checks and scoring detail:
+`references/procedures/03-geo-ai-search.md`. **Technical Accessibility does not include llms.txt** —
+Google confirmed (June 2026) that Search ignores it.
 
-**Key insights:**
-- 44.2% of AI citations come from the first 30% of content.
-- Content under 3 months old receives ~3x AI citation rate (SE Ranking, 2026).
-- AI Overviews and AI Mode share only 13.7% URL overlap — treat as distinct citation engines.
-- Google confirmed (June 2026) that **Search ignores llms.txt** — implement as non-Google AI hygiene only.
+**Key insight**: 44.2% of AI citations come from the first 30% of content.
 
-For full GEO audit steps, citation demonstration pattern, entity optimization, and platform-specific playbooks → read `references/procedures/03-geo-ai-search.md` and `references/ai-search-geo.md`.
-
-Scripts: `robots_checker.py`, `entity_checker.py`, `llms_txt_checker.py`, `social_meta.py`
-
----
+Scripts: `robots_checker.py`, `entity_checker.py`, `preferred_sources_checker.py`, `social_meta.py`
 
 ## 4. Technical SEO
 
@@ -304,24 +277,19 @@ Scripts: `robots_checker.py`, `entity_checker.py`, `llms_txt_checker.py`, `socia
 | **INP** | < 200ms | 200–500ms | > 500ms |
 | **CLS** | < 0.1 | 0.1–0.25 | > 0.25 |
 
+
 ### Key Technical Checks
 
-1. Run PageSpeed Insights (`pagespeed.py`). If it fails, say "performance data unavailable."
-2. Check robots.txt — AI crawlers not disallowed. `Google-Extended` blocks Gemini training only, not Google Search. `GPTBot` blocks training only, not ChatGPT Search (that uses `ChatGPT-User`).
-3. HTTPS everywhere. Mixed content → force via 301.
-4. Canonical tags — self-referencing, absolute URLs, no chains. Run `canonical_checker.py`.
-5. Redirect chains — collapse to direct redirect.
-6. Mobile rendering — touch targets ≥48×48px, font ≥16px.
-7. Soft 404s — `broken_links.py` detects them.
-8. Security headers — HSTS, X-Frame-Options. Run `security_headers.py`.
-9. JavaScript rendering — key content absent from raw HTML = invisible to AI bots.
-10. Open Graph + Twitter Card — `og:title`, `og:description`, `og:image`.
+PageSpeed → robots.txt (AI crawlers not disallowed) → HTTPS → canonicals → redirect chains → orphan
+pages → mobile rendering → soft 404s → JS rendering → Open Graph → security headers. Full 11-step
+procedure with script names: `references/procedures/04-technical-seo.md`.
 
-For full technical audit steps and CWV fix patterns → read `references/procedures/04-technical-seo.md` and `references/technical-checklist.md`.
+**Two distinctions routinely misconfigured**: `Google-Extended` blocks Gemini *training* only — not
+Google Search or AI Overviews. `GPTBot` blocks OpenAI *training* only — ChatGPT Search citations use
+`ChatGPT-User`.
 
-Scripts: `pagespeed.py`, `robots_checker.py`, `redirect_checker.py`, `security_headers.py`, `broken_links.py`, `sitemap_checker.py`
-
----
+**Key rule**: serve canonical, meta robots, structured data, title, meta description and hreflang in
+the **initial server-rendered HTML**, never JS-only.
 
 ## 5. Schema / Structured Data
 
