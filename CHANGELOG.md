@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.12.6] - 2026-08-23
+
+Three defects, all in the setup path for the one question this repo still cannot answer — whether
+the Search Console API stopped returning FAQ data in August 2026. That path is where nothing looks,
+because *"blocked on credentials"* reads as a complete explanation on its own. It was hiding an
+uncommitted requirements file, an incomplete dependency list, and a verification procedure whose
+prerequisite could only be satisfied by the thing it was a prerequisite for.
+
 ### Fixed
 
 - **The FAQ verification procedure was circular** (`references/schema-types.md`) — it said to run the
@@ -32,14 +42,6 @@
   All four imports across both scripts are now covered, with a comment on each line saying which
   script needs it.
 
-### Added
-
-- **`tests/test_requirements_files.py`** — 4 tests: every `pip install -r X.txt` printed anywhere in
-  the repo names a file that exists **and is tracked by git**, and `requirements-gsc.txt` covers
-  every Google import in both GSC scripts. The tracked-by-git check is the one that matters here —
-  existing on disk is not enough, and is precisely why this survived. Validated by dropping the
-  package and by untracking the file.
-
 ### Changed
 
 - **`.gitignore` now covers Google service-account keys** — `gsc-oauth-token.json` and
@@ -51,6 +53,14 @@
   `*-credentials.json`, `client_secret*.json`, `*.pem` and `*.p12`.
   - Every pattern was checked against all 10 tracked `.json` files first; none collide, and all
     tracked files remain visible to git after the change.
+
+### Added
+
+- **`tests/test_requirements_files.py`** — 4 tests: every `pip install -r X.txt` printed anywhere in
+  the repo names a file that exists **and is tracked by git**, and `requirements-gsc.txt` covers
+  every Google import in both GSC scripts. The tracked-by-git check is the one that matters here —
+  existing on disk is not enough, and is precisely why this survived. Validated by dropping the
+  package and by untracking the file.
 
 ## [1.12.5] - 2026-08-23
 
