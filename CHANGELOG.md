@@ -2,7 +2,54 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+Re-read the eight files that PR #24 marked *"corrected"* — corrected for one specific thing each, and
+only scanned beyond it. Three carried further defects, all of the same kind: **instructions to use
+Google tools that no longer exist.** The oldest named a setting retired seven years ago. None carried
+a date or an odd-looking number, so every freshness sweep passed over them.
+
+- **`crawl-indexation.md` pointed at four removed or unsupported controls** — the section on
+  *"Crawl Rate Limit"* told readers to use `Crawl-delay` in robots.txt (**Googlebot has never
+  honoured it**; Bing and Yandex do) and described the Search Console crawl-rate setting as
+  *"legacy; Google mostly ignores this now"* when it was **removed on 8 January 2024**. Two rows of
+  the crawl-waste table sent readers to *"configure URL parameters in GSC (legacy tool, still
+  available)"* — **removed 28 April 2022** — and to *"set preferred domain in GSC"* — **retired in
+  2019**. Replaced with what actually works: server health and response time, `503`/`429` for
+  emergency throttling, and canonicals plus redirects for the duplicate cases.
+
+- **`international-seo.md` sent readers to a report removed four years ago** — *"GSC → Legacy Tools
+  → International Targeting"*. The report and its country-targeting setting were **removed on 22
+  September 2022**, and hreflang errors have not been reported in Search Console since. Rewritten
+  around the signals that still exist (hreflang, ccTLD, local signals) and pointing at
+  `scripts/hreflang_checker.py` for the validation Search Console no longer provides.
+
+- **`link-building.md` treated disavow as a routine remedy** — a *"Toxic link %"* scoring row made
+  `> 15%` mean *"disavow needed"*. Google's guidance is that **most sites never need the tool**: it
+  is for an active manual action or a documented negative-SEO campaign. Disavowing on a computed
+  score strips credit from borderline-but-legitimate links Google was still counting, for no
+  compensating gain. **"Toxic links" is a vendor metric Google does not use or publish.** Gated the
+  workflow, relabelled the metric, and fixed the tool path — the file pointed at *"Legacy Tools →
+  Disavow"* while `backlink-quality.md` pointed at *"Security & Manual Actions → Disavow"*; the tool
+  is neither, it is standalone.
+
+- **`backlink-quality.md`** (surfaced by the above, not itself in the reviewed set) — its workflow
+  auto-disavowed everything scored `high_risk` with no human confirmation, and carried the second
+  wrong tool path. Same gate applied; nothing is auto-disavowed.
+
+- **Verified clean, no further defects**: `image-seo.md` (sub-scores sum to 100; the AVIF/WebP
+  compression claims are mutually consistent against the JPEG baseline), `local-seo.md`,
+  `programmatic-seo.md` (its one Search Console path is current), `content-eeat.md` and
+  `core-eeat-framework.md`. Every sub-score allocation across all eight sums to 100, and every
+  `scripts/*.py` reference resolves.
+
+### Added
+
+- **`tests/test_removed_google_tools.py`** — 8 tests barring directives to use Google tooling that
+  has been removed, requiring disavow guidance to be gated on a manual action, and requiring any
+  "toxic" scoring to be labelled a vendor metric. The patterns match *instructions to use* a tool,
+  never mentions of it, so a file can freely explain that something was removed — that is how a
+  reader learns it is gone. Validated by reintroducing two of the defects.
 
 ## [1.12.3] - 2026-08-23
 

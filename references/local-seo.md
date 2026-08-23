@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: corrected — corrected 'Helpful Content' framing (merged into core, March 2024) -->
+<!-- 2026-08-23 review: re-read end to end 2026-08-23: no further defects — sub-scores sum to 100, no Google-tooling or Google-behaviour claims -->
 
 # Local SEO
 ## Updated: August 2026

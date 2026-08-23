@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: corrected — AI-citation spam-policy entry added in 1.12.0 -->
+<!-- 2026-08-23 review: re-read end to end 2026-08-23: disavow presented as a routine remedy against Google's 'most sites never need it', driven by a vendor 'toxic link' metric Google does not recognise, plus a wrong tool path -->
 
 # Link Authority & Acquisition
 ## Updated: August 2026
@@ -82,7 +82,18 @@ Concentrate internal links toward:
 | Anchor text | Branded or descriptive | Exact match only | Gibberish |
 | Referring domain authority | High DA/DR (50+) | Low DA (< 20) | PBN patterns |
 
-### Red Flags — Links to Disavow
+### Red Flags — Low-Quality Link Patterns
+
+> **⚠ Do not reach for the disavow tool by default.** Google's guidance is that **most sites never
+> need it**. It is for two narrow cases: (1) an active **manual action** for unnatural links, or
+> (2) a documented negative-SEO campaign. Absent either, Google already ignores manipulative links,
+> and disavowing on a third-party score strips credit from borderline-but-legitimate links Google
+> was still counting — a weaker profile for no benefit.
+>
+> **"Toxic links" is a vendor metric, not a Google concept.** Google does not use the term and
+> publishes no toxicity score. Never present a tool's toxicity percentage as evidence that a disavow
+> is required. The patterns below are diagnostic — they tell you what kind of profile you have and
+> what to stop doing. They are **not** a disavow list.
 
 - Links from sites with no real traffic
 - Links from pages with >200 outbound links
@@ -100,7 +111,11 @@ domain:spamsite1.com
 domain:spamsite2.com
 https://specificpage.com/bad-link
 ```
-Submit via Google Search Console → Legacy Tools → Disavow Links.
+Submit at [search.google.com/search-console/disavow-links](https://search.google.com/search-console/disavow-links).
+
+**Before submitting, confirm one of the two qualifying cases applies** (manual action, or documented
+negative SEO). If neither does, the correct action is to stop acquiring bad links and let Google
+continue ignoring them — not to file a disavow.
 
 ---
 
@@ -247,7 +262,7 @@ Hi [Name],
 | Domain diversity | 50+ countries, 10+ TLDs | Mixed | Single source |
 | Anchor distribution | Balanced per table above | Slight imbalance | Exact-match heavy |
 | Link velocity | Consistent monthly growth | Occasional growth | Flat or declining |
-| Toxic link % | < 5% | 5-15% | > 15% (disavow needed) |
+| Low-quality referring domains % | < 5% | 5–15% | > 15% — investigate acquisition sources; **not** an automatic disavow trigger (see Red Flags above) |
 | Internal linking | Full pillar-cluster, no orphans | Mostly linked | Orphan pages present |
 
 ---

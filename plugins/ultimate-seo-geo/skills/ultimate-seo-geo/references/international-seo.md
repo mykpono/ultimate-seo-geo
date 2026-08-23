@@ -1,5 +1,5 @@
 <!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
-<!-- 2026-08-23 review: corrected — added cross-language canonicalization rule (rule 6) + hreflang_checker diagnosis -->
+<!-- 2026-08-23 review: re-read end to end 2026-08-23: the International Targeting report and its country-targeting setting were removed 2022-09-22; hreflang errors are no longer reported in Search Console -->
 
 # International SEO & Hreflang
 ## Updated: August 2026
@@ -193,12 +193,22 @@ Keywords differ significantly across markets — never assume direct translation
 
 ## Geo-Targeting in Google Search Console
 
-For subdirectory or subdomain structures, set international targeting in GSC:
-1. GSC → Legacy Tools → International Targeting
-2. Select the correct country for each property
-3. For ccTLDs: Google automatically infers country — no manual setting needed
+> **There is no country-targeting setting any more.** The International Targeting report — which
+> carried both the country selector and the hreflang error report — was **deprecated in August 2022
+> and removed on 22 September 2022**. Do not send anyone to "GSC → Legacy Tools → International
+> Targeting"; it does not exist, and neither does the setting it contained.
 
-Note: This is a "soft" signal. Hreflang is the primary mechanism for multi-region targeting.
+**What replaced it: nothing, and nothing is needed.** Google withdrew country targeting because it
+was judged to add little value. The signals that actually determine geo-targeting are:
+
+1. **Hreflang** — the primary mechanism, and still fully supported. Google confirmed at removal that
+   its multilingual/multiregional recommendations were unchanged
+2. **ccTLD** — `example.de` is inferred automatically; nothing to configure
+3. **Server location / CDN, local links, local currency and address signals** — secondary
+
+**Hreflang errors are no longer reported in Search Console.** Validate them yourself with
+`scripts/hreflang_checker.py`, which covers all 8 rules including the cross-language canonical case
+Search Console never surfaced anyway.
 
 ---
 
