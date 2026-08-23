@@ -87,10 +87,21 @@ These types no longer generate Google rich results but are still valid Schema.or
 > states the FAQ phases with such confidence. Check which feature an entry names before treating it as
 > evidence.
 >
-> **What would actually settle it**: an authenticated `searchanalytics.query` grouped by
-> `searchAppearance` against a property with FAQ history, checking whether an FAQ value is still
-> returned. `scripts/gsc_query.py` can run it once credentials are configured (`GSC_CREDENTIALS`);
-> unauthenticated checks cannot answer this.
+> **What would actually settle it** — a single authenticated query against a property with FAQ
+> history, checking whether an FAQ value still comes back:
+>
+> ```bash
+> python scripts/gsc_query.py sc-domain:example.com --dimension searchAppearance --days 90 --json
+> ```
+>
+> Requires `GSC_CREDENTIALS` (or `GOOGLE_APPLICATION_CREDENTIALS`); unauthenticated checks cannot
+> answer this. Use a **90-day** window — a shorter one can return nothing simply because the
+> property had no FAQ-eligible impressions in the period, which looks identical to the data having
+> been withdrawn.
+>
+> **Reading the result**: an FAQ row present means the API still returns it. An FAQ row *absent*
+> while other appearance types are present is consistent with the sunset — but confirm the property
+> actually had FAQ impressions before May 2026, or absence proves nothing about the API.
 >
 > **Actionable regardless of confirmation**: any dashboard, BigQuery export or scheduled job still
 > querying FAQ rich-result data should be checked against live responses, because the documented

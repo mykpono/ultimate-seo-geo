@@ -221,9 +221,16 @@ def main():
     )
     parser.add_argument(
         "--dimension",
-        choices=["query", "page", "country", "device", "date"],
+        # Full set the Search Analytics API accepts. searchAppearance and hour
+        # were missing, which made the documented "group by searchAppearance"
+        # workflow in references/schema-types.md impossible to actually run.
+        choices=["query", "page", "country", "device", "date", "searchAppearance", "hour"],
         default="query",
-        help="Primary dimension to group by (default: query)",
+        help=(
+            "Primary dimension to group by (default: query). "
+            "'searchAppearance' lists the rich-result types a property appears as — "
+            "the only way to check whether a given appearance type still returns data."
+        ),
     )
     parser.add_argument(
         "--top-pages", type=int,
