@@ -2,27 +2,15 @@
 
 ## [Unreleased]
 
-### Added
+_Nothing yet._
 
-- **`scripts/check_tag_matches_version.py` + `.github/workflows/verify-release-tag.yml`** — verifies
-  that a release tag points at a tree which actually declares that version. **v1.12.2 and v1.12.3
-  were both tagged against a local `main` that had not pulled the release-prep merge**, so each tag
-  sat one merge too early and the tagged tree self-reported the *previous* version. Both times the
-  release notes were correct — they are generated from the CHANGELOG on disk, not from the tag — so
-  nothing looked wrong until someone installed from the tag.
-  - `check_version_sync.py` cannot catch this: it checks the **working tree**, which is consistent
-    right after a bump. The defect is in what the tag points at.
-  - Runs in its own workflow, because the main one filters `push` by path and **path filters never
-    match a tag push** — a tag job added there would have silently never run.
-  - On failure it names the commit that does carry the version bump and prints the exact
-    `git tag -f` to fix it, rather than just reporting a mismatch.
-  - Excluded from the plugin bundle (`setup-plugin.sh`, `check-plugin-sync.py`) alongside the other
-    maintainer-only tooling; it needs git history and is useless to plugin users.
+## [1.12.4] - 2026-08-23
 
-- **`tests/test_tag_version_check.py`** — 12 tests covering the extractors, tag-pattern matching, and
-  two guards on the checker itself: that every path it reads exists, and that it covers every file
-  declaring a version. An incomplete source list is the worst failure mode for a guard — it passes by
-  finding nothing to compare, and looks green.
+Closes out the audit sequence. The eight files PR #24 marked *"corrected"* were corrected for one
+thing each and only scanned beyond it — reading them found three more pointing at Google tooling
+that no longer exists, the oldest naming a setting retired seven years ago. Separately, two
+consecutive releases were tagged one merge too early, so the tagged tree self-reported the previous
+version; that now fails CI instead of going unnoticed until someone installs from the tag.
 
 ### Fixed
 
@@ -32,13 +20,6 @@
     section for its own version, so both shipped a bundle reporting the wrong version to users
   - Left in place deliberately: all three are long superseded, and moving published tags is
     disruptive for no benefit. Recorded here so the history is not silently clean.
-
-### Fixed
-
-Re-read the eight files that PR #24 marked *"corrected"* — corrected for one specific thing each, and
-only scanned beyond it. Three carried further defects, all of the same kind: **instructions to use
-Google tools that no longer exist.** The oldest named a setting retired seven years ago. None carried
-a date or an odd-looking number, so every freshness sweep passed over them.
 
 - **`crawl-indexation.md` pointed at four removed or unsupported controls** — the section on
   *"Crawl Rate Limit"* told readers to use `Crawl-delay` in robots.txt (**Googlebot has never
@@ -75,6 +56,26 @@ a date or an odd-looking number, so every freshness sweep passed over them.
   `scripts/*.py` reference resolves.
 
 ### Added
+
+- **`scripts/check_tag_matches_version.py` + `.github/workflows/verify-release-tag.yml`** — verifies
+  that a release tag points at a tree which actually declares that version. **v1.12.2 and v1.12.3
+  were both tagged against a local `main` that had not pulled the release-prep merge**, so each tag
+  sat one merge too early and the tagged tree self-reported the *previous* version. Both times the
+  release notes were correct — they are generated from the CHANGELOG on disk, not from the tag — so
+  nothing looked wrong until someone installed from the tag.
+  - `check_version_sync.py` cannot catch this: it checks the **working tree**, which is consistent
+    right after a bump. The defect is in what the tag points at.
+  - Runs in its own workflow, because the main one filters `push` by path and **path filters never
+    match a tag push** — a tag job added there would have silently never run.
+  - On failure it names the commit that does carry the version bump and prints the exact
+    `git tag -f` to fix it, rather than just reporting a mismatch.
+  - Excluded from the plugin bundle (`setup-plugin.sh`, `check-plugin-sync.py`) alongside the other
+    maintainer-only tooling; it needs git history and is useless to plugin users.
+
+- **`tests/test_tag_version_check.py`** — 12 tests covering the extractors, tag-pattern matching, and
+  two guards on the checker itself: that every path it reads exists, and that it covers every file
+  declaring a version. An incomplete source list is the worst failure mode for a guard — it passes by
+  finding nothing to compare, and looks green.
 
 - **`tests/test_removed_google_tools.py`** — 8 tests barring directives to use Google tooling that
   has been removed, requiring disavow guidance to be gated on a manual action, and requiring any
