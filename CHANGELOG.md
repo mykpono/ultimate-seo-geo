@@ -2,7 +2,17 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **`.gitignore` now covers Google service-account keys** — `gsc-oauth-token.json` and
+  `gsc-client-secrets.json` were already ignored, but `scripts/gsc_query.py` and `gsc_export.py`
+  both accept `GOOGLE_APPLICATION_CREDENTIALS` pointing at an arbitrary path, and the common habit
+  is to drop the key in the repo root. A service-account key is a **long-lived credential with no
+  expiry** — worse to leak than the OAuth token, which at least refreshes. Added
+  `service-account*.json`, `*-service-account.json`, `sa.json`, `credentials.json`,
+  `*-credentials.json`, `client_secret*.json`, `*.pem` and `*.p12`.
+  - Every pattern was checked against all 10 tracked `.json` files first; none collide, and all
+    tracked files remain visible to git after the change.
 
 ## [1.12.5] - 2026-08-23
 
