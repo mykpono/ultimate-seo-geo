@@ -1,0 +1,18 @@
+# Optional: Google Search Console Tier 1 access.
+#
+# Referenced by scripts/gsc_export.py (OAuth + URL Inspection) and
+# scripts/gsc_query.py (Search Analytics). Install only if you need
+# authenticated Search Console data; the rest of the toolkit does not use these.
+#
+#   pip install -r requirements-gsc.txt
+
+# OAuth credential handling and token refresh — both scripts.
+google-auth>=2.29.0,<3
+
+# Installed-app OAuth flow — gsc_export.py --auth.
+google-auth-oauthlib>=1.2.0,<2
+
+# Search Console API client (googleapiclient.discovery) — gsc_query.py.
+# Omitting this is why `pip install -r requirements-gsc.txt` used to satisfy
+# gsc_export.py but leave gsc_query.py failing on ImportError.
+google-api-python-client>=2.100.0,<3

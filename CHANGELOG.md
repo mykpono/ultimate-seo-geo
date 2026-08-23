@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`requirements-gsc.txt` was referenced by four scripts and never committed** — `gsc_export.py`
+  and `gsc_query.py`, plus their plugin-bundle copies, print *"pip install -r requirements-gsc.txt"*
+  when Google auth libraries are missing. The file existed only on the maintainer's machine.
+  **Anyone cloning the repo was sent to a file that isn't there** — the same shape as the
+  removed-Google-tools defects fixed in 1.12.4, and invisible to every check that reads the working
+  tree, because there the file is present.
+
+- **It was also incomplete** — `gsc_export.py` needs `google-auth` and `google-auth-oauthlib`;
+  `gsc_query.py` additionally needs **`google-api-python-client`** for `googleapiclient.discovery`.
+  Only the first two were listed. `pip install -r requirements-gsc.txt` therefore satisfied one
+  script and left the other failing on `ImportError` — pointing back at the same incomplete file.
+  All four imports across both scripts are now covered, with a comment on each line saying which
+  script needs it.
+
+### Added
+
+- **`tests/test_requirements_files.py`** — 4 tests: every `pip install -r X.txt` printed anywhere in
+  the repo names a file that exists **and is tracked by git**, and `requirements-gsc.txt` covers
+  every Google import in both GSC scripts. The tracked-by-git check is the one that matters here —
+  existing on disk is not enough, and is precisely why this survived. Validated by dropping the
+  package and by untracking the file.
+
 ### Changed
 
 - **`.gitignore` now covers Google service-account keys** — `gsc-oauth-token.json` and
