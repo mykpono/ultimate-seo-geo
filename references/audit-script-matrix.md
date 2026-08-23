@@ -41,7 +41,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Maps / GBP intelligence | §25 | `maps_checker.py` | `python scripts/maps_checker.py URL --json` |
 | Core Web Vitals history (CrUX) | §4 | `crux_history.py` | `python scripts/crux_history.py URL --metric lcp --json` |
 | SEO drift baseline / compare | §22 | `drift_monitor.py` | `python scripts/drift_monitor.py baseline URL` then `compare URL` |
-| GSC performance query (Tier 1) | §10 | `gsc_query.py` | `python scripts/gsc_query.py --property SITE --dimension page --json` |
+| GSC performance query (Tier 1) | §10 | `gsc_query.py` | `python scripts/gsc_query.py sc-domain:example.com --dimension page --json` (site URL is positional, not a flag) |
 | GSC URL inspection export (Tier 1) | §10 | `gsc_export.py` | `python scripts/gsc_export.py --property SITE --sitemap-url URL` |
 | GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |
 | GA4 organic reporting (Tier 1) | §10 | `ga4_report.py` | `python scripts/ga4_report.py --property 123456789 --organic-only --json` |

@@ -2,7 +2,35 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **The command this repo recommended for settling the FAQ API question could not run** —
+  `references/schema-types.md` told readers to run `scripts/gsc_query.py` grouped by
+  `searchAppearance`. The script's `--dimension` choices were `query, page, country, device, date`.
+  **`searchAppearance` was not among them**, so the recommended command died on an argparse error
+  before touching the network. `searchAppearance` and `hour` are both valid Search Analytics API
+  dimensions and are now accepted.
+  - Nothing caught this because the advice was never run: it needs credentials, and *"needs
+    credentials"* reads identically to *"blocked"* whether or not the command is even valid. A
+    documented command that cannot parse is worse than none — it sends the reader hunting for a
+    credentials problem that does not exist.
+  - The FAQ note now carries the exact runnable command, a **90-day** window (a shorter one can
+    return nothing simply because the property had no FAQ-eligible impressions, which looks
+    identical to the data having been withdrawn), and how to read the result: an absent FAQ row
+    only means something if the property demonstrably had FAQ impressions before May 2026.
+
+- **`references/audit-script-matrix.md` documented a flag that does not exist** — the
+  `gsc_query.py` row, added in 1.12.0, invoked `--property SITE`. The script takes the site URL
+  **positionally**. Found by the new guard below, not by review. (`gsc_export.py` genuinely does
+  take `--property`, which is likely how the confusion arose.)
+
+### Added
+
+- **`tests/test_documented_commands.py`** — 7 static checks comparing what the docs invoke against
+  what the scripts declare: every `python scripts/X.py` names a real script, every `--flag` is
+  declared by that script, every `--flag value` is within that flag's `choices`, and `gsc_query.py`
+  accepts the API dimensions. No execution, no network, no credentials. Validated by reintroducing
+  both defects above.
 
 ## [1.12.4] - 2026-08-23
 
