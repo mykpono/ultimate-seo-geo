@@ -87,21 +87,54 @@ These types no longer generate Google rich results but are still valid Schema.or
 > states the FAQ phases with such confidence. Check which feature an entry names before treating it as
 > evidence.
 >
-> **What would actually settle it** — a single authenticated query against a property with FAQ
-> history, checking whether an FAQ value still comes back:
+> **What would actually settle it — two queries over different windows, not one.**
+>
+> The obvious framing ("find a property with FAQ history, then test it") is circular: whether a
+> property *had* FAQ impressions is itself only answerable through the same authenticated API, and
+> the Search Console UI cannot help — its FAQ search-appearance filter was removed in June 2026.
+> Run both windows in one sitting:
 >
 > ```bash
+> # 1. Historical — did this property ever earn FAQ rich results?
+> python scripts/gsc_query.py sc-domain:example.com --dimension searchAppearance \
+>     --start-date 2026-01-01 --end-date 2026-05-06 --json
+>
+> # 2. Current — does the API still return FAQ at all?
 > python scripts/gsc_query.py sc-domain:example.com --dimension searchAppearance --days 90 --json
 > ```
 >
-> Requires `GSC_CREDENTIALS` (or `GOOGLE_APPLICATION_CREDENTIALS`); unauthenticated checks cannot
-> answer this. Use a **90-day** window — a shorter one can return nothing simply because the
-> property had no FAQ-eligible impressions in the period, which looks identical to the data having
-> been withdrawn.
+> Both need `GSC_CREDENTIALS` or `GOOGLE_APPLICATION_CREDENTIALS`. Window 1 ends **2026-05-06**, the
+> day before FAQ rich results were withdrawn. Window 2 uses 90 days because a shorter one can return
+> nothing simply for lack of impressions, which looks identical to withdrawal.
 >
-> **Reading the result**: an FAQ row present means the API still returns it. An FAQ row *absent*
-> while other appearance types are present is consistent with the sunset — but confirm the property
-> actually had FAQ impressions before May 2026, or absence proves nothing about the API.
+> **Reading the pair:**
+>
+> | Window 1 (historical) | Window 2 (current) | Conclusion |
+> |---|---|---|
+> | FAQ row present | FAQ row present | **API sunset did not happen** — or has not yet |
+> | FAQ row present | FAQ row absent | **Sunset confirmed** for this property |
+> | FAQ row absent | FAQ row absent | **Ambiguous** — either the property never earned FAQ results, or the removal was applied retroactively to historical data |
+> | FAQ row absent | FAQ row present | Contradictory; re-check the date range before concluding anything |
+>
+> **Disambiguating the ambiguous row is the one part that works without credentials.** FAQ rich
+> results required `FAQPage` markup, so a site that never had the markup certainly never earned
+> them:
+>
+> ```bash
+> python scripts/validate_schema.py saved-page.html --json
+> ```
+>
+> The hit to look for is the `[info]` line reading *"Google withdrew FAQ rich results for all sites
+> (May 7, 2026) but schema is still valid"* — the output does **not** print the literal string
+> `FAQPage`, so grepping for that finds nothing on a page that has it. Check archived copies
+> (Wayback) of pages that ranked before May 2026, not just the live site: markup removed since then
+> would make a property look ineligible when it was not.
+>
+> If the site demonstrably carried `FAQPage` markup on indexed pages before May 2026 **and** window 1
+> returns no FAQ row, that is evidence the removal reached historical data — a materially different
+> finding from the reported sunset, and worth recording separately.
+>
+> Absence of the markup makes the whole exercise moot on that property: pick a different one.
 >
 > **Actionable regardless of confirmation**: any dashboard, BigQuery export or scheduled job still
 > querying FAQ rich-result data should be checked against live responses, because the documented

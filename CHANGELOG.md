@@ -4,6 +4,20 @@
 
 ### Fixed
 
+- **The FAQ verification procedure was circular** (`references/schema-types.md`) — it said to run the
+  `searchAppearance` query "against a property with FAQ history", then confirm the property "actually
+  had FAQ impressions before May 2026". **That confirmation needs the same authenticated API**, and
+  Search Console's FAQ search-appearance filter was itself removed in June 2026, so the UI cannot
+  answer it either. The prerequisite could only be satisfied by the thing it was a prerequisite for.
+  - Replaced with **two windows run together** — one ending 2026-05-06 (the day before withdrawal)
+    and one covering the last 90 days — plus a four-row table for reading the pair, including the
+    genuinely ambiguous case where both come back empty.
+  - The one part that *does* work unauthenticated is now separated out: FAQ rich results required
+    `FAQPage` markup, so a site that never carried it certainly never earned them. Note added that
+    `validate_schema.py`'s output never prints the literal string `FAQPage` — the hit is the FAQ
+    withdrawal `[info]` line — and that archived copies matter, since markup removed since May 2026
+    would make an eligible property look ineligible.
+
 - **`requirements-gsc.txt` was referenced by four scripts and never committed** — `gsc_export.py`
   and `gsc_query.py`, plus their plugin-bundle copies, print *"pip install -r requirements-gsc.txt"*
   when Google auth libraries are missing. The file existed only on the maintainer's machine.
