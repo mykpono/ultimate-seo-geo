@@ -2,7 +2,43 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.12.1] - 2026-08-23
+
+> Folds in what was sitting under `[Unreleased]`: the reference-file refresh (PR #24) landed on
+> `main` before this version was tagged, so it ships inside 1.12.1 and is described here rather
+> than being held back for a release it would not actually be part of.
+
+Two workstreams. **Codex compatibility** — `AGENTS.md` was over the instruction-file budget and
+silently truncating. **Reference accuracy** — the thirteen March-dated reference files came due
+for review, and auditing them turned up three real defects rather than just stale timestamps.
+
 ### Fixed
+
+- **`AGENTS.md` no longer truncates on Codex** — the file was **37,238 bytes** against Codex's
+  32 KiB `project_doc_max_bytes` default. Codex truncates **silently**: no warning in the TUI,
+  `/stats`, `exec`, or the VS Code extension, and everything past the cutoff is never sent to the
+  model. Since the README advertises AGENTS.md compatibility, this was a correctness bug, not
+  housekeeping. Five sections were invisible to every Codex user:
+  §22 Drift Monitoring, §23 Semantic Clustering, §24 E-commerce, §25 Maps Intelligence, and the
+  Google API Tier System — plus **the "Full Detail Reference" table**, the map to `references/`,
+  so the agent could not find the files it was being told to read. Now **32,726 bytes** with
+  nothing truncated.
+
+- **12 CLI tools were missing from `references/audit-script-matrix.md`** — `content_quality.py`,
+  `gsc_export.py` and `render_page.py` appeared in **no** index at all; the other nine
+  (`content_brief`, `crux_history`, `drift_monitor`, `ecommerce_schema`, `ga4_report`,
+  `google_api_tier`, `gsc_query`, `maps_checker`, `topic_cluster`) were listed only in the
+  AGENTS.md section that truncates. The matrix now indexes **all 45** CLI tools and is the single
+  source of truth; `render_page.py` and `google_api_tier.py` were added to the Utilities table.
+
+- **Four procedure files were unreachable from `AGENTS.md`** — `01-request-detection-routing.md`,
+  `16-strategy-roadmap.md`, `17-monthly-maintenance.md` and `19-quality-gates-hard-rules.md` had no
+  pointer, so the agent had no route to them. All **25** are now referenced, with none broken.
+
+- **README version badge and Layer 1 size** — badge tracked 1.10.2 through two releases; the
+  architecture note claimed `AGENTS.md (~27KB)` when it was 37 KB.
 
 - **"Helpful Content" described as a live, separate system in three places** — `references/programmatic-seo.md`
   called it the "Helpful Content System (2022-ongoing)" and both it and `references/local-seo.md` framed thin
@@ -34,45 +70,6 @@
 
 ### Changed
 
-- **Each refreshed file records what its review actually consisted of**, in an HTML comment beside the date, so
-  the new timestamp does not overclaim. Eight are marked `corrected` with the specific change. Five —
-  `keyword-strategy`, `industry-templates`, `site-migration`, `cite-domain-rating`, `entity-optimization` — are
-  marked `verified, no change needed`: they were audited for Google-behaviour claims and externally-sourced
-  statistics and contain neither, their numbers being internal rubric thresholds that do not decay. A negative
-  result is still a review, but a reader deserves to know which kind they are looking at.
-  **September 2025 remains the current Quality Rater Guidelines version** — re-verified, so the E-E-A-T files
-  needed no change.
-
-## [1.12.1] - 2026-08-22
-
-### Fixed
-
-- **`AGENTS.md` no longer truncates on Codex** — the file was **37,238 bytes** against Codex's
-  32 KiB `project_doc_max_bytes` default. Codex truncates **silently**: no warning in the TUI,
-  `/stats`, `exec`, or the VS Code extension, and everything past the cutoff is never sent to the
-  model. Since the README advertises AGENTS.md compatibility, this was a correctness bug, not
-  housekeeping. Five sections were invisible to every Codex user:
-  §22 Drift Monitoring, §23 Semantic Clustering, §24 E-commerce, §25 Maps Intelligence, and the
-  Google API Tier System — plus **the "Full Detail Reference" table**, the map to `references/`,
-  so the agent could not find the files it was being told to read. Now **32,726 bytes** with
-  nothing truncated.
-
-- **12 CLI tools were missing from `references/audit-script-matrix.md`** — `content_quality.py`,
-  `gsc_export.py` and `render_page.py` appeared in **no** index at all; the other nine
-  (`content_brief`, `crux_history`, `drift_monitor`, `ecommerce_schema`, `ga4_report`,
-  `google_api_tier`, `gsc_query`, `maps_checker`, `topic_cluster`) were listed only in the
-  AGENTS.md section that truncates. The matrix now indexes **all 45** CLI tools and is the single
-  source of truth; `render_page.py` and `google_api_tier.py` were added to the Utilities table.
-
-- **Four procedure files were unreachable from `AGENTS.md`** — `01-request-detection-routing.md`,
-  `16-strategy-roadmap.md`, `17-monthly-maintenance.md` and `19-quality-gates-hard-rules.md` had no
-  pointer, so the agent had no route to them. All **25** are now referenced, with none broken.
-
-- **README version badge and Layer 1 size** — badge tracked 1.10.2 through two releases; the
-  architecture note claimed `AGENTS.md (~27KB)` when it was 37 KB.
-
-### Changed
-
 - **`AGENTS.md` §21 Script Toolbox** — the 39-row inventory table (the file's largest section at
   5,119 bytes) is replaced with a pointer to `references/audit-script-matrix.md`. The operating
   rule and the three runnable commands stay inline. Content was **moved, not deleted** — the matrix
@@ -89,6 +86,15 @@
   their own root `AGENTS.md` spends the same budget. No amount of self-trimming can guarantee fit;
   the README now says so and gives the `~/.codex/config.toml` override, plus the symptom to watch
   for (Codex acting unaware of §§22–25).
+
+- **Each refreshed file records what its review actually consisted of**, in an HTML comment beside the date, so
+  the new timestamp does not overclaim. Eight are marked `corrected` with the specific change. Five —
+  `keyword-strategy`, `industry-templates`, `site-migration`, `cite-domain-rating`, `entity-optimization` — are
+  marked `verified, no change needed`: they were audited for Google-behaviour claims and externally-sourced
+  statistics and contain neither, their numbers being internal rubric thresholds that do not decay. A negative
+  result is still a review, but a reader deserves to know which kind they are looking at.
+  **September 2025 remains the current Quality Rater Guidelines version** — re-verified, so the E-E-A-T files
+  needed no change.
 
 ### Added
 
