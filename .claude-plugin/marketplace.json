@@ -6,13 +6,13 @@
     "name": "Myk Pono"
   },
   "metadata": {
-    "version": "1.12.0"
+    "version": "1.12.1"
   },
   "plugins": [
     {
       "name": "ultimate-seo-geo",
       "description": "Scored SEO audits for developers/marketers using AI agents: technical health, JSON-LD, E-E-A-T, backlinks, GEO (AI Overviews, ChatGPT, Perplexity). 46 scripts; HTML/Excel/PDF. E-commerce schema, drift monitoring, topic clustering, Google API tiers, maps intelligence. Optional MCP (Firecrawl, DataForSEO). Parallel workers: agents/PARALLEL-AUDIT.md. Modes: Audit → Plan → Execute.",
-      "version": "1.12.0",
+      "version": "1.12.1",
       "author": {
         "name": "Myk Pono",
         "url": "https://lab.mykpono.com"

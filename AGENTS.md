@@ -2,8 +2,8 @@
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.12.0 |
-| **Updated** | 2026-08-12 |
+| **Version** | 1.12.1 |
+| **Updated** | 2026-08-22 |
 | **License** | MIT |
 | **Author** | Myk Pono |
 | **Homepage** | [lab.mykpono.com](https://lab.mykpono.com) |
@@ -14,32 +14,39 @@ platform that reads `AGENTS.md`. Merges Google's official SEO guidance, 2026 GEO
 and practitioner best practices into one universal framework. Every finding comes with a
 clear fix directive — not just diagnosis.
 
-**Full instructions:** `SKILL.md` is the **routing shell** (§0 + global guardrails + procedure index). Detailed procedures for each § are in `references/procedures/*.md` — read only the file for the section you need. For domain-specific reference data, read the relevant file from `references/` (outside `procedures/`). Load at most **3 files** from `references/` per response (procedure files count toward that limit).
+**Reading budget:** load at most **3 files** from `references/` per response (procedure files count toward that limit). The Routing Index below says which ones.
 
 ## 0. Before You Start
 
 ### Routing Index
 
-| Goal | Read | Run |
-|------|------|-----|
-| Full scored audit | `references/audit-script-matrix.md`, `references/thinking-framework.md` | `generate_report.py` |
-| GEO / AI citations | `references/ai-search-geo.md`, `references/entity-optimization.md` | `robots_checker.py`, `entity_checker.py`, `llms_txt_checker.py` |
-| Schema markup | `references/schema-types.md` | `validate_schema.py` |
-| Technical / CWV | `references/technical-checklist.md` | `pagespeed.py`, `robots_checker.py`, `security_headers.py` |
-| Content / E-E-A-T | `references/eeat-framework.md`, `references/core-eeat-framework.md` | `readability.py`, `article_seo.py` |
-| CITE domain audit | `references/cite-domain-rating.md` | `link_profile.py` |
-| Backlinks | `references/backlink-quality.md` | `backlink_analyzer.py` |
-| Keywords / clusters | `references/keyword-strategy.md` | — |
-| Links | `references/link-building.md` | `internal_links.py`, `broken_links.py`, `link_profile.py` |
-| Local SEO | `references/local-seo.md` | `local_signals_checker.py` |
-| Images | `references/image-seo.md` | `image_checker.py` |
-| International / hreflang | `references/international-seo.md` | `hreflang_checker.py` |
-| Programmatic SEO | `references/programmatic-seo.md` | `programmatic_seo_auditor.py` |
-| Migration | `references/site-migration.md` | `redirect_checker.py` |
-| Analytics / myths | `references/analytics-reporting.md` | — |
-| Crawl / indexation | `references/crawl-indexation.md` | `sitemap_checker.py`, `duplicate_content.py`, `canonical_checker.py` |
-| URL discovery | — | `site_mapper.py` |
-| Extensions | `references/optional-extensions-mcp.md` | Optional MCP (DataForSEO, Firecrawl); monorepo: `extensions/README.md` |
+What to read, what to run, which procedure file has the detail. Full script index:
+`references/audit-script-matrix.md` (45 CLI tools). Routing shell and global guardrails:
+`SKILL.md`.
+
+| Goal | Read | Run | Procedure |
+|------|------|-----|-----------|
+| Full scored audit | `references/audit-script-matrix.md`, `references/thinking-framework.md` | `generate_report.py` | `02-full-site-audit.md` (Mode 3 = execute + verify) |
+| GEO / AI citations | `references/ai-search-geo.md`, `references/entity-optimization.md` | `robots_checker.py`, `entity_checker.py`, `preferred_sources_checker.py` | `03-geo-ai-search.md` |
+| Schema markup | `references/schema-types.md` | `validate_schema.py` | `05-schema-structured-data.md` |
+| Technical / CWV | `references/technical-checklist.md` | `pagespeed.py`, `robots_checker.py`, `security_headers.py` | `04-technical-seo.md` |
+| Content / E-E-A-T | `references/eeat-framework.md`, `references/core-eeat-framework.md` | `readability.py`, `article_seo.py` | `06-content-eeat-and-pruning.md` (§6b = pruning tree) |
+| CITE domain audit | `references/cite-domain-rating.md` | `link_profile.py` | — |
+| Backlinks | `references/backlink-quality.md` | `backlink_analyzer.py` | `09-link-building-internal.md` |
+| Keywords / clusters | `references/keyword-strategy.md` | `topic_cluster.py` | `07-keywords-clusters-aeo.md`, `23-semantic-clustering.md` |
+| Links | `references/link-building.md` | `internal_links.py`, `broken_links.py`, `link_profile.py` | `09-link-building-internal.md` |
+| Local SEO | `references/local-seo.md` | `local_signals_checker.py`, `maps_checker.py` | `12-local-seo.md`, `25-maps-intelligence.md` |
+| Images | `references/image-seo.md` | `image_checker.py` | `13-image-seo.md` |
+| International / hreflang | `references/international-seo.md` | `hreflang_checker.py` | `14-international-hreflang.md` |
+| Programmatic SEO | `references/programmatic-seo.md` | `programmatic_seo_auditor.py` | `15-programmatic-seo.md` |
+| Migration | `references/site-migration.md` | `redirect_checker.py` | `20-site-migration.md` |
+| Analytics / myths | `references/analytics-reporting.md` | `gsc_query.py`, `ga4_report.py`, `gsc_ai_import.py` | `10-analytics-reporting.md`, `18-myths.md` |
+| Crawl / indexation | `references/crawl-indexation.md` | `sitemap_checker.py`, `duplicate_content.py`, `canonical_checker.py` | `11-crawl-indexation.md` (canonical remediation) |
+| Competitor analysis | `references/cite-domain-rating.md` | `link_profile.py` | `08-competitor-analysis.md` |
+| E-commerce | `references/schema-types.md` | `ecommerce_schema.py` | `24-ecommerce-seo.md` |
+| Drift monitoring | — | `drift_monitor.py` | `22-drift-monitoring.md` |
+| URL discovery | — | `site_mapper.py` | — |
+| Extensions | `references/optional-extensions-mcp.md` | Optional MCP (DataForSEO, Firecrawl); monorepo: `extensions/README.md` | — |
 
 ### When NOT to Run a Full Audit
 
@@ -102,6 +109,8 @@ If running on a model with limited context or execution time, apply graceful deg
 ---
 
 ## 1. Request Detection & Routing
+
+Edge cases and ambiguous requests: `references/procedures/01-request-detection-routing.md`.
 
 | Request Type | Trigger Keywords | Go To |
 |---|---|---|
@@ -421,6 +430,8 @@ Script: `programmatic_seo_auditor.py` → `references/programmatic-seo.md`
 
 ## 16. Strategy & Roadmap
 
+Detail: `references/procedures/16-strategy-roadmap.md`.
+
 Triage: `(Business Impact × Ranking Impact) / Effort`. Map dependencies between actions (Blocked By / Unblocks), topologically sort, then group into four phases:
 
 | Phase | Timeframe | Focus |
@@ -434,6 +445,8 @@ Triage: `(Business Impact × Ranking Impact) / Effort`. Map dependencies between
 
 ## 17–18. Maintenance & Myths
 
+Detail: `references/procedures/17-monthly-maintenance.md`, `references/procedures/18-myths.md`.
+
 **Monthly maintenance:** Run through technical health, content & rankings, GEO/AI Search, Local SEO, analytics integrity. Pages losing impressions 3+ months → flag for refresh.
 
 **Myths:** Meta keywords tag is ignored. Word count has no minimum. Core Web Vitals are a tiebreaker not primary factor. E-E-A-T describes quality but is not a direct ranking factor. → `references/analytics-reporting.md`
@@ -441,6 +454,8 @@ Triage: `(Business Impact × Ranking Impact) / Effort`. Map dependencies between
 ---
 
 ## 19. Quality Gates & Hard Rules
+
+Condensed below; full rule text and rationale in `references/procedures/19-quality-gates-hard-rules.md`.
 
 ### Audit Self-Evaluation (run before delivering any audit)
 
@@ -514,93 +529,11 @@ bash scripts/run_individual_checks.sh https://example.com
 
 ### Script Reference
 
-| Script | Purpose |
-|---|---|
-| `generate_report.py` | Full-site HTML/XLSX/PDF dashboard (runs all scripts) |
-| `validate_schema.py` | JSON-LD validation |
-| `robots_checker.py` | robots.txt + AI crawler access |
-| `pagespeed.py` | Core Web Vitals via PageSpeed API |
-| `hreflang_checker.py` | All 8 hreflang rules |
-| `internal_links.py` | Link graph, orphan pages, anchor text |
-| `broken_links.py` | 4xx/5xx broken links + redirect counts |
-| `redirect_checker.py` | Redirect chain analysis |
-| `security_headers.py` | HSTS, CSP, X-Frame-Options |
-| `entity_checker.py` | Wikidata, Wikipedia, sameAs entity signals |
-| `llms_txt_checker.py` | llms.txt presence + format |
-| `indexnow_checker.py` | IndexNow key file validation |
-| `social_meta.py` | Open Graph + Twitter Card |
-| `readability.py` | Flesch-Kincaid grade |
-| `duplicate_content.py` | Near-duplicate detection |
-| `article_seo.py` | Article structure + keyword analysis |
-| `link_profile.py` | Link equity distribution |
-| `backlink_analyzer.py` | 7-section backlink audit (CSV/API data) |
-| `finding_verifier.py` | Deduplicates findings across audit |
-| `sitemap_checker.py` | Sitemap discovery + sanity check |
-| `local_signals_checker.py` | LocalBusiness / tel / address signals |
-| `image_checker.py` | Image alt coverage |
-| `canonical_checker.py` | Canonical tag validation |
-| `meta_lengths_checker.py` | Title / meta description / H1 lengths |
-| `programmatic_seo_auditor.py` | Quality gates for pages at scale |
-| `fetch_page.py` | Fetch and save raw HTML (utility) |
-| `crawl_adapter.py` | Pluggable crawl backend (requests/firecrawl/playwright) |
-| `site_mapper.py` | URL discovery via sitemap + crawl |
-| `drift_monitor.py` | SEO drift baseline, compare, history, report (17 rules) |
-| `topic_cluster.py` | SERP-overlap topic clustering (CSV input) |
-| `content_brief.py` | Content brief generation from competitor analysis |
-| `ecommerce_schema.py` | E-commerce schema validation (Product, Offer, Return, Shipping) |
-| `maps_checker.py` | Advanced local SEO / GBP schema audit |
-| `google_api_tier.py` | Detect available Google API credentials (Tier 0–2) |
-| `crux_history.py` | CrUX History API — historical CWV data (Tier 0) |
-| `gsc_query.py` | Google Search Console queries (Tier 1, OAuth) |
-| `ga4_report.py` | GA4 organic traffic data (Tier 2, OAuth) |
-| `pdf_charts.py` | SVG chart generation for PDF reports (module) |
-| `pdf_template.py` | Professional A4 PDF template with cover + TOC (module) |
+All **45** CLI tools are indexed in `references/audit-script-matrix.md` — audit area, SKILL §,
+script name, and a copy-paste CLI example per row, plus a Utilities table for supporting tools.
+That file is the single source of truth; this section deliberately does not duplicate it.
 
-### Environment Note
-
-Scripts require outbound network access. `pagespeed.py` calls googleapis.com — if it fails, say "performance data unavailable" and use the manual checklist in `references/technical-checklist.md`.
-
-### Excel Export
-
-```bash
-python scripts/generate_report.py https://example.com --format xlsx --output report.xlsx
-python scripts/generate_report.py https://example.com --format all --output report
-```
-
-Requires `openpyxl` (optional): `pip install openpyxl>=3.1.0`
-
-### PDF Export
-
-```bash
-python scripts/generate_report.py https://example.com --format pdf --output report.pdf
-```
-
-Requires **WeasyPrint** (optional): `pip install weasyprint` — see [WeasyPrint installation](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation) for OS libraries. **Fallback:** `--format html` then browser **Print → Save as PDF**.
-
-### Extensions (Optional)
-
-Extensions add external data sources. Core scripts work without them.
-
-| Extension | What It Adds | Install |
-|-----------|-------------|---------|
-| Firecrawl | JS-rendered crawling | `bash extensions/firecrawl/install-generic.sh` |
-| DataForSEO | Live SERP, keywords, backlinks | `bash extensions/dataforseo/install-generic.sh` |
-| Ahrefs | Backlink data, keyword rankings, content gap | MCP config |
-| SE Ranking | AI Share-of-Voice, GEO visibility | MCP config |
-| Profound | LLM citation tracking (ChatGPT, Perplexity, Claude) | MCP config |
-| Bing Webmaster | Bing indexation + IndexNow submission | MCP config |
-
-See `references/optional-extensions-mcp.md` for install paths (plugin bundle); full monorepo: `extensions/README.md`.
-
-### Subagent Definitions
-
-For parallel audit execution, scopes and scripts are in **`agents/PARALLEL-AUDIT.md`** (single file). Each platform interprets these natively — Cursor uses its Task tool, Claude Code can use its Agent tool, others read as context. See `agents/README.md` for the orchestration pattern.
-
-### Context Management for Long Sessions
-
-If context fills mid-audit: compress completed findings into `[Section] Finding | Severity | Fix` one-liners, checkpoint the score, continue with remaining sections, merge back to full format at end.
-
----
+For runnable one-liners grouped by task, see `references/procedures/21-script-toolbox.md`.
 
 ## 22. SEO Drift Monitoring
 
@@ -653,23 +586,3 @@ Script: `maps_checker.py` → `references/procedures/25-maps-intelligence.md`
 Run `google_api_tier.py` to detect available credentials and capabilities. Each tier adds data but lower tiers produce valid audits. See `references/optional-extensions-mcp.md` for extension data sources.
 
 ---
-
-## Full Detail Reference
-
-This file provides enough context to route, audit, and execute. For the routing shell and global guardrails, read `SKILL.md`. For step-by-step procedures, load the matching file from `references/procedures/` (see `references/procedures/README.md`). Key procedures on demand:
-
-| Need | Read |
-|---|---|
-| Full audit process with examples | `references/procedures/02-full-site-audit.md` |
-| GEO citation demonstration pattern | `references/procedures/03-geo-ai-search.md` |
-| Technical audit full checklist | `references/procedures/04-technical-seo.md` |
-| Schema validation checklist | `references/procedures/05-schema-structured-data.md` |
-| Content pruning decision tree | `references/procedures/06-content-eeat-and-pruning.md` (§6b) |
-| Canonical remediation tables | `references/procedures/11-crawl-indexation.md` |
-| Competitor analysis dimensions | `references/procedures/08-competitor-analysis.md` |
-| Migration pre/post checklists | `references/procedures/20-site-migration.md` |
-| Execute + verify loop with examples | `references/procedures/02-full-site-audit.md` (Mode 3) |
-| Drift monitoring rules + workflow | `references/procedures/22-drift-monitoring.md` |
-| SERP-overlap topic clustering | `references/procedures/23-semantic-clustering.md` |
-| E-commerce schema + faceted nav | `references/procedures/24-ecommerce-seo.md` |
-| Geo-grid + GBP + review intelligence | `references/procedures/25-maps-intelligence.md` |

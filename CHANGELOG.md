@@ -4,6 +4,61 @@
 
 _Nothing yet._
 
+## [1.12.1] - 2026-08-22
+
+### Fixed
+
+- **`AGENTS.md` no longer truncates on Codex** — the file was **37,238 bytes** against Codex's
+  32 KiB `project_doc_max_bytes` default. Codex truncates **silently**: no warning in the TUI,
+  `/stats`, `exec`, or the VS Code extension, and everything past the cutoff is never sent to the
+  model. Since the README advertises AGENTS.md compatibility, this was a correctness bug, not
+  housekeeping. Five sections were invisible to every Codex user:
+  §22 Drift Monitoring, §23 Semantic Clustering, §24 E-commerce, §25 Maps Intelligence, and the
+  Google API Tier System — plus **the "Full Detail Reference" table**, the map to `references/`,
+  so the agent could not find the files it was being told to read. Now **32,726 bytes** with
+  nothing truncated.
+
+- **12 CLI tools were missing from `references/audit-script-matrix.md`** — `content_quality.py`,
+  `gsc_export.py` and `render_page.py` appeared in **no** index at all; the other nine
+  (`content_brief`, `crux_history`, `drift_monitor`, `ecommerce_schema`, `ga4_report`,
+  `google_api_tier`, `gsc_query`, `maps_checker`, `topic_cluster`) were listed only in the
+  AGENTS.md section that truncates. The matrix now indexes **all 45** CLI tools and is the single
+  source of truth; `render_page.py` and `google_api_tier.py` were added to the Utilities table.
+
+- **Four procedure files were unreachable from `AGENTS.md`** — `01-request-detection-routing.md`,
+  `16-strategy-roadmap.md`, `17-monthly-maintenance.md` and `19-quality-gates-hard-rules.md` had no
+  pointer, so the agent had no route to them. All **25** are now referenced, with none broken.
+
+- **README version badge and Layer 1 size** — badge tracked 1.10.2 through two releases; the
+  architecture note claimed `AGENTS.md (~27KB)` when it was 37 KB.
+
+### Changed
+
+- **`AGENTS.md` §21 Script Toolbox** — the 39-row inventory table (the file's largest section at
+  5,119 bytes) is replaced with a pointer to `references/audit-script-matrix.md`. The operating
+  rule and the three runnable commands stay inline. Content was **moved, not deleted** — the matrix
+  now covers more scripts than the table ever did.
+
+- **Routing Index and Full Detail Reference merged into one table** — two adjacent tables both
+  mapping need→file became a single `Goal | Read | Run | Procedure` table, and it now sits at byte
+  853 instead of 35,781. This is the structural half of the fix: everything else in `AGENTS.md` is
+  recoverable by reading a reference file, but only while the agent can still see the table telling
+  it which file to read.
+
+- **README documents Codex's instruction budget** — `project_doc_max_bytes` is a **combined** cap
+  across every instruction file Codex loads in the hierarchy, not this file alone, so a user with
+  their own root `AGENTS.md` spends the same budget. No amount of self-trimming can guarantee fit;
+  the README now says so and gives the `~/.codex/config.toml` override, plus the symptom to watch
+  for (Codex acting unaware of §§22–25).
+
+### Added
+
+- **`tests/test_agents_md_size.py`** — four guards, in both trees: the file fits the 32 KiB cap;
+  headroom under 512 bytes `xfail`s rather than passing silently (it is currently 42 bytes — known,
+  accepted, and documented); the Routing Index stays within the first 4 KB; and every procedure
+  file on disk is reachable from `AGENTS.md` with no broken pointers. Validated by reintroducing
+  each failure mode in turn and confirming all three are caught.
+
 ## [1.12.0] - 2026-08-22
 
 Refresh of the Google-facing guidance against everything Google shipped between the last content
