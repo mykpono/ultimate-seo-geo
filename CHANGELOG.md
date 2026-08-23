@@ -24,6 +24,18 @@
   **positionally**. Found by the new guard below, not by review. (`gsc_export.py` genuinely does
   take `--property`, which is likely how the confusion arose.)
 
+- **`check_tag_matches_version.py` suggested the wrong commit to fix a bad tag** — on its first live
+  run (v1.12.4, which was mis-tagged like the two before it) the checker correctly failed, then
+  named `7661274` as the fix target. That was the merge *after* the release-prep one, carrying work
+  1.12.4 was never meant to include. `_likely_correct_commit` returned the **newest** commit
+  declaring the version, which over-shoots the moment `main` moves past the release.
+  - Walking plain history instead **under-shoots**: it returns the bump commit inside the release
+    branch (`432e14d`) rather than the merge that put it on `main` (`db531ae`). Fixed with
+    `--first-parent`, which keeps the walk on the main line. Verified against all three mis-tagged
+    releases — the helper now returns exactly the commit each tag was hand-corrected to.
+  - A checker that reports a real failure and then hands over a wrong command is close to the worst
+    outcome available: it is authoritative enough to be trusted and specific enough to be run.
+
 ### Added
 
 - **`tests/test_documented_commands.py`** — 7 static checks comparing what the docs invoke against
