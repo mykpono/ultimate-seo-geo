@@ -33,6 +33,9 @@
 | Technical Accessibility | 20% | AI crawlers allowed in robots.txt, server-side rendering, key content present in raw HTML |
 | Multi-Modal Content | 15% | Text + images + video + structured data (78% of cited sources combine these) |
 
+**Scoring formula**: score each dimension **0–100**, then `Σ(dimension weight × dimension score)`. Weights sum to 100%, so the result is already on the 0–100 scale — no further division. (Worked example: `references/audit-output-example.md` § Example 3.)
+
+
 ### Platform-to-Dimension Mapping
 
 Different AI platforms prioritize different GEO dimensions. Use this matrix to allocate optimization effort by platform importance for your strategy.

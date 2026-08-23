@@ -12,8 +12,8 @@
 # SEO Audit Report — greenleaf.io
 Date: 2026-03-15 | Business Type: SaaS | Audited Pages: 8 | Confidence: Medium
 
-## SEO Health Score: 61/100
-positive_signals=14, deficit_signals=9, base=61, Critical −15×0, Warning −5×2 = 51 → adjusted 61
+## SEO Health Score: 44/100
+positive_signals=14, deficit_signals=9, base=61; deductions: Critical −15×0, High −8×2, Medium −3×0, Low −1×1 = 44
 
 ## 🟠 High Priority
 
@@ -105,14 +105,14 @@ Date: 2026-03-22 | Focus: AI Search Citation | Pages Reviewed: 6
 | 4 | Named author with credentials? | ❌ No — blog posts have no author bylines |
 | 5 | Brand on YouTube or Reddit? | ❌ No presence on either platform |
 
-## GEO Score: 41/100
+## GEO Score: 47/100
 
 | Dimension | Weight | Score | Notes |
 |-----------|--------|-------|-------|
 | Citability | 25% | 35 | Key answers buried; no self-contained 134–167 word blocks |
 | Structural Readability | 20% | 60 | Clean H1→H2 hierarchy; some question headings |
 | Authority & Brand Signals | 20% | 20 | No author bios, no Wikipedia/Reddit/YouTube presence |
-| Technical Accessibility | 20% | 70 | SSR ✅, AI crawlers ✅, no llms.txt ❌ |
+| Technical Accessibility | 20% | 90 | SSR ✅, AI crawlers ✅, key content in raw HTML ✅ |
 | Multi-Modal Content | 15% | 25 | Text-only; no video, limited images |
 
 ## 🔴 Critical
