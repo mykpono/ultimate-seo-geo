@@ -1,12 +1,13 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: corrected — added cross-language canonicalization rule (rule 6) + hreflang_checker diagnosis -->
 
 # International SEO & Hreflang
-## Updated: March 2026
+## Updated: August 2026
 
 ---
 
 
-**Contents:** Updated: March 2026 · When International SEO Applies · Site Structure Options · Hreflang — Complete Implementation Guide · Language & Region Code Reference · Critical Rules & Validation Checklist · Common Issues & Fixes · Content Strategy for International SEO · Geo-Targeting in Google Search Console · Audit Output Format · International SEO Assessment
+**Contents:** Updated: August 2026 · When International SEO Applies · Site Structure Options · Hreflang — Complete Implementation Guide · Language & Region Code Reference · Critical Rules & Validation Checklist · Common Issues & Fixes · Content Strategy for International SEO · Geo-Targeting in Google Search Console · Audit Output Format · International SEO Assessment
 
 ## When International SEO Applies
 
@@ -129,6 +130,9 @@ It does NOT affect rankings — it controls which version appears for which audi
 3. **x-default**: Must exist on every page set to designate the fallback URL
 4. **Canonical URLs only**: Hreflang tags must use the canonical URL (not redirects, not parameter variants)
 5. **Consistent URLs**: Every reference to a URL must be exactly identical (trailing slash, protocol, www)
+6. **Canonical stays within the language**: each language version must canonicalize to **itself**, or at worst to the closest substitute language — never across languages to a single "main" version. Rule 4 says hreflang must point at canonical URLs; this is the distinct failure it does not cover. A French page carrying `<link rel="canonical" href="…/en/page">` tells Google the French page is a duplicate of the English one, which collapses the whole language cluster to one indexed URL and silently voids the hreflang set — the tags are syntactically valid and do nothing. This is the most common way a technically correct hreflang implementation produces no result.
+
+**Symptom to look for**: hreflang validates cleanly, return tags are bidirectional, yet only one language version appears in any SERP and the others show "Duplicate, Google chose different canonical" in Search Console.
 
 ### Validation Checklist
 

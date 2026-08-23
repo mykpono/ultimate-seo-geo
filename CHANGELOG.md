@@ -2,7 +2,46 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **"Helpful Content" described as a live, separate system in three places** — `references/programmatic-seo.md`
+  called it the "Helpful Content System (2022-ongoing)" and both it and `references/local-seo.md` framed thin
+  content as a "Helpful Content risk", while `references/procedures/06-content-eeat-and-pruning.md` and
+  `references/analytics-reporting.md` correctly recorded it as **merged into core in March 2024**. The plugin
+  contradicted itself, and the practical harm is specific: it implies a client should wait for "the next
+  Helpful Content update", which will never come. Rewritten to say helpfulness is weighted continuously
+  inside core — the site-wide effect persists, the separate event does not.
+
+- **Cross-language canonicalization was uncovered** (`references/international-seo.md`, `scripts/hreflang_checker.py`)
+  — the reference required hreflang to *point at* canonical URLs (rule 4) but never said each language version
+  must canonicalize to **itself**. A French page canonicalizing to the English one declares itself a duplicate,
+  collapsing the language cluster and silently voiding an otherwise valid hreflang set. Added as rule 6 with the
+  Search Console symptom ("Duplicate, Google chose different canonical" while hreflang validates cleanly).
+  `check_canonical_alignment()` now detects the specific case — canonical matching one of the page's own
+  hreflang alternates — and names it, instead of reporting the generic "points to a different URL". The generic
+  branch and the passing branch are unchanged.
+
+- **JPEG XL row was stale** (`references/image-seo.md`) — said "Chrome roadmap restored late 2025". Chrome 145
+  (Feb 2026) ships a Rust decoder but **behind `chrome://flags`, off by default**; Safari is default-on, Firefox
+  is Nightly. The verdict ("not production-ready") was already right; the evidence behind it was not. Chrome's
+  default-on is expected H2 2026 but Google has not confirmed its stated conditions are met, so the row says so
+  rather than predicting.
+
+- **Thirteen reference files carried "Updated: March 2026"** while three of them had already gained
+  August 2026 content in v1.12.0 — the canonical re-evaluation ceiling in `crawl-indexation.md` and the
+  AI-citation spam-policy entries in `link-building.md` and `programmatic-seo.md` were sitting under a
+  five-month-old header. All 13 refreshed; no reference file now lapses before 2027-02-11.
+
+### Changed
+
+- **Each refreshed file records what its review actually consisted of**, in an HTML comment beside the date, so
+  the new timestamp does not overclaim. Eight are marked `corrected` with the specific change. Five —
+  `keyword-strategy`, `industry-templates`, `site-migration`, `cite-domain-rating`, `entity-optimization` — are
+  marked `verified, no change needed`: they were audited for Google-behaviour claims and externally-sourced
+  statistics and contain neither, their numbers being internal rubric thresholds that do not decay. A negative
+  result is still a review, but a reader deserves to know which kind they are looking at.
+  **September 2025 remains the current Quality Rater Guidelines version** — re-verified, so the E-E-A-T files
+  needed no change.
 
 ## [1.12.0] - 2026-08-22
 

@@ -1,4 +1,5 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: verified, no change needed — audited for Google-behaviour claims and externally-sourced statistics; contains neither. All numeric values are internal rubric thresholds, which do not decay. Date reflects that audit, not a rewrite. -->
 
 # Industry-Specific SEO Templates
 

@@ -1,15 +1,16 @@
-<!-- Updated: 2026-03-24 | Review: 2026-09-24 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: corrected — September 2025 QRG re-verified as the current version -->
 <!-- Source: content-quality-auditor skill (aaron-he-zhu/core-eeat-content-benchmark) -->
 
 # CORE-EEAT Content Quality Framework
-## Updated: March 2026
+## Updated: August 2026
 
 80-item content audit across 8 dimensions. Produces a **GEO Score** (AI citation readiness) and an **SEO Score** (search ranking quality), plus a content-type-weighted total.
 
 ---
 
 
-**Contents:** Updated: March 2026 · Scoring System · Veto Items · Content-Type Weight Tables · All 80 Items — Complete Reference · GEO-First Items · AI Engine Preferences · Audit Workflow · Scores · Veto Check · Top 5 Priority Improvements
+**Contents:** Updated: August 2026 · Scoring System · Veto Items · Content-Type Weight Tables · All 80 Items — Complete Reference · GEO-First Items · AI Engine Preferences · Audit Workflow · Scores · Veto Check · Top 5 Priority Improvements
 
 ## Scoring System
 

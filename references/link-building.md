@@ -1,12 +1,13 @@
-<!-- Updated: 2026-03-22 | Review: 2026-09-22 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: corrected — AI-citation spam-policy entry added in 1.12.0 -->
 
 # Link Authority & Acquisition
-## Updated: March 2026
+## Updated: August 2026
 
 ---
 
 
-**Contents:** Updated: March 2026 · Why Links Still Matter in 2026 · Internal Linking Architecture · Backlink Quality Assessment · Link Acquisition Strategies (Ranked by Effort/Impact) · Anchor Text Strategy · Link Velocity & Momentum · Competitive Link Gap Analysis · Outreach Best Practices · Link Building Scoring · Comparison & Alternatives Pages · Comparison & Alternatives Page Playbook · CommonCrawl Backlink Discovery (Free, No API Key)
+**Contents:** Updated: August 2026 · Why Links Still Matter in 2026 · Internal Linking Architecture · Backlink Quality Assessment · Link Acquisition Strategies (Ranked by Effort/Impact) · Anchor Text Strategy · Link Velocity & Momentum · Competitive Link Gap Analysis · Outreach Best Practices · Link Building Scoring · Comparison & Alternatives Pages · Comparison & Alternatives Page Playbook · CommonCrawl Backlink Discovery (Free, No API Key)
 
 ## Why Links Still Matter in 2026
 

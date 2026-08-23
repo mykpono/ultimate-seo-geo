@@ -1,15 +1,16 @@
-<!-- Updated: 2026-03-24 | Review: 2026-09-24 -->
+<!-- Updated: 2026-08-23 | Review: 2027-02-23 -->
+<!-- 2026-08-23 review: verified, no change needed — audited for Google-behaviour claims and externally-sourced statistics; contains neither. All numeric values are internal rubric thresholds, which do not decay. Date reflects that audit, not a rewrite. -->
 <!-- Source: domain-authority-auditor skill (aaron-he-zhu/cite-domain-rating) -->
 
 # CITE Domain Authority Rating Framework
-## Updated: March 2026
+## Updated: August 2026
 
 40-item domain-level audit across 4 dimensions: **Citation** (link authority), **Identity** (brand/entity presence), **Trust** (safety and legitimacy), and **Eminence** (visibility and reputation). Companion to the CORE-EEAT content-level framework.
 
 ---
 
 
-**Contents:** Updated: March 2026 · Scoring System · Veto Items · Domain-Type Weight Tables · All 40 Items — Complete Reference · Diagnosis Matrix: CITE + CORE-EEAT · Rating Scale · Audit Output Template · CITE Score: XX/100 · Veto Check · Combined Assessment (if CORE-EEAT available) · Top 5 Priority Actions
+**Contents:** Updated: August 2026 · Scoring System · Veto Items · Domain-Type Weight Tables · All 40 Items — Complete Reference · Diagnosis Matrix: CITE + CORE-EEAT · Rating Scale · Audit Output Template · CITE Score: XX/100 · Veto Check · Combined Assessment (if CORE-EEAT available) · Top 5 Priority Actions
 
 ## Scoring System
 

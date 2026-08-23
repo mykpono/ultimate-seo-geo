@@ -401,6 +401,36 @@ def check_canonical_alignment(soup: BeautifulSoup, tags: list[dict], page_url: s
 
     canonical_url = canonical_tag.get("href", "").strip()
     if canonical_url and canonical_url.rstrip("/") != page_url.rstrip("/"):
+        # If the canonical points at one of this page's OWN hreflang alternates,
+        # the page is canonicalizing across languages. That is a distinct and much
+        # more specific failure than a generic non-canonical page: the tags are
+        # syntactically valid, validate cleanly, and do nothing, because the page
+        # has declared itself a duplicate of another language version.
+        canonical_norm = canonical_url.rstrip("/")
+        for tag in tags:
+            alt_url = (tag.get("url") or "").rstrip("/")
+            if not alt_url or alt_url == page_url.rstrip("/"):
+                continue
+            if alt_url == canonical_norm:
+                return {
+                    "passed": False,
+                    "severity": "High",
+                    "confidence": "Confirmed",
+                    "finding": (
+                        f"Cross-language canonicalization: this page canonicalizes to its "
+                        f"'{tag.get('lang')}' alternate ({canonical_url}), declaring itself a "
+                        f"duplicate of another language version. The hreflang set is silently "
+                        f"voided — tags validate, return tags may be bidirectional, but the "
+                        f"language cluster collapses to one indexed URL."
+                    ),
+                    "fix": (
+                        "Make the canonical self-referencing on every language version. Each "
+                        "language must canonicalize to itself (or at worst to the closest "
+                        "substitute language), never across languages to one 'main' version. "
+                        "See references/international-seo.md rule 6."
+                    ),
+                }
+
         return {
             "passed": False,
             "severity": "High",
