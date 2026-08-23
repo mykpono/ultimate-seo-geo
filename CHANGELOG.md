@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **`.gitignore` covers `tier-3-4-implementation-brief.md`** — a planning document written against
+  v1.10.0 that carries a personal machine path. Verified before ignoring: nothing in the repo
+  references it, so hiding it creates no broken pointer — the failure mode fixed in 1.12.4 and
+  1.12.6. Named explicitly rather than globbed; a `*brief*.md` pattern would also swallow output
+  from `scripts/content_brief.py`.
+  - Worth recording: **all nine features it proposed (F1–F8, S1–S2) have since shipped** — drift
+    monitoring, semantic clustering, content briefs, e-commerce schema, the API tier system, maps
+    intelligence, PDF reports, content-quality tools and headless rendering are all present. It is a
+    record of completed work, not an outstanding plan.
+
 - **FAQ Search Console API sunset — closed as unanswerable** (`references/schema-types.md`). The
   reported August 2026 window was investigated and **can be neither confirmed nor refuted**. It is
   now recorded as a settled position rather than a question awaiting an answer, so nobody re-opens
