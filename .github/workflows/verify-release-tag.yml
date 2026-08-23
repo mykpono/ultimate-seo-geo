@@ -1,0 +1,30 @@
+name: Verify Release Tag
+
+# Runs only on release tags. Kept in its own workflow because the main one
+# filters `push` by path, and path filters never match a tag push — a tag job
+# added there would silently never run.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  tag-matches-version:
+    name: Tag matches declared version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The check reads file contents at the tagged rev and, on failure,
+          # looks back through history to name the likely correct commit.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify the tag points at a tree declaring this version
+        run: python3 scripts/check_tag_matches_version.py "${GITHUB_REF_NAME}"
+
+      - name: Verify plugin bundle is in sync at this tag
+        run: python3 scripts/check-plugin-sync.py

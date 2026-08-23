@@ -2,6 +2,37 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`scripts/check_tag_matches_version.py` + `.github/workflows/verify-release-tag.yml`** — verifies
+  that a release tag points at a tree which actually declares that version. **v1.12.2 and v1.12.3
+  were both tagged against a local `main` that had not pulled the release-prep merge**, so each tag
+  sat one merge too early and the tagged tree self-reported the *previous* version. Both times the
+  release notes were correct — they are generated from the CHANGELOG on disk, not from the tag — so
+  nothing looked wrong until someone installed from the tag.
+  - `check_version_sync.py` cannot catch this: it checks the **working tree**, which is consistent
+    right after a bump. The defect is in what the tag points at.
+  - Runs in its own workflow, because the main one filters `push` by path and **path filters never
+    match a tag push** — a tag job added there would have silently never run.
+  - On failure it names the commit that does carry the version bump and prints the exact
+    `git tag -f` to fix it, rather than just reporting a mismatch.
+  - Excluded from the plugin bundle (`setup-plugin.sh`, `check-plugin-sync.py`) alongside the other
+    maintainer-only tooling; it needs git history and is useless to plugin users.
+
+- **`tests/test_tag_version_check.py`** — 12 tests covering the extractors, tag-pattern matching, and
+  two guards on the checker itself: that every path it reads exists, and that it covers every file
+  declaring a version. An incomplete source list is the worst failure mode for a guard — it passes by
+  finding nothing to compare, and looks green.
+
+### Fixed
+
+- **Three historical tags were found mis-tagged** by running the new check across all 30 release tags:
+  - **v1.8.1** — `AGENTS.md` left on `1.8.0` while every other file was bumped
+  - **v1.6.0** and **v1.5.9** — the plugin bundle still declared `1.5.6`, and neither CHANGELOG had a
+    section for its own version, so both shipped a bundle reporting the wrong version to users
+  - Left in place deliberately: all three are long superseded, and moving published tags is
+    disruptive for no benefit. Recorded here so the history is not silently clean.
+
 ### Fixed
 
 Re-read the eight files that PR #24 marked *"corrected"* — corrected for one specific thing each, and
