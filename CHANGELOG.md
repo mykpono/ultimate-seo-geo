@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.12.5] - 2026-08-23
+
+Three defects, each found by the fix before it. The command this repo recommended four times for
+settling the FAQ Search Console API question could not parse; the guard written to catch that found a
+second invented flag immediately; and the release-tag checker, on its first live run, correctly
+failed a bad tag and then named the wrong commit to fix it.
+
 ### Fixed
 
 - **The command this repo recommended for settling the FAQ API question could not run** —
