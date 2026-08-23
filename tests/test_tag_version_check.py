@@ -16,6 +16,7 @@ tags, so they run anywhere without mutating the repository.
 import importlib.util
 import json
 import os
+import re
 
 import pytest
 
@@ -88,3 +89,76 @@ def test_sources_cover_every_file_that_declares_a_version():
         "plugins/ultimate-seo-geo/skills/ultimate-seo-geo/SKILL.md",
     }
     assert expected <= tracked, f"version-declaring files not checked at tag time: {expected - tracked}"
+
+def test_likely_correct_commit_returns_the_bump_merge_not_a_later_one():
+    """The suggested fix must be where the bump landed, not the newest match.
+
+    v1.12.4 exposed both failure modes in turn. Returning the *newest* commit
+    declaring the version over-shoots as soon as main moves past the release --
+    it suggested the merge after the release-prep one, carrying work the release
+    was never meant to include. Walking plain history instead under-shoots into
+    the release branch and returns the bump commit, which is not on main and is
+    not what you tag.
+
+    Asserted as a property rather than a fixed SHA, so it cannot rot: the commit
+    returned must declare the version, and its first parent must not -- that is
+    precisely "the merge that introduced it on the main line".
+    """
+    import subprocess
+
+    def _sh(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True)
+
+    # Pick a version that exists in this repo's history.
+    head = _sh("show", "HEAD:SKILL.md").stdout
+    version = tagcheck._extract(head, "frontmatter")
+    assert version, "could not read the current version from SKILL.md"
+
+    sha = tagcheck._likely_correct_commit(version)
+    assert sha, f"helper found no commit introducing {version}"
+
+    at_commit = tagcheck._show(sha, "SKILL.md")
+    assert at_commit and tagcheck._extract(at_commit, "frontmatter") == version, (
+        f"{sha} does not declare {version}"
+    )
+
+    parent = _sh("rev-parse", f"{sha}^1")
+    if parent.returncode == 0:
+        at_parent = tagcheck._show(parent.stdout.strip(), "SKILL.md")
+        parent_version = tagcheck._extract(at_parent, "frontmatter") if at_parent else None
+        assert parent_version != version, (
+            f"{sha} is not where {version} was introduced — its first parent already "
+            f"declares {parent_version}, so the helper is over-shooting."
+        )
+
+    # "declares X, parent does not" is true of the branch commit as well as the merge
+    # that landed it, so it cannot tell them apart on its own. The commit must also sit
+    # on the first-parent path — that is what makes it taggable.
+    main_line = _sh("rev-list", "--first-parent", "HEAD")
+    if main_line.returncode == 0:
+        full = _sh("rev-parse", sha).stdout.strip()
+        assert full in main_line.stdout.split(), (
+            f"{sha} declares {version} but is not on the first-parent path of HEAD — it is a "
+            f"commit inside a release branch, not the merge that put the bump on main. "
+            f"Tagging it would point at history that was never on the main line."
+        )
+
+
+def test_likely_correct_commit_walks_first_parent_only():
+    """Guard the flag in the actual git call, not merely somewhere in the source.
+
+    The first version of this test searched the whole function body for the string
+    "--first-parent". That string also appears in the docstring and a comment, so
+    deleting the flag from the `_git(...)` call left the test green — a guard that
+    passes by matching its own explanation.
+    """
+    import inspect
+
+    src = inspect.getsource(tagcheck._likely_correct_commit)
+    call = re.search(r'_git\(\s*"log"\s*,(.*?)\)', src, re.S)
+    assert call, "_likely_correct_commit no longer calls _git('log', ...)"
+    assert '"--first-parent"' in call.group(1), (
+        "_likely_correct_commit's git log call no longer passes --first-parent. Without "
+        "it the walk descends into the release branch and suggests a commit that is not "
+        f"on main.\n  call args: {call.group(1).strip()}"
+    )

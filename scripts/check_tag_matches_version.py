@@ -79,21 +79,39 @@ def _extract(text: str, how: str) -> str | None:
 
 
 def _likely_correct_commit(expected: str) -> str | None:
-    """Find the newest commit whose tree declares `expected`.
+    """Find the commit where `expected` was introduced — the release-prep merge.
 
-    When a tag lands early, the commit that actually carries the version bump is
-    a little further along the same branch. Reporting it turns a bare failure
-    into a runnable fix.
+    Walking newest-first and returning the first match finds the *newest* commit
+    declaring the version, which over-shoots as soon as `main` moves past the
+    release. That is what happened on v1.12.4: the checker suggested the merge
+    after the release-prep one, which carried work the release was never meant
+    to include.
+
+    Instead, walk the **first-parent** history back through the contiguous run of
+    commits declaring `expected`, and return the oldest of them — the merge that
+    put the bump on main. First-parent matters: a plain walk descends into the
+    release branch and returns the bump commit itself, which is not what you tag.
     """
-    code, out = _git("log", "--format=%H", "-40", "HEAD")
+    # --first-parent keeps us on the main line. Without it the walk descends into
+    # the release branch and returns the bump commit itself (e.g. 432e14d) rather
+    # than the merge that put it on main (db531ae) — which is what you tag.
+    code, out = _git("log", "--first-parent", "--format=%H", "-80", "HEAD")
     if code != 0:
         return None
+
+    candidate = None
     for sha in out.splitlines():
         text = _show(sha, "SKILL.md")
-        if text and _extract(text, "frontmatter") == expected:
-            code2, short = _git("rev-parse", "--short", sha)
-            return short if code2 == 0 else sha[:7]
-    return None
+        declares = bool(text) and _extract(text, "frontmatter") == expected
+        if declares:
+            candidate = sha          # keep walking back through the run
+        elif candidate is not None:
+            break                    # walked past the bump; candidate is its first commit
+
+    if candidate is None:
+        return None
+    code2, short = _git("rev-parse", "--short", candidate)
+    return short if code2 == 0 else candidate[:7]
 
 
 def main() -> int:
@@ -157,7 +175,7 @@ def main() -> int:
         "release-prep merge was pulled. It is what happened to v1.12.2 and v1.12.3."
     )
     if hint:
-        print(f"\nThe version bump appears at {hint}. If that is the intended release commit:")
+        print(f"\nThe {expected} version bump landed at {hint} — that is almost certainly the\nrelease-prep merge and the correct target:")
         print(f"    git tag -f {tag} {hint} && git push origin -f {tag}")
     else:
         print("\nFind the commit that carries the version bump, then move the tag onto it.")
