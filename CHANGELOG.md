@@ -4,12 +4,12 @@
 
 ### Fixed
 
-- **Four crashes, four silent misses and one false Critical.** Three surfaced by running v1.12.6
-  against a live site; the other six were found by probing the sibling scripts with the same page
-  shapes afterwards. All nine survived a green 241-test suite because every one of them needs *real
-  page shapes* to fire — the fixtures in `tests/` are all well-formed single-type schema,
-  single-object blocks and slash-free hrefs. The four that never raised are the more dangerous
-  half: a crash gets noticed, a page silently reported as clean does not.
+- **Three crashes, four silent misses and one false Critical, across nine scripts.** Three
+  surfaced by running v1.12.6 against a live site; the other five were found by probing the sibling
+  scripts with the same page shapes afterwards. All eight survived a green 241-test suite because
+  every one of them needs *real page shapes* to fire — the fixtures in `tests/` are all well-formed
+  single-type schema, single-object blocks and slash-free hrefs. The four that never raised are the
+  more dangerous half: a crash gets noticed, a page silently reported as clean does not.
   - **`broken_links.py` aborted the crawl on the first healthy link.** `check_link()` seeds every
     result with `"redirect": None`, so `.get("redirect", {})` returned `None` — not the `{}` default
     — and chaining `.get("hops", 0)` onto it raised `AttributeError`. The default only applies when
@@ -62,7 +62,7 @@
     over the raw HTML, which never sees the list form: a genuine local business carrying
     `["LocalBusiness", "Store"]` was told **at high severity** to add the schema it already had —
     the worst failure mode of the four, since it is a confident instruction to do the wrong thing.
-  - `tests/test_audit_script_crashes.py` (45 tests) covers all nine. Validated by reintroducing each
+  - `tests/test_audit_script_crashes.py` (45 tests) covers all eight. Validated by reintroducing each
     defect one at a time and confirming the suite catches it — 286 passing, up from 241 — and by
     running the scripts end to end: `parse_html.py`/`validate_schema.py`/`article_seo.py` against a
     fixture carrying an array, a multi-typed node and a retired type; `validate_schema.py` against a
