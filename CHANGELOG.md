@@ -4,9 +4,11 @@
 
 ### Fixed
 
-- **Three crashes and one false Critical, found by running v1.12.6 against a live site.** All four
+- **Four crashes and one false Critical.** Three surfaced by running v1.12.6 against a live site;
+  the fourth was found while fixing them and is the same defect one shape further out. All five
   survived a green 241-test suite because every one of them needs *real page shapes* to fire — the
-  fixtures in `tests/` are all well-formed single-type schema and slash-free hrefs.
+  fixtures in `tests/` are all well-formed single-type schema, single-object blocks and slash-free
+  hrefs.
   - **`broken_links.py` aborted the crawl on the first healthy link.** `check_link()` seeds every
     result with `"redirect": None`, so `.get("redirect", {})` returned `None` — not the `{}` default
     — and chaining `.get("hops", 0)` onto it raised `AttributeError`. The default only applies when
@@ -28,8 +30,21 @@
     keep the href's own slash; de-duplication moved to a slash-insensitive `_dedup_key()`, so
     `/gallery` and `/gallery/` still count once and are no longer fetched twice. A link that
     genuinely points at a redirect is still flagged.
-  - `tests/test_audit_script_crashes.py` (18 tests) covers all four. Validated by reintroducing each
-    defect one at a time and confirming the suite catches it — 259 passing, up from 241.
+  - **A top-level JSON-LD *array* crashed `parse_html.py` and `article_seo.py`** with the same
+    `AttributeError` — both called `.get()` straight on `json.loads()` output, and
+    `[{...}, {...}]` in one `<script>` block is valid JSON-LD that several CMSes emit.
+    `validate_schema.py` already branched on `isinstance(data, list)` and was the model. Each array
+    member is now reported as its own block, so a retired type buried in an array is flagged
+    instead of taking the page down with it; a block of valid JSON carrying no objects at all
+    (`[]`, a bare string) is reported as `not_an_object` rather than dropped in silence. One
+    consequence worth knowing: the `Schema Blocks: N` line now counts schema *nodes*, not
+    `<script>` tags, on pages that use the array form.
+  - `tests/test_audit_script_crashes.py` (27 tests) covers all five. Validated by reintroducing each
+    defect one at a time and confirming the suite catches it — 268 passing, up from 241 — and by
+    running the scripts end to end: `parse_html.py`/`validate_schema.py`/`article_seo.py` against a
+    fixture carrying an array, a multi-typed node and a retired type, and `broken_links.py --crawl`
+    against a live site, which now completes and reports a genuine 2-hop chain where it previously
+    raised on the first link.
 
 ### Changed
 

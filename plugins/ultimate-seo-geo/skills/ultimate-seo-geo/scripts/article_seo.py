@@ -275,6 +275,57 @@ def extract_content(soup: BeautifulSoup, cms: str) -> dict:
 # JSON-LD structured data extraction
 # ---------------------------------------------------------------------------
 
+def _schema_nodes(data) -> list:
+    """Every schema node carried by one JSON-LD block.
+
+    A block may hold a single object or a top-level array of objects — both are
+    valid JSON-LD and both are emitted by real CMSes. Calling .get() straight on
+    the array form raised AttributeError, killing the parse for the whole page.
+    Each member is reported as its own block so a retired type buried in an
+    array is still flagged.
+    """
+    if isinstance(data, dict):
+        return [data]
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+    return []
+
+
+def _describe_schema_node(node: dict, page_text: str) -> dict:
+    """Status, note and FAQ parity for a single JSON-LD node."""
+    schema_type = node.get("@type", "Unknown")
+    status = "active"
+    note = ""
+
+    # @type may be a list; a retired type anywhere in it wins, matching the
+    # single-type precedence this replaced.
+    names = _type_names(schema_type)
+    retired = next((n for n in names if n in DEPRECATED_SCHEMA), None)
+    no_rich = next((n for n in names if n in NO_RICH_RESULTS), None)
+
+    if retired:
+        status = "deprecated"
+        note = f"{retired} is retired — Google no longer processes this type. Remove or replace."
+    elif no_rich:
+        status = "no_rich_results"
+        note = f"{no_rich} no longer produces a Google rich result, but the schema is still valid. Keep it."
+
+    return {
+        "@type": schema_type,
+        # FAQ answer text in JSON-LD but not in the rendered HTML is
+        # invisible to users and AI crawlers (procedures/03 step 4).
+        "faq_answers_missing_from_html": (
+            faq_parity.missing_answers(node, page_text) if page_text else []
+        ),
+        "@context": node.get("@context", ""),
+        "status": status,
+        "note": note,
+        "has_context": bool(node.get("@context")),
+        "has_type": bool(node.get("@type")),
+        "raw": node,
+    }
+
+
 def extract_structured_data(soup: BeautifulSoup, page_text: str = "") -> list:
     """
     Extract and parse all <script type="application/ld+json"> blocks.
@@ -289,37 +340,15 @@ def extract_structured_data(soup: BeautifulSoup, page_text: str = "") -> list:
             blocks.append({"error": "invalid_json", "raw_snippet": raw[:120]})
             continue
 
-        schema_type = data.get("@type", "Unknown")
-        status = "active"
-        note = ""
+        nodes = _schema_nodes(data)
+        if not nodes:
+            # Valid JSON, but nothing object-shaped in it — say so rather than
+            # dropping the block on the floor.
+            blocks.append({"error": "not_an_object", "raw_snippet": raw[:120]})
+            continue
 
-        # @type may be a list; a retired type anywhere in it wins, matching the
-        # single-type precedence this replaced.
-        names = _type_names(schema_type)
-        retired = next((n for n in names if n in DEPRECATED_SCHEMA), None)
-        no_rich = next((n for n in names if n in NO_RICH_RESULTS), None)
-
-        if retired:
-            status = "deprecated"
-            note = f"{retired} is retired — Google no longer processes this type. Remove or replace."
-        elif no_rich:
-            status = "no_rich_results"
-            note = f"{no_rich} no longer produces a Google rich result, but the schema is still valid. Keep it."
-
-        # FAQ answer text in JSON-LD but not in the rendered HTML is
-        # invisible to users and AI crawlers (procedures/03 step 4).
-        missing_faq = faq_parity.missing_answers(data, page_text) if page_text else []
-
-        blocks.append({
-            "@type": schema_type,
-            "faq_answers_missing_from_html": missing_faq,
-            "@context": data.get("@context", ""),
-            "status": status,
-            "note": note,
-            "has_context": bool(data.get("@context")),
-            "has_type": bool(data.get("@type")),
-            "raw": data,
-        })
+        for node in nodes:
+            blocks.append(_describe_schema_node(node, page_text))
 
     return blocks
 

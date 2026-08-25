@@ -8,6 +8,10 @@ Each test below fails against the code as it stood before the accompanying fix.
   * ``validate_schema.py`` / ``parse_html.py`` / ``article_seo.py`` -- ``@type``
     may be a list. Testing it against a dict of retired types raised
     ``TypeError: unhashable type: 'list'``, dropping the whole page from the audit.
+  * ``parse_html.py`` / ``article_seo.py`` -- a JSON-LD block may hold a top-level
+    *array* of nodes. Both called ``.get()`` straight on ``json.loads()`` output and
+    raised ``AttributeError`` on the array form; ``validate_schema.py`` already
+    branched on it correctly.
   * ``internal_links.py`` -- link extraction stripped trailing slashes, the crawler
     then requested a URL the page never linked to, and the site's canonical 301
     back was reported as an internal link pointing to a redirect.
@@ -142,3 +146,67 @@ def test_query_and_fragment_are_still_dropped():
     assert [l["url"] for l in _links("/about/?utm_source=x#top")] == [
         "https://example.com/about/"
     ]
+
+
+# --- a JSON-LD block may be a top-level array -------------------------------
+
+ARRAY = (
+    '<html><head><script type="application/ld+json">'
+    '[{"@context": "https://schema.org", "@type": "Article", "headline": "x"},'
+    ' {"@context": "https://schema.org", "@type": "BreadcrumbList"}]'
+    "</script></head><body></body></html>"
+)
+
+
+def test_parse_html_survives_a_top_level_array():
+    blocks = parse_html.parse_html(ARRAY)["schema"]
+    assert [b["@type"] for b in blocks] == ["Article", "BreadcrumbList"]
+    assert all(b["status"] == "active" for b in blocks)
+
+
+def test_article_seo_survives_a_top_level_array():
+    blocks = article_seo.extract_structured_data(BeautifulSoup(ARRAY, "html.parser"))
+    assert [b["@type"] for b in blocks] == ["Article", "BreadcrumbList"]
+
+
+def test_retired_type_buried_in_an_array_is_still_flagged():
+    html = (
+        '<html><head><script type="application/ld+json">'
+        '[{"@type": "Article"}, {"@type": "ClaimReview"}]'
+        "</script></head><body></body></html>"
+    )
+    blocks = parse_html.parse_html(html)["schema"]
+    assert [b["status"] for b in blocks] == ["active", "deprecated"]
+
+
+def test_validate_schema_still_validates_every_array_member():
+    html = (
+        '<html><head><script type="application/ld+json">'
+        '[{"@context": "https://schema.org", "@type": "Article"}, {"@type": "Thing"}]'
+        "</script></head><body></body></html>"
+    )
+    errors = validate_jsonld(html)
+    assert any("Missing @context" in e for e in errors)
+
+
+@pytest.mark.parametrize("payload", ["[]", '"just a string"', "[1, 2, 3]", "null"])
+def test_object_free_block_is_reported_not_dropped(payload):
+    """Valid JSON carrying no nodes is surfaced, not silently swallowed."""
+    html = (
+        '<html><head><script type="application/ld+json">'
+        + payload
+        + "</script></head><body></body></html>"
+    )
+    blocks = parse_html.parse_html(html)["schema"]
+    assert [b["error"] for b in blocks] == ["not_an_object"]
+
+    seo_blocks = article_seo.extract_structured_data(BeautifulSoup(html, "html.parser"))
+    assert [b["error"] for b in seo_blocks] == ["not_an_object"]
+
+
+def test_invalid_json_still_reports_invalid_json():
+    html = (
+        '<html><head><script type="application/ld+json">{not json'
+        "</script></head><body></body></html>"
+    )
+    assert parse_html.parse_html(html)["schema"][0]["error"] == "invalid_json"
