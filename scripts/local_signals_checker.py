@@ -45,7 +45,10 @@ def check_local_signals(url: str) -> dict:
     except Exception as e:
         return {"error": str(e), "url": url}
 
-    lb = jsonld.declares_type(html, "LocalBusiness")
+    # A subtype counts: Restaurant, Dentist and BookStore are all LocalBusiness,
+    # and schema.org asks for the most specific type available.
+    lb_types = jsonld.local_business_types_in(html)
+    lb = bool(lb_types)
     org = jsonld.declares_type(html, "Organization")
     website = jsonld.declares_type(html, "WebSite")
     tel = len(re.findall(r'href=["\']tel:', html, re.I))
@@ -65,7 +68,23 @@ def check_local_signals(url: str) -> dict:
     score = 40
     if lb:
         score += 35
-        recs.append("LocalBusiness JSON-LD detected — validate NAP consistency in references/local-seo.md.")
+        found = lb_types[0]
+        label = (
+            "LocalBusiness JSON-LD"
+            if found.lower() == "localbusiness"
+            else f"{found} JSON-LD (a LocalBusiness subtype)"
+        )
+        recs.append(f"{label} detected — validate NAP consistency in references/local-seo.md.")
+        for t in lb_types:
+            correction = jsonld.LOCAL_BUSINESS_ALIASES.get(t.lower())
+            if correction:
+                issues.append(
+                    {
+                        "severity": "medium",
+                        "finding": f"'{t}' is not a schema.org type — Google will ignore it.",
+                        "fix": f"Rename the @type to '{correction}'.",
+                    }
+                )
     elif has_local_indicators:
         issues.append(
             {
@@ -109,6 +128,7 @@ def check_local_signals(url: str) -> dict:
         "http_status": status,
         "likely_local_business": likely_local,
         "localbusiness_jsonld": lb,
+        "localbusiness_types": lb_types,
         "organization_jsonld": org,
         "has_local_indicators": has_local_indicators,
         "tel_links": tel,
