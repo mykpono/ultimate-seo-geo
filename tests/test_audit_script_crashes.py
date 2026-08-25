@@ -24,6 +24,7 @@ Each test below fails against the code as it stood before the accompanying fix.
     stringified it, matched nothing, and returned a quietly empty result.
 """
 
+import importlib
 import os
 import sys
 
@@ -34,7 +35,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 from bs4 import BeautifulSoup  # noqa: E402
 
 import article_seo  # noqa: E402
+import entity_checker  # noqa: E402
+import generate_report  # noqa: E402
 import faq_parity  # noqa: E402
+import jsonld  # noqa: E402
 import local_signals_checker  # noqa: E402
 import entity_checker  # noqa: E402
 import generate_report  # noqa: E402
@@ -343,21 +347,23 @@ def test_non_faq_page_is_still_skipped():
     assert faq_parity.missing_answers(_faq(["WebPage", "AboutPage"]), "") == []
 
 
-# --- local_signals_checker: a multi-typed LocalBusiness is not missing ------
+# --- raw-HTML type detection: a multi-typed LocalBusiness is not missing ----
+# local_signals_checker.py scans raw HTML rather than parsed JSON-LD; the
+# detection itself now lives in jsonld.declares_type().
 
 def test_list_type_localbusiness_is_detected():
     html = '<script type="application/ld+json">{"@type": ["LocalBusiness", "Store"]}</script>'
-    assert local_signals_checker._declares_type(html, "LocalBusiness") is True
+    assert jsonld.declares_type(html, "LocalBusiness") is True
 
 
 def test_string_type_localbusiness_still_detected():
     html = '<script type="application/ld+json">{"@type": "LocalBusiness"}</script>'
-    assert local_signals_checker._declares_type(html, "LocalBusiness") is True
+    assert jsonld.declares_type(html, "LocalBusiness") is True
 
 
 def test_absent_type_is_not_detected():
     html = '<script type="application/ld+json">{"@type": ["Store", "Organization"]}</script>'
-    assert local_signals_checker._declares_type(html, "LocalBusiness") is False
+    assert jsonld.declares_type(html, "LocalBusiness") is False
 
 
 @pytest.mark.parametrize("payload", [
@@ -366,4 +372,30 @@ def test_absent_type_is_not_detected():
     '{"@type":"LocalBusiness"}',
 ])
 def test_spacing_variants_all_detected(payload):
-    assert local_signals_checker._declares_type(payload, "LocalBusiness") is True
+    assert jsonld.declares_type(payload, "LocalBusiness") is True
+
+
+# --- one implementation, not seven -----------------------------------------
+
+CONSUMERS = (
+    "validate_schema", "parse_html", "article_seo", "entity_checker",
+    "generate_report", "faq_parity", "local_signals_checker",
+)
+
+
+@pytest.mark.parametrize("name", CONSUMERS)
+def test_every_consumer_shares_the_one_jsonld_implementation(name):
+    """Each script had its own copy of these helpers; they now delegate.
+
+    Also guards importability: a script that lost its `import jsonld` in a
+    later edit fails here rather than at the first live run.
+    """
+    module = importlib.import_module(name)
+    assert module.jsonld is jsonld
+
+
+@pytest.mark.parametrize("name", CONSUMERS)
+def test_no_private_helper_copies_remain(name):
+    module = importlib.import_module(name)
+    for stale in ("_type_names", "_schema_nodes", "_is_type", "_declares_type"):
+        assert not hasattr(module, stale), f"{name}.{stale} is a re-grown copy"

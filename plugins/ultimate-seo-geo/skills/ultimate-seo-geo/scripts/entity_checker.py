@@ -21,6 +21,8 @@ import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
+import jsonld
+
 try:
     from bs4 import BeautifulSoup
 except ImportError:
@@ -69,21 +71,6 @@ ENTITY_TYPES = (
 )
 
 
-def _type_names(value) -> list:
-    """Return the @type value as a list of type strings.
-
-    JSON-LD allows @type to be a single string or a list. A multi-typed node
-    such as ["LocalBusiness", "Organization"] is valid and common; comparing
-    the raw value against ENTITY_TYPES matched nothing, so the entity was
-    dropped without error and the page reported no entity signals at all.
-    """
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list):
-        return [v for v in value if isinstance(v, str)]
-    return []
-
-
 def extract_entities_from_schema(soup: BeautifulSoup) -> list:
     """Extract Organization/Person entities and their sameAs from JSON-LD."""
     entities = []
@@ -110,7 +97,7 @@ def extract_entities_from_schema(soup: BeautifulSoup) -> list:
             # entity["type"] for membership and prints it, so a list here
             # would reintroduce the same silent miss one layer further on.
             entity_type = next(
-                (n for n in _type_names(item.get("@type")) if n in ENTITY_TYPES),
+                (n for n in jsonld.type_names(item.get("@type")) if n in ENTITY_TYPES),
                 None,
             )
             if entity_type:

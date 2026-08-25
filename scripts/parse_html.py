@@ -16,6 +16,7 @@ from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import faq_parity
+import jsonld
 
 # Module-level so tests/test_schema_status_parity.py can check these against
 # the tables in references/schema-types.md.
@@ -36,37 +37,6 @@ except ImportError:
     sys.exit(1)
 
 
-def _type_names(value) -> list:
-    """Return the @type value as a list of type strings.
-
-    JSON-LD allows @type to be a single string or a list — a multi-typed node
-    such as ["WebPage", "FAQPage"] is valid and common. Testing the raw value
-    with `value in DEPRECATED_SCHEMA` raised TypeError: unhashable type: 'list'
-    on the list form.
-    """
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list):
-        return [v for v in value if isinstance(v, str)]
-    return []
-
-
-def _schema_nodes(data) -> list:
-    """Every schema node carried by one JSON-LD block.
-
-    A block may hold a single object or a top-level array of objects — both are
-    valid JSON-LD and both are emitted by real CMSes. Calling .get() straight on
-    the array form raised AttributeError, killing the parse for the whole page.
-    Each member is reported as its own block so a retired type buried in an
-    array is still flagged.
-    """
-    if isinstance(data, dict):
-        return [data]
-    if isinstance(data, list):
-        return [item for item in data if isinstance(item, dict)]
-    return []
-
-
 def _describe_schema_node(node: dict, page_text: str) -> dict:
     """Status, note and FAQ parity for a single JSON-LD node."""
     schema_type = node.get("@type", "Unknown")
@@ -75,7 +45,7 @@ def _describe_schema_node(node: dict, page_text: str) -> dict:
 
     # @type may be a list; a retired type anywhere in it wins, matching the
     # single-type precedence this replaced.
-    names = _type_names(schema_type)
+    names = jsonld.type_names(schema_type)
     retired = next((n for n in names if n in DEPRECATED_SCHEMA), None)
     no_rich = next((n for n in names if n in NO_RICH_RESULTS), None)
 
@@ -299,7 +269,7 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
             })
             continue
 
-        nodes = _schema_nodes(schema_data)
+        nodes = jsonld.nodes(schema_data)
         if not nodes:
             # Valid JSON, but nothing object-shaped in it — say so rather than
             # dropping the block on the floor.

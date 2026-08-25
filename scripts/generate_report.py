@@ -28,6 +28,8 @@ from typing import Optional
 import re
 import subprocess
 import sys
+
+import jsonld
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -208,20 +210,6 @@ def _platform_hint(primary: str, area: str) -> str:
     return platform_map.get(primary, fallback).get(area, fallback.get(area, ""))
 
 
-def _type_names(value) -> list:
-    """Return the @type value as a list of type strings.
-
-    JSON-LD allows @type to be a single string or a list, and parse_html.py
-    passes the value through untouched, so the schema blocks this report reads
-    carry both shapes.
-    """
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list):
-        return [v for v in value if isinstance(v, str)]
-    return []
-
-
 def build_environment_fixes(data: dict) -> list:
     """Build actionable issue fixes tailored to detected environment."""
     env = data.get("environment", {})
@@ -309,14 +297,14 @@ def build_environment_fixes(data: dict) -> list:
     # Raising it on a site that never appears in Top Stories is noise, so gate the
     # finding on a publisher signal rather than reporting it everywhere.
     ps = data["sections"].get("preferred_sources", {})
-    # Flattened via _type_names: str() on a list @type produced
+    # Flattened via jsonld.type_names: str() on a list @type produced
     # "['NewsArticle', 'Article']", which matches nothing below, so the
     # preferred-sources findings vanished on every multi-typed publisher page.
     schema_types = {
         name
         for s in (op.get("schema") or [])
         if isinstance(s, dict)
-        for name in _type_names(s.get("@type"))
+        for name in jsonld.type_names(s.get("@type"))
     }
     looks_like_publisher = bool(schema_types & {"NewsArticle", "NewsMediaOrganization", "LiveBlogPosting"})
     if ps and not ps.get("error") and looks_like_publisher:

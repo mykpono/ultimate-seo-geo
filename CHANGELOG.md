@@ -62,8 +62,22 @@
     over the raw HTML, which never sees the list form: a genuine local business carrying
     `["LocalBusiness", "Store"]` was told **at high severity** to add the schema it already had —
     the worst failure mode of the four, since it is a confident instruction to do the wrong thing.
-  - `tests/test_audit_script_crashes.py` (45 tests) covers all eight. Validated by reintroducing each
-    defect one at a time and confirming the suite catches it — 286 passing, up from 241 — and by
+  - **The fixes above are now one implementation, not seven.** Each script had grown its own
+    `_type_names()` / `_is_type()` / `_schema_nodes()` / `_declares_type()` — the same helper
+    written seven times, which is how the original single-shape assumption managed to be fixed in
+    three places and missed in four. New `scripts/jsonld.py` holds `type_names()`, `is_type()`,
+    `nodes()` and `declares_type()`, and all seven consumers delegate to it. Stdlib only:
+    `faq_parity.py` and `validate_schema.py` are regex/json by design and must not acquire a
+    BeautifulSoup dependency through a shared module.
+    - **What deliberately did *not* move**: the retired and no-rich-results sets stay module-level
+      in `validate_schema.py`, `parse_html.py` and `article_seo.py`, pinned to
+      `references/schema-types.md` by `tests/test_schema_status_parity.py` (**D-017**).
+      `jsonld.py` knows about JSON-LD *shapes*; it knows nothing about which types Google retired.
+    - Two tests pin the consolidation per consumer: one asserts each module delegates to the shared
+      `jsonld` (which also catches a script that loses its import in a later edit), the other that
+      no private copy of the helpers has re-grown.
+  - `tests/test_audit_script_crashes.py` (59 tests) covers all eight. Validated by reintroducing each
+    defect one at a time and confirming the suite catches it — 300 passing, up from 241 — and by
     running the scripts end to end: `parse_html.py`/`validate_schema.py`/`article_seo.py` against a
     fixture carrying an array, a multi-typed node and a retired type; `validate_schema.py` against a
     multi-typed `FAQPage` whose answer is absent from the HTML, which now raises the parity finding

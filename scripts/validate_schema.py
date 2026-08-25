@@ -16,6 +16,7 @@ import sys
 from typing import List
 
 import faq_parity
+import jsonld
 
 # Module-level so tests/test_schema_status_parity.py can check these against
 # the tables in references/schema-types.md. Docs and code may only drift by
@@ -41,21 +42,6 @@ NO_RICH_RESULTS_TYPES = {
     "Dataset": "Dataset markup is consumed by Dataset Search only, not general Google Search (clarified Nov 5, 2025) — still valid and supported; keep it",
     "Quiz": "Google retired the practice problem rich result (Jan 2026) but schema.org Quiz is still valid — keep for Bing, AI systems, and content understanding",
 }
-
-
-def _type_names(value) -> List[str]:
-    """Return the @type value as a list of type strings.
-
-    JSON-LD allows @type to be a single string or a list — a multi-typed node
-    such as ["WebPage", "FAQPage"] is valid and common. Testing the raw value
-    with `value in RETIRED_TYPES` raised TypeError: unhashable type: 'list' on
-    the list form, aborting validation of the whole page.
-    """
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list):
-        return [v for v in value if isinstance(v, str)]
-    return []
 
 
 def validate_jsonld(content: str, check_html_parity: bool = False) -> List[str]:
@@ -157,7 +143,7 @@ def _validate_schema_object(
         if p.lower() in text.lower():
             errors.append(f"{prefix}: Contains placeholder text: {p}")
 
-    for schema_type in _type_names(obj.get("@type")):
+    for schema_type in jsonld.type_names(obj.get("@type")):
         if schema_type in RETIRED_TYPES:
             errors.append(
                 f"{prefix}: @type '{schema_type}' is {RETIRED_TYPES[schema_type]}"
