@@ -39,8 +39,21 @@
     (`[]`, a bare string) is reported as `not_an_object` rather than dropped in silence. One
     consequence worth knowing: the `Schema Blocks: N` line now counts schema *nodes*, not
     `<script>` tags, on pages that use the array form.
-  - `tests/test_audit_script_crashes.py` (27 tests) covers all five. Validated by reintroducing each
-    defect one at a time and confirming the suite catches it — 268 passing, up from 241 — and by
+  - **The same list `@type`, one layer out, in two consumers that never crashed.**
+    `entity_checker.py` compared the raw value against its entity-type tuple and
+    `generate_report.py` ran `str()` over it before an intersection — so
+    `["LocalBusiness", "Organization"]` and `["NewsArticle", "Article"]` matched nothing and
+    both simply returned empty. A multi-typed `Organization` was reported as having no entity
+    signals at all, and the preferred-sources findings were silently skipped on every
+    multi-typed publisher page. Both now normalise through their own `_type_names()`.
+    `entity_checker.py` stores the *matched* name rather than the list, because
+    `check_nap_consistency()` tests `entity["type"]` for membership and prints it — keeping the
+    list there would have moved the same silent miss one layer further on. These two were found
+    by probing the sibling scripts with array and multi-typed fixtures after the crashes above
+    were fixed; `maps_checker.py`, `ecommerce_schema.py` and `content_brief.py` were probed the
+    same way and already handle both shapes.
+  - `tests/test_audit_script_crashes.py` (35 tests) covers all seven. Validated by reintroducing each
+    defect one at a time and confirming the suite catches it — 276 passing, up from 241 — and by
     running the scripts end to end: `parse_html.py`/`validate_schema.py`/`article_seo.py` against a
     fixture carrying an array, a multi-typed node and a retired type, and `broken_links.py --crawl`
     against a live site, which now completes and reports a genuine 2-hop chain where it previously

@@ -15,6 +15,9 @@ Each test below fails against the code as it stood before the accompanying fix.
   * ``internal_links.py`` -- link extraction stripped trailing slashes, the crawler
     then requested a URL the page never linked to, and the site's canonical 301
     back was reported as an internal link pointing to a redirect.
+  * ``entity_checker.py`` / ``generate_report.py`` -- the same list ``@type``, one
+    layer out. Neither crashed: they compared the raw value against a tuple or
+    stringified it, matched nothing, and returned a quietly empty result.
 """
 
 import os
@@ -27,6 +30,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 from bs4 import BeautifulSoup  # noqa: E402
 
 import article_seo  # noqa: E402
+import entity_checker  # noqa: E402
+import generate_report  # noqa: E402
 import parse_html  # noqa: E402
 from broken_links import is_redirect_chain  # noqa: E402
 from internal_links import extract_internal_links  # noqa: E402
@@ -210,3 +215,78 @@ def test_invalid_json_still_reports_invalid_json():
         "</script></head><body></body></html>"
     )
     assert parse_html.parse_html(html)["schema"][0]["error"] == "invalid_json"
+
+
+# --- a list @type must not silently empty out its consumers ------------------
+
+def _entities(type_value):
+    html = (
+        '<html><head><script type="application/ld+json">'
+        '{"@context": "https://schema.org", "@type": ' + type_value + ','
+        ' "name": "Acme", "sameAs": ["https://x.com/acme"]}'
+        "</script></head><body></body></html>"
+    )
+    return entity_checker.extract_entities_from_schema(
+        BeautifulSoup(html, "html.parser")
+    )
+
+
+def test_entity_survives_list_type():
+    """A multi-typed Organization is an entity, not a non-entity."""
+    entities = _entities('["LocalBusiness", "Organization"]')
+    assert [e["name"] for e in entities] == ["Acme"]
+
+
+def test_entity_type_is_the_matched_name_not_the_list():
+    """check_nap_consistency() does `e["type"] in (...)` and prints it."""
+    entity = _entities('["LocalBusiness", "Organization"]')[0]
+    assert entity["type"] == "LocalBusiness"
+
+
+def test_entity_string_type_is_unchanged():
+    assert [e["type"] for e in _entities('"Organization"')] == ["Organization"]
+
+
+def test_non_entity_list_type_is_still_ignored():
+    assert _entities('["WebPage", "BreadcrumbList"]') == []
+
+
+def test_entity_survives_a_top_level_array():
+    html = (
+        '<html><head><script type="application/ld+json">'
+        '[{"@type": "WebPage"}, {"@type": ["NewsMediaOrganization", "Organization"],'
+        ' "name": "Acme"}]'
+        "</script></head><body></body></html>"
+    )
+    entities = entity_checker.extract_entities_from_schema(
+        BeautifulSoup(html, "html.parser")
+    )
+    assert [e["type"] for e in entities] == ["Organization"]
+
+
+def _publisher_fix_titles(type_value):
+    """Titles of the fixes build_environment_fixes() raises for a publisher."""
+    data = {
+        "environment": {},
+        "sections": {
+            "onpage": {"schema": [{"@type": type_value}]},
+            "preferred_sources": {"implemented": False, "integration": {}},
+        },
+    }
+    return [f["title"] for f in generate_report.build_environment_fixes(data)]
+
+
+PREFERRED_SOURCES_FIX = "No preferred sources opt-in found"
+
+
+def test_publisher_gate_survives_list_type():
+    """str() on the list matched nothing, so the finding never fired."""
+    assert PREFERRED_SOURCES_FIX in _publisher_fix_titles(["NewsArticle", "Article"])
+
+
+def test_publisher_gate_string_type_is_unchanged():
+    assert PREFERRED_SOURCES_FIX in _publisher_fix_titles("NewsArticle")
+
+
+def test_non_publisher_is_still_not_gated_in():
+    assert PREFERRED_SOURCES_FIX not in _publisher_fix_titles(["WebPage", "Article"])
