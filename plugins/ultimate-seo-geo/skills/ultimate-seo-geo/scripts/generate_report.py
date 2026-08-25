@@ -28,6 +28,8 @@ from typing import Optional
 import re
 import subprocess
 import sys
+
+import jsonld
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -295,8 +297,14 @@ def build_environment_fixes(data: dict) -> list:
     # Raising it on a site that never appears in Top Stories is noise, so gate the
     # finding on a publisher signal rather than reporting it everywhere.
     ps = data["sections"].get("preferred_sources", {})
+    # Flattened via jsonld.type_names: str() on a list @type produced
+    # "['NewsArticle', 'Article']", which matches nothing below, so the
+    # preferred-sources findings vanished on every multi-typed publisher page.
     schema_types = {
-        str(s.get("@type", "")) for s in (op.get("schema") or []) if isinstance(s, dict)
+        name
+        for s in (op.get("schema") or [])
+        if isinstance(s, dict)
+        for name in jsonld.type_names(s.get("@type"))
     }
     looks_like_publisher = bool(schema_types & {"NewsArticle", "NewsMediaOrganization", "LiveBlogPosting"})
     if ps and not ps.get("error") and looks_like_publisher:

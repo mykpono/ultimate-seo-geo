@@ -16,6 +16,7 @@ import sys
 from typing import List
 
 import faq_parity
+import jsonld
 
 # Module-level so tests/test_schema_status_parity.py can check these against
 # the tables in references/schema-types.md. Docs and code may only drift by
@@ -142,13 +143,14 @@ def _validate_schema_object(
         if p.lower() in text.lower():
             errors.append(f"{prefix}: Contains placeholder text: {p}")
 
-    schema_type = obj.get("@type", "")
+    for schema_type in jsonld.type_names(obj.get("@type")):
+        if schema_type in RETIRED_TYPES:
+            errors.append(
+                f"{prefix}: @type '{schema_type}' is {RETIRED_TYPES[schema_type]}"
+            )
 
-    if schema_type in RETIRED_TYPES:
-        errors.append(f"{prefix}: @type '{schema_type}' is {RETIRED_TYPES[schema_type]}")
-
-    if schema_type in NO_RICH_RESULTS_TYPES:
-        errors.append(f"[info] {prefix}: {NO_RICH_RESULTS_TYPES[schema_type]}")
+        if schema_type in NO_RICH_RESULTS_TYPES:
+            errors.append(f"[info] {prefix}: {NO_RICH_RESULTS_TYPES[schema_type]}")
 
     return errors
 

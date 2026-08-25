@@ -15,6 +15,8 @@ import re
 import sys
 from urllib.parse import urlparse
 
+import jsonld
+
 try:
     import requests
 except ImportError:
@@ -43,9 +45,9 @@ def check_local_signals(url: str) -> dict:
     except Exception as e:
         return {"error": str(e), "url": url}
 
-    lb = bool(re.search(r'"@type"\s*:\s*"LocalBusiness"', html, re.I))
-    org = bool(re.search(r'"@type"\s*:\s*"Organization"', html, re.I))
-    website = bool(re.search(r'"@type"\s*:\s*"WebSite"', html, re.I))
+    lb = jsonld.declares_type(html, "LocalBusiness")
+    org = jsonld.declares_type(html, "Organization")
+    website = jsonld.declares_type(html, "WebSite")
     tel = len(re.findall(r'href=["\']tel:', html, re.I))
     mail = len(re.findall(r'href=["\']mailto:', html, re.I))
     street = bool(

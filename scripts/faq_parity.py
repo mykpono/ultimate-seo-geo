@@ -17,6 +17,8 @@ that the rendered DOM does not, so raw equality reports false misses.
 
 import html
 import re
+
+import jsonld
 from typing import List
 
 # Answers shorter than this are skipped: a handful of characters can appear
@@ -55,9 +57,7 @@ def visible_text(html_content: str) -> str:
 
 def _iter_questions(schema_obj):
     """Yield Question nodes from a FAQPage `mainEntity`, list or single."""
-    if not isinstance(schema_obj, dict):
-        return
-    if schema_obj.get("@type") != "FAQPage":
+    if not jsonld.is_type(schema_obj, "FAQPage"):
         return
     entity = schema_obj.get("mainEntity")
     if isinstance(entity, dict):
@@ -65,7 +65,7 @@ def _iter_questions(schema_obj):
     if not isinstance(entity, list):
         return
     for node in entity:
-        if isinstance(node, dict) and node.get("@type") == "Question":
+        if jsonld.is_type(node, "Question"):
             yield node
 
 

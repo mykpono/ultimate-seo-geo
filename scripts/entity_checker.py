@@ -21,6 +21,8 @@ import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
+import jsonld
+
 try:
     from bs4 import BeautifulSoup
 except ImportError:
@@ -63,6 +65,12 @@ def fetch_html(url: str, timeout: int = 12) -> str:
 # Schema extraction
 # ---------------------------------------------------------------------------
 
+ENTITY_TYPES = (
+    "Organization", "Person", "Corporation", "LocalBusiness", "Brand",
+    "MedicalOrganization", "EducationalOrganization", "GovernmentOrganization",
+)
+
+
 def extract_entities_from_schema(soup: BeautifulSoup) -> list:
     """Extract Organization/Person entities and their sameAs from JSON-LD."""
     entities = []
@@ -85,13 +93,16 @@ def extract_entities_from_schema(soup: BeautifulSoup) -> list:
         for item in items:
             if not isinstance(item, dict):
                 continue
-            schema_type = item.get("@type", "")
-            # Look for entity types
-            if schema_type in ("Organization", "Person", "Corporation",
-                               "LocalBusiness", "Brand", "MedicalOrganization",
-                               "EducationalOrganization", "GovernmentOrganization"):
+            # The matched name, not the raw @type: downstream code tests
+            # entity["type"] for membership and prints it, so a list here
+            # would reintroduce the same silent miss one layer further on.
+            entity_type = next(
+                (n for n in jsonld.type_names(item.get("@type")) if n in ENTITY_TYPES),
+                None,
+            )
+            if entity_type:
                 entities.append({
-                    "type": schema_type,
+                    "type": entity_type,
                     "name": item.get("name", ""),
                     "url": item.get("url", ""),
                     "sameAs": item.get("sameAs", []),

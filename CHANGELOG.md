@@ -2,6 +2,88 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Three crashes, four silent misses and one false Critical, across nine scripts.** Three
+  surfaced by running v1.12.6 against a live site; the other five were found by probing the sibling
+  scripts with the same page shapes afterwards. All eight survived a green 241-test suite because
+  every one of them needs *real page shapes* to fire — the fixtures in `tests/` are all well-formed
+  single-type schema, single-object blocks and slash-free hrefs. The four that never raised are the
+  more dangerous half: a crash gets noticed, a page silently reported as clean does not.
+  - **`broken_links.py` aborted the crawl on the first healthy link.** `check_link()` seeds every
+    result with `"redirect": None`, so `.get("redirect", {})` returned `None` — not the `{}` default
+    — and chaining `.get("hops", 0)` onto it raised `AttributeError`. The default only applies when
+    the key is *absent*, and it never is. The expression is now the single helper
+    `is_redirect_chain()`, used at all three call sites, so the trap cannot be reintroduced in one
+    place and missed in the other two.
+  - **`@type` as a list raised `TypeError: unhashable type: 'list'`** in `validate_schema.py`,
+    `parse_html.py` and `article_seo.py` alike — the same line, copied three ways. JSON-LD allows
+    `"@type": ["WebPage", "FAQPage"]`, and testing that list against the retired-types dict dropped
+    the *whole page* from the audit; on the site that surfaced it, `/gallery/` and `/es/galeria/`
+    were reported as having no findings rather than as having failed. A `_type_names()` helper in
+    each script normalises string-or-list, and a retired type anywhere in the list still outranks a
+    no-rich-results one, matching the single-type precedence it replaced. The sets themselves stay
+    module-level and CI-pinned per D-017 — no shared module, no new drift surface.
+  - **`internal_links.py` reported 94 links-to-redirects that were not in the HTML.** Link
+    extraction stripped trailing slashes, the crawler then requested a URL the page never linked to,
+    and the site's canonical 301 back to `/path/` was recorded as an internal link pointing to a
+    redirect — a round trip this script's own normalisation created. Reported and crawled URLs now
+    keep the href's own slash; de-duplication moved to a slash-insensitive `_dedup_key()`, so
+    `/gallery` and `/gallery/` still count once and are no longer fetched twice. A link that
+    genuinely points at a redirect is still flagged.
+  - **A top-level JSON-LD *array* crashed `parse_html.py` and `article_seo.py`** with the same
+    `AttributeError` — both called `.get()` straight on `json.loads()` output, and
+    `[{...}, {...}]` in one `<script>` block is valid JSON-LD that several CMSes emit.
+    `validate_schema.py` already branched on `isinstance(data, list)` and was the model. Each array
+    member is now reported as its own block, so a retired type buried in an array is flagged
+    instead of taking the page down with it; a block of valid JSON carrying no objects at all
+    (`[]`, a bare string) is reported as `not_an_object` rather than dropped in silence. One
+    consequence worth knowing: the `Schema Blocks: N` line now counts schema *nodes*, not
+    `<script>` tags, on pages that use the array form.
+  - **The same list `@type`, one layer out, in two consumers that never crashed.**
+    `entity_checker.py` compared the raw value against its entity-type tuple and
+    `generate_report.py` ran `str()` over it before an intersection — so
+    `["LocalBusiness", "Organization"]` and `["NewsArticle", "Article"]` matched nothing and
+    both simply returned empty. A multi-typed `Organization` was reported as having no entity
+    signals at all, and the preferred-sources findings were silently skipped on every
+    multi-typed publisher page. Both now normalise through their own `_type_names()`.
+    `entity_checker.py` stores the *matched* name rather than the list, because
+    `check_nap_consistency()` tests `entity["type"]` for membership and prints it — keeping the
+    list there would have moved the same silent miss one layer further on. These two were found
+    by probing the sibling scripts with array and multi-typed fixtures after the crashes above
+    were fixed; `maps_checker.py`, `ecommerce_schema.py` and `content_brief.py` were probed the
+    same way and already handle both shapes.
+  - **And two more consumers on the same shape, both louder in their silence.** `faq_parity.py`
+    gated on `get("@type") != "FAQPage"`, so the visible-HTML parity check passed silently on
+    exactly the pages that carry FAQ markup alongside a page type — the ordinary
+    `["WebPage", "FAQPage"]` shape. Because `validate_schema.py`, `parse_html.py` and
+    `article_seo.py` all route their FAQ check through it, one gate disabled the finding in three
+    scripts at once. `local_signals_checker.py` matched `"@type"\s*:\s*"LocalBusiness"` by regex
+    over the raw HTML, which never sees the list form: a genuine local business carrying
+    `["LocalBusiness", "Store"]` was told **at high severity** to add the schema it already had —
+    the worst failure mode of the four, since it is a confident instruction to do the wrong thing.
+  - **The fixes above are now one implementation, not seven.** Each script had grown its own
+    `_type_names()` / `_is_type()` / `_schema_nodes()` / `_declares_type()` — the same helper
+    written seven times, which is how the original single-shape assumption managed to be fixed in
+    three places and missed in four. New `scripts/jsonld.py` holds `type_names()`, `is_type()`,
+    `nodes()` and `declares_type()`, and all seven consumers delegate to it. Stdlib only:
+    `faq_parity.py` and `validate_schema.py` are regex/json by design and must not acquire a
+    BeautifulSoup dependency through a shared module.
+    - **What deliberately did *not* move**: the retired and no-rich-results sets stay module-level
+      in `validate_schema.py`, `parse_html.py` and `article_seo.py`, pinned to
+      `references/schema-types.md` by `tests/test_schema_status_parity.py` (**D-017**).
+      `jsonld.py` knows about JSON-LD *shapes*; it knows nothing about which types Google retired.
+    - Two tests pin the consolidation per consumer: one asserts each module delegates to the shared
+      `jsonld` (which also catches a script that loses its import in a later edit), the other that
+      no private copy of the helpers has re-grown.
+  - `tests/test_audit_script_crashes.py` (59 tests) covers all eight. Validated by reintroducing each
+    defect one at a time and confirming the suite catches it — 300 passing, up from 241 — and by
+    running the scripts end to end: `parse_html.py`/`validate_schema.py`/`article_seo.py` against a
+    fixture carrying an array, a multi-typed node and a retired type; `validate_schema.py` against a
+    multi-typed `FAQPage` whose answer is absent from the HTML, which now raises the parity finding
+    it used to skip; and `broken_links.py --crawl` against a live site, which now completes and
+    reports a genuine 2-hop chain where it previously raised on the first link.
+
 ### Changed
 
 - **`.gitignore` covers `tier-3-4-implementation-brief.md`** — a planning document written against
