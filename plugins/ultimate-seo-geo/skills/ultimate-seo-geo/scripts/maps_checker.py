@@ -20,6 +20,9 @@ import sys
 from typing import Any
 from urllib.parse import urlparse
 
+import jsonld
+from jsonld import LOCAL_BUSINESS_TYPES  # noqa: F401  (re-exported for callers)
+
 try:
     import requests
 except ImportError:
@@ -98,28 +101,14 @@ def _extract_jsonld_blocks(soup: BeautifulSoup) -> list[dict]:
 
 
 def _find_local_schemas(blocks: list[dict]) -> list[dict]:
-    """Return JSON-LD objects whose @type is LocalBusiness or a subtype."""
-    lb_types = {
-        "localbusiness", "restaurant", "dentist", "attorney", "autobody",
-        "autorepair", "bakery", "barorsalon", "beautysalon", "cafe",
-        "dentist", "drycleaningorlaundry", "electrician", "florist",
-        "gym", "hairsalon", "healthclub", "hotel", "insuranceagency",
-        "legalservice", "library", "locksmith", "medicalclinic", "motel",
-        "movingcompany", "notary", "optician", "petstore", "pharmacy",
-        "physician", "plumber", "realestateagent", "recyclingcenter",
-        "selfstorge", "shoppingcenter", "sportsclub", "store", "travelagency",
-        "veterinarycare",
-    }
-    results = []
-    for block in blocks:
-        block_type = block.get("@type", "")
-        if isinstance(block_type, list):
-            types = [t.lower() for t in block_type]
-        else:
-            types = [block_type.lower()]
-        if any(t in lb_types for t in types):
-            results.append(block)
-    return results
+    """Return JSON-LD objects whose @type is LocalBusiness or a subtype.
+
+    The taxonomy is shared with `local_signals_checker.py`. It used to live here
+    as a private copy, which drifted: it carried a `selfstorge` typo and a
+    `barorsalon` type schema.org has never defined, and it was the *only* script
+    that knew about subtypes at all.
+    """
+    return [b for b in blocks if jsonld.is_local_business(b)]
 
 
 def _audit_schema_completeness(schema: dict) -> list[dict]:
@@ -267,8 +256,8 @@ def check_maps(url: str) -> dict:
     status = fetched["status"]
     soup = BeautifulSoup(html, "html.parser")
 
-    jsonld = _extract_jsonld_blocks(soup)
-    local_schemas = _find_local_schemas(jsonld)
+    blocks = _extract_jsonld_blocks(soup)
+    local_schemas = _find_local_schemas(blocks)
 
     schema_issues: list[dict] = []
     schema_fields_summary: list[dict] = []

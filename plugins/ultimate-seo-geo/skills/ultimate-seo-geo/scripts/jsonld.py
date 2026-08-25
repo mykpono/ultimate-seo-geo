@@ -15,9 +15,12 @@ Deliberately dependency-free, stdlib only: `faq_parity.py` and
 `validate_schema.py` are regex/json by design and must not acquire a
 BeautifulSoup dependency through the back door.
 
-Note on scope: this module knows about JSON-LD *shapes* only. Which types are
-retired or no longer produce rich results stays in each script as a
-module-level constant, pinned to `references/schema-types.md` by
+Note on scope: this module knows about JSON-LD *shapes*, plus the one piece of
+schema.org taxonomy two scripts both need — the LocalBusiness subtype tree,
+which is a fixed fact about the vocabulary rather than a judgement about it.
+Which types are retired or no longer produce rich results is a judgement, moves
+with Google's announcements, and stays in each script as a module-level
+constant, pinned to `references/schema-types.md` by
 `tests/test_schema_status_parity.py` (decision D-017).
 """
 
@@ -75,3 +78,145 @@ def declares_type(html: str, wanted: str) -> bool:
     escaped = re.escape(wanted)
     pattern = r'"@type"\s*:\s*(?:"%s"|\[[^\]]*"%s")' % (escaped, escaped)
     return bool(re.search(pattern, html or "", re.I))
+
+
+# --- schema.org LocalBusiness hierarchy -------------------------------------
+#
+# A page marked up as `Restaurant` or `Dentist` *is* marked up as a
+# LocalBusiness; schema.org's own guidance is to use the most specific subtype
+# available. Matching the literal string "LocalBusiness" and nothing else told
+# every correctly-marked-up local business, at high severity, to add the schema
+# it already had.
+#
+# Grouped by parent to stay checkable against https://schema.org/LocalBusiness.
+# Lowercase throughout: `@type` casing is conventional, not guaranteed.
+
+_LOCAL_BUSINESS_TREE = {
+    # Direct subtypes of LocalBusiness.
+    "": (
+        "localbusiness", "animalshelter", "archiveorganization",
+        "automotivebusiness", "childcare", "dentist", "drycleaningorlaundry",
+        "emergencyservice", "employmentagency", "entertainmentbusiness",
+        "financialservice", "foodestablishment", "governmentoffice",
+        "healthandbeautybusiness", "homeandconstructionbusiness",
+        "internetcafe", "legalservice", "library", "lodgingbusiness",
+        "medicalbusiness", "professionalservice", "radiostation",
+        "realestateagent", "recyclingcenter", "selfstorage", "shoppingcenter",
+        "sportsactivitylocation", "store", "televisionstation",
+        "touristinformationcenter", "travelagency",
+    ),
+    "automotivebusiness": (
+        "autobodyshop", "autodealer", "autopartsstore", "autorental",
+        "autorepair", "autowash", "gasstation", "motorcycledealer",
+        "motorcyclerepair",
+    ),
+    "emergencyservice": ("firestation", "hospital", "policestation"),
+    "entertainmentbusiness": (
+        "adultentertainment", "amusementpark", "artgallery", "casino",
+        "comedyclub", "movietheater", "nightclub",
+    ),
+    "financialservice": (
+        "accountingservice", "automatedteller", "bankorcreditunion",
+        "insuranceagency",
+    ),
+    "foodestablishment": (
+        "bakery", "barorpub", "brewery", "cafeorcoffeeshop", "distillery",
+        "fastfoodrestaurant", "icecreamshop", "restaurant", "winery",
+    ),
+    "governmentoffice": ("postoffice",),
+    "healthandbeautybusiness": (
+        "beautysalon", "dayspa", "hairsalon", "healthclub", "nailsalon",
+        "tattooparlor",
+    ),
+    "homeandconstructionbusiness": (
+        "electrician", "generalcontractor", "housepainter", "hvacbusiness",
+        "locksmith", "movingcompany", "plumber", "roofingcontractor",
+    ),
+    "legalservice": ("attorney", "notary"),
+    "lodgingbusiness": (
+        "bedandbreakfast", "campground", "hostel", "hotel", "motel", "resort",
+        "skiresort",
+    ),
+    "medicalbusiness": (
+        "communityhealth", "covidtestingfacility", "dermatology",
+        "dietnutrition", "emergency", "geriatric", "gynecologic",
+        "individualphysician", "medicalclinic", "midwifery", "nursing",
+        "obstetric", "optician", "optometric", "otolaryngologic", "pediatric",
+        "pharmacy", "physician", "physiciansoffice", "physiotherapy",
+        "plasticsurgery", "podiatric", "primarycare", "psychiatric",
+        "publichealth", "veterinarycare",
+    ),
+    "sportsactivitylocation": (
+        "bowlingalley", "exercisegym", "golfcourse", "publicswimmingpool",
+        "sportsclub", "stadiumorarena", "tenniscomplex",
+    ),
+    "store": (
+        "bikestore", "bookstore", "clothingstore", "computerstore",
+        "conveniencestore", "departmentstore", "electronicsstore", "florist",
+        "furniturestore", "gardenstore", "grocerystore", "hardwarestore",
+        "hobbyshop", "homegoodsstore", "jewelrystore", "liquorstore",
+        "mensclothingstore", "mobilephonestore", "movierentalstore",
+        "musicstore", "officeequipmentstore", "outletstore", "pawnshop",
+        "petstore", "shoestore", "sportinggoodsstore", "tireshop", "toystore",
+        "wholesalestore",
+    ),
+}
+
+#: Every schema.org type that is a LocalBusiness or one of its subtypes,
+#: lowercased. `Organization` is deliberately absent: it is LocalBusiness's
+#: *parent*, and treating it as local would flag every company on the web.
+LOCAL_BUSINESS_TYPES = frozenset(
+    name for group in _LOCAL_BUSINESS_TREE.values() for name in group
+)
+
+#: Names that are *not* schema.org types but appear on real pages, mapped to
+#: what the author meant. `maps_checker.py` matched all five before the taxonomy
+#: moved here; keeping them means widening subtype coverage cannot narrow
+#: anything. Held apart from LOCAL_BUSINESS_TYPES so the set above stays an
+#: honest mirror of https://schema.org/LocalBusiness.
+LOCAL_BUSINESS_ALIASES = {
+    "autobody": "AutoBodyShop",
+    "barorsalon": "BarOrPub",
+    "cafe": "CafeOrCoffeeShop",
+    "gym": "ExerciseGym",
+    "selfstorge": "SelfStorage",
+}
+
+_LOCAL_BUSINESS_MATCH = LOCAL_BUSINESS_TYPES | frozenset(LOCAL_BUSINESS_ALIASES)
+
+_TYPE_VALUE_RE = re.compile(r'"@type"\s*:\s*(?:"([^"]*)"|\[([^\]]*)\])', re.I)
+_QUOTED_RE = re.compile(r'"([^"]*)"')
+
+
+def declared_types(html: str) -> List[str]:
+    """Every `@type` named in raw HTML, in document order, deduped case-insensitively.
+
+    Reads both shapes — `"@type": "Restaurant"` and `"@type": ["WebPage",
+    "Restaurant"]` — and returns the names as written, so callers can quote the
+    site's own casing back at the user.
+    """
+    found, seen = [], set()
+    for single, listed in _TYPE_VALUE_RE.findall(html or ""):
+        for name in ([single] if single else _QUOTED_RE.findall(listed)):
+            name = name.strip()
+            key = name.lower()
+            if key and key not in seen:
+                seen.add(key)
+                found.append(name)
+    return found
+
+
+def local_business_types_in(html: str) -> List[str]:
+    """LocalBusiness types declared in raw HTML, most-specific-first is not implied.
+
+    Empty for a publisher or SaaS page, which is what makes it safe to drive a
+    "you are missing LocalBusiness schema" finding off.
+    """
+    return [t for t in declared_types(html) if t.lower() in _LOCAL_BUSINESS_MATCH]
+
+
+def is_local_business(node) -> bool:
+    """True when a parsed node declares LocalBusiness or any of its subtypes."""
+    if not isinstance(node, dict):
+        return False
+    return any(t.lower() in _LOCAL_BUSINESS_MATCH for t in type_names(node.get("@type")))

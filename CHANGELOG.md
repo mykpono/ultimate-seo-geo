@@ -2,7 +2,29 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **A LocalBusiness subtype now counts as a LocalBusiness.** `local_signals_checker.py` matched the
+  literal string `LocalBusiness` and nothing else, so a restaurant, dentist, plumber or bookshop
+  carrying correct, *more specific* schema — the markup schema.org actually asks for — was told at
+  **high** severity to add the schema it already had. `maps_checker.py` had known the subtype list
+  since it was written; the two scripts simply disagreed about what a local business is.
+
+  The taxonomy now lives once in `scripts/jsonld.py` as `LOCAL_BUSINESS_TYPES` (149 types, grouped
+  by parent so it stays checkable against schema.org) and both scripts read it. Coverage is a strict
+  superset of what `maps_checker.py` matched before: the five names in its private set that schema.org
+  has never defined (`Cafe`, `Gym`, `AutoBody`, `BarOrSalon`, and a `selfstorge` typo) are kept as
+  `LOCAL_BUSINESS_ALIASES` so nothing stops being detected — but a page using one now gets a medium
+  finding naming the real type instead of silent acceptance.
+
+### Added
+
+- `jsonld.declared_types()`, `jsonld.local_business_types_in()` and `jsonld.is_local_business()`.
+- `local_signals_checker.py` output gains `localbusiness_types`, and its recommendation names the
+  subtype it found rather than saying "LocalBusiness" back at a page that says "Restaurant".
+- `tests/test_local_business_subtypes.py` (78 tests; suite 300 -> 378), including a parametrised
+  guard that every type
+  `maps_checker.py` matched before this change is still matched.
 
 ## [1.12.7] - 2026-08-24
 
