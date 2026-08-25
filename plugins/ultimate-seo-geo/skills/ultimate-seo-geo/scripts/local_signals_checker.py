@@ -24,6 +24,18 @@ except ImportError:
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-Local/1.8)"
 
 
+def _declares_type(html: str, wanted: str) -> bool:
+    """True when the raw HTML declares `wanted` as a JSON-LD @type.
+
+    Matches both shapes: `"@type": "LocalBusiness"` and the list form
+    `"@type": ["LocalBusiness", "Store"]`. The string-only pattern this
+    replaced missed multi-typed nodes, so a genuine local business was told —
+    at high severity — to add the schema it already had.
+    """
+    pattern = r'"@type"\s*:\s*(?:"%s"|\[[^\]]*"%s")' % (re.escape(wanted), re.escape(wanted))
+    return bool(re.search(pattern, html, re.I))
+
+
 def check_local_signals(url: str) -> dict:
     parsed = urlparse(url)
     if not parsed.scheme:
@@ -43,9 +55,9 @@ def check_local_signals(url: str) -> dict:
     except Exception as e:
         return {"error": str(e), "url": url}
 
-    lb = bool(re.search(r'"@type"\s*:\s*"LocalBusiness"', html, re.I))
-    org = bool(re.search(r'"@type"\s*:\s*"Organization"', html, re.I))
-    website = bool(re.search(r'"@type"\s*:\s*"WebSite"', html, re.I))
+    lb = _declares_type(html, "LocalBusiness")
+    org = _declares_type(html, "Organization")
+    website = _declares_type(html, "WebSite")
     tel = len(re.findall(r'href=["\']tel:', html, re.I))
     mail = len(re.findall(r'href=["\']mailto:', html, re.I))
     street = bool(

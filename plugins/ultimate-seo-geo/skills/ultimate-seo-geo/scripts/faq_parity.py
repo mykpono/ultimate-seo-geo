@@ -53,11 +53,25 @@ def visible_text(html_content: str) -> str:
     return normalize(_SCRIPT_STYLE_RE.sub(" ", html_content or ""))
 
 
+def _is_type(node, wanted: str) -> bool:
+    """True when a node declares `wanted`, as a string or inside a list @type.
+
+    JSON-LD allows @type to be a list, and `["WebPage", "FAQPage"]` is the
+    ordinary shape for a page that is both. Comparing the raw value with `!=`
+    skipped those nodes, so parity silently passed on exactly the pages that
+    carry FAQ markup alongside a page type.
+    """
+    if not isinstance(node, dict):
+        return False
+    value = node.get("@type")
+    if isinstance(value, list):
+        return wanted in value
+    return value == wanted
+
+
 def _iter_questions(schema_obj):
     """Yield Question nodes from a FAQPage `mainEntity`, list or single."""
-    if not isinstance(schema_obj, dict):
-        return
-    if schema_obj.get("@type") != "FAQPage":
+    if not _is_type(schema_obj, "FAQPage"):
         return
     entity = schema_obj.get("mainEntity")
     if isinstance(entity, dict):
@@ -65,7 +79,7 @@ def _iter_questions(schema_obj):
     if not isinstance(entity, list):
         return
     for node in entity:
-        if isinstance(node, dict) and node.get("@type") == "Question":
+        if _is_type(node, "Question"):
             yield node
 
 

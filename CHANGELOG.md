@@ -4,11 +4,12 @@
 
 ### Fixed
 
-- **Four crashes and one false Critical.** Three surfaced by running v1.12.6 against a live site;
-  the fourth was found while fixing them and is the same defect one shape further out. All five
-  survived a green 241-test suite because every one of them needs *real page shapes* to fire — the
-  fixtures in `tests/` are all well-formed single-type schema, single-object blocks and slash-free
-  hrefs.
+- **Four crashes, four silent misses and one false Critical.** Three surfaced by running v1.12.6
+  against a live site; the other six were found by probing the sibling scripts with the same page
+  shapes afterwards. All nine survived a green 241-test suite because every one of them needs *real
+  page shapes* to fire — the fixtures in `tests/` are all well-formed single-type schema,
+  single-object blocks and slash-free hrefs. The four that never raised are the more dangerous
+  half: a crash gets noticed, a page silently reported as clean does not.
   - **`broken_links.py` aborted the crawl on the first healthy link.** `check_link()` seeds every
     result with `"redirect": None`, so `.get("redirect", {})` returned `None` — not the `{}` default
     — and chaining `.get("hops", 0)` onto it raised `AttributeError`. The default only applies when
@@ -52,12 +53,22 @@
     by probing the sibling scripts with array and multi-typed fixtures after the crashes above
     were fixed; `maps_checker.py`, `ecommerce_schema.py` and `content_brief.py` were probed the
     same way and already handle both shapes.
-  - `tests/test_audit_script_crashes.py` (35 tests) covers all seven. Validated by reintroducing each
-    defect one at a time and confirming the suite catches it — 276 passing, up from 241 — and by
+  - **And two more consumers on the same shape, both louder in their silence.** `faq_parity.py`
+    gated on `get("@type") != "FAQPage"`, so the visible-HTML parity check passed silently on
+    exactly the pages that carry FAQ markup alongside a page type — the ordinary
+    `["WebPage", "FAQPage"]` shape. Because `validate_schema.py`, `parse_html.py` and
+    `article_seo.py` all route their FAQ check through it, one gate disabled the finding in three
+    scripts at once. `local_signals_checker.py` matched `"@type"\s*:\s*"LocalBusiness"` by regex
+    over the raw HTML, which never sees the list form: a genuine local business carrying
+    `["LocalBusiness", "Store"]` was told **at high severity** to add the schema it already had —
+    the worst failure mode of the four, since it is a confident instruction to do the wrong thing.
+  - `tests/test_audit_script_crashes.py` (45 tests) covers all nine. Validated by reintroducing each
+    defect one at a time and confirming the suite catches it — 286 passing, up from 241 — and by
     running the scripts end to end: `parse_html.py`/`validate_schema.py`/`article_seo.py` against a
-    fixture carrying an array, a multi-typed node and a retired type, and `broken_links.py --crawl`
-    against a live site, which now completes and reports a genuine 2-hop chain where it previously
-    raised on the first link.
+    fixture carrying an array, a multi-typed node and a retired type; `validate_schema.py` against a
+    multi-typed `FAQPage` whose answer is absent from the HTML, which now raises the parity finding
+    it used to skip; and `broken_links.py --crawl` against a live site, which now completes and
+    reports a genuine 2-hop chain where it previously raised on the first link.
 
 ### Changed
 

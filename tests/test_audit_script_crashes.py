@@ -12,6 +12,10 @@ Each test below fails against the code as it stood before the accompanying fix.
     *array* of nodes. Both called ``.get()`` straight on ``json.loads()`` output and
     raised ``AttributeError`` on the array form; ``validate_schema.py`` already
     branched on it correctly.
+  * ``faq_parity.py`` / ``local_signals_checker.py`` -- the same list ``@type``, in two
+    more consumers that never raised: FAQ parity skipped every multi-typed FAQ page,
+    and a multi-typed LocalBusiness was told at high severity to add the schema it
+    already had.
   * ``internal_links.py`` -- link extraction stripped trailing slashes, the crawler
     then requested a URL the page never linked to, and the site's canonical 301
     back was reported as an internal link pointing to a redirect.
@@ -30,6 +34,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 from bs4 import BeautifulSoup  # noqa: E402
 
 import article_seo  # noqa: E402
+import faq_parity  # noqa: E402
+import local_signals_checker  # noqa: E402
 import entity_checker  # noqa: E402
 import generate_report  # noqa: E402
 import parse_html  # noqa: E402
@@ -290,3 +296,74 @@ def test_publisher_gate_string_type_is_unchanged():
 
 def test_non_publisher_is_still_not_gated_in():
     assert PREFERRED_SOURCES_FIX not in _publisher_fix_titles(["WebPage", "Article"])
+
+
+# --- faq_parity: a page that is both a WebPage and an FAQPage ---------------
+
+FAQ_ANSWER = "Yes, we deliver across the metro area on the same working day."
+
+
+def _faq(type_value, question_type="Question"):
+    return {
+        "@context": "https://schema.org",
+        "@type": type_value,
+        "mainEntity": [{
+            "@type": question_type,
+            "name": "Do you deliver same day?",
+            "acceptedAnswer": {"@type": "Answer", "text": FAQ_ANSWER},
+        }],
+    }
+
+
+def test_multi_typed_faqpage_is_still_checked_for_parity():
+    """["WebPage", "FAQPage"] is the ordinary shape and was skipped entirely."""
+    missing = faq_parity.missing_answers(
+        _faq(["WebPage", "FAQPage"]), faq_parity.visible_text("<p>Nothing here.</p>")
+    )
+    assert missing == ["Do you deliver same day?"]
+
+
+def test_multi_typed_faqpage_with_visible_answer_reports_nothing():
+    missing = faq_parity.missing_answers(
+        _faq(["WebPage", "FAQPage"]),
+        faq_parity.visible_text(f"<p>{FAQ_ANSWER}</p>"),
+    )
+    assert missing == []
+
+
+def test_multi_typed_question_node_is_still_read():
+    missing = faq_parity.missing_answers(
+        _faq("FAQPage", question_type=["Question", "Thing"]),
+        faq_parity.visible_text("<p>Nothing here.</p>"),
+    )
+    assert missing == ["Do you deliver same day?"]
+
+
+def test_non_faq_page_is_still_skipped():
+    assert faq_parity.missing_answers(_faq(["WebPage", "AboutPage"]), "") == []
+
+
+# --- local_signals_checker: a multi-typed LocalBusiness is not missing ------
+
+def test_list_type_localbusiness_is_detected():
+    html = '<script type="application/ld+json">{"@type": ["LocalBusiness", "Store"]}</script>'
+    assert local_signals_checker._declares_type(html, "LocalBusiness") is True
+
+
+def test_string_type_localbusiness_still_detected():
+    html = '<script type="application/ld+json">{"@type": "LocalBusiness"}</script>'
+    assert local_signals_checker._declares_type(html, "LocalBusiness") is True
+
+
+def test_absent_type_is_not_detected():
+    html = '<script type="application/ld+json">{"@type": ["Store", "Organization"]}</script>'
+    assert local_signals_checker._declares_type(html, "LocalBusiness") is False
+
+
+@pytest.mark.parametrize("payload", [
+    '{"@type":["LocalBusiness","Store"]}',
+    '{"@type": [ "Store" , "LocalBusiness" ]}',
+    '{"@type":"LocalBusiness"}',
+])
+def test_spacing_variants_all_detected(payload):
+    assert local_signals_checker._declares_type(payload, "LocalBusiness") is True
