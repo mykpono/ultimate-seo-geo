@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.12.7] - 2026-08-24
+
+Eight defects in the audit scripts, found by running v1.12.6 against a live site and then probing
+the sibling scripts with the same page shapes. One assumption caused all of them: that a page hands
+you the *simple* form of every JSON-LD shape — a string `@type`, one object per `<script>` block, an
+href without a trailing slash. Three scripts raised on the other form. Four returned nothing and
+reported the page as clean, which is the failure mode that survives a test suite and a reviewer
+both.
+
+The helper that fixes it now exists once, in `scripts/jsonld.py`, rather than seven times — the
+duplication is what let the same one-line fix land in three scripts and skip four.
+
 ### Fixed
 
 - **Three crashes, four silent misses and one false Critical, across nine scripts.** Three
