@@ -1,7 +1,7 @@
 {
   "name": "ultimate-seo-geo",
   "description": "Scored SEO audits for developers and marketers using AI agents: technical health, Schema.org JSON-LD, E-E-A-T, backlinks, domain signals, GEO (AI Overviews, ChatGPT, Perplexity). 46 bundled scripts; HTML/Excel/PDF reports. E-commerce schema, drift monitoring, topic clustering, Google API tiers (GSC/GA4), maps intelligence. Optional MCP (Firecrawl, DataForSEO): references/optional-extensions-mcp.md. Modes: Audit → Plan → Execute.",
-  "version": "1.12.6",
+  "version": "1.12.7",
   "author": {
     "name": "Myk Pono",
     "url": "https://lab.mykpono.com"
