@@ -33,6 +33,15 @@ except ImportError:
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; UltimateSEO/1.8)"}
 
 
+def _dedup_key(url: str) -> str:
+    """Slash-insensitive identity for a URL.
+
+    /gallery and /gallery/ are the same page for counting and de-duplication,
+    but only one of them is what the page actually linked to.
+    """
+    return url.rstrip("/") or url
+
+
 def extract_internal_links(html: str, page_url: str, domain: str) -> list:
     """Extract internal links from HTML."""
     soup = BeautifulSoup(html, "html.parser")
@@ -51,20 +60,25 @@ def extract_internal_links(html: str, page_url: str, domain: str) -> list:
         if parsed.netloc != domain:
             continue
 
-        normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-        if parsed.path in ("", "/"):
-            normalized = f"{parsed.scheme}://{parsed.netloc}"
-        elif normalized.endswith("/"):
-            normalized = normalized.rstrip("/")
+        # Keep the href's own trailing slash. Stripping it made the crawler
+        # request a URL the page never linked to; a site that canonicalises to
+        # /path/ then 301s straight back, and that round trip — created by this
+        # script's own normalisation, not by the HTML — was reported as
+        # "internal link points to a redirect URL". De-duplication stays
+        # slash-insensitive so /gallery and /gallery/ still count once.
+        target = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+        if parsed.path == "":
+            target = f"{parsed.scheme}://{parsed.netloc}/"
 
-        if normalized in seen:
+        key = _dedup_key(target)
+        if key in seen:
             continue
-        seen.add(normalized)
+        seen.add(key)
 
         anchor_text = tag.get_text(strip=True)[:80] or "[no text]"
         nofollow = "nofollow" in (tag.get("rel", []) or [])
         links.append({
-            "url": normalized,
+            "url": target,
             "anchor_text": anchor_text,
             "nofollow": nofollow,
             "source": page_url,
@@ -119,6 +133,7 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
 
     # BFS crawl
     visited = set()
+    visited_keys = set()  # slash-insensitive, so /a and /a/ are not fetched twice
     queue = [(start_url, 0)]  # (url, depth)
     all_links = []
     page_link_counts = {}
@@ -154,8 +169,9 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
         batch = []
         while queue and len(batch) < max_workers:
             url, depth = queue.pop(0)
-            if url in visited or depth > max_depth:
+            if _dedup_key(url) in visited_keys or depth > max_depth:
                 continue
+            visited_keys.add(_dedup_key(url))
             visited.add(url)
             batch.append((url, depth))
 
@@ -202,7 +218,7 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
                     if link["nofollow"]:
                         result["nofollow_links"].append(link)
 
-                    if link["url"] not in visited and depth + 1 <= max_depth:
+                    if _dedup_key(link["url"]) not in visited_keys and depth + 1 <= max_depth:
                         queue.append((link["url"], depth + 1))
 
     for link in all_links:

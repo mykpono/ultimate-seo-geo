@@ -1,0 +1,144 @@
+"""Three crashes and one false finding, found by running v1.12.6 on a live site.
+
+Each test below fails against the code as it stood before the accompanying fix.
+
+  * ``broken_links.py``   -- every non-redirected link carries ``"redirect": None``,
+    so ``.get("redirect", {})`` returned None rather than the default and the
+    crawl aborted on the first healthy link.
+  * ``validate_schema.py`` / ``parse_html.py`` / ``article_seo.py`` -- ``@type``
+    may be a list. Testing it against a dict of retired types raised
+    ``TypeError: unhashable type: 'list'``, dropping the whole page from the audit.
+  * ``internal_links.py`` -- link extraction stripped trailing slashes, the crawler
+    then requested a URL the page never linked to, and the site's canonical 301
+    back was reported as an internal link pointing to a redirect.
+"""
+
+import os
+import sys
+
+import pytest
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+
+from bs4 import BeautifulSoup  # noqa: E402
+
+import article_seo  # noqa: E402
+import parse_html  # noqa: E402
+from broken_links import is_redirect_chain  # noqa: E402
+from internal_links import extract_internal_links  # noqa: E402
+import validate_schema  # noqa: E402
+from validate_schema import validate_jsonld  # noqa: E402
+
+
+# --- broken_links: a None redirect is not an empty dict ---------------------
+
+def test_healthy_link_is_not_a_redirect_chain():
+    """check_link() seeds every result with redirect=None."""
+    assert is_redirect_chain({"url": "https://e.com/", "redirect": None}) is False
+
+
+def test_missing_redirect_key_is_not_a_redirect_chain():
+    assert is_redirect_chain({"url": "https://e.com/"}) is False
+
+
+@pytest.mark.parametrize("hops,expected", [(1, False), (2, True), (3, True)])
+def test_redirect_chain_needs_more_than_one_hop(hops, expected):
+    result = {"redirect": {"from": "a", "to": "b", "hops": hops}}
+    assert is_redirect_chain(result) is expected
+
+
+# --- @type may be a list ----------------------------------------------------
+
+def _page(type_value, extra=""):
+    return (
+        '<html><head><script type="application/ld+json">'
+        '{"@context": "https://schema.org", "@type": ' + type_value + extra + "}"
+        "</script></head><body></body></html>"
+    )
+
+
+MULTI = '["WebPage", "FAQPage"]'
+
+
+def test_validate_schema_survives_list_type():
+    errors = validate_jsonld(_page(MULTI))
+    assert not any("Missing @type" in e for e in errors)
+
+
+def test_validate_schema_still_flags_a_retired_type_inside_a_list():
+    errors = validate_jsonld(_page('["WebPage", "ClaimReview"]'))
+    assert any("ClaimReview" in e and "retired" in e for e in errors)
+
+
+def test_validate_schema_reports_no_rich_results_type_inside_a_list():
+    """The note text carries the finding; it does not repeat the type name."""
+    errors = validate_jsonld(_page(MULTI))
+    note = validate_schema.NO_RICH_RESULTS_TYPES["FAQPage"]
+    assert any(e.startswith("[info]") and note in e for e in errors)
+
+
+def test_parse_html_survives_list_type():
+    blocks = parse_html.parse_html(_page('["WebPage", "ClaimReview"]'))["schema"]
+    assert blocks[0]["@type"] == ["WebPage", "ClaimReview"]
+    assert blocks[0]["status"] == "deprecated"
+    assert "ClaimReview" in blocks[0]["note"]
+
+
+def test_parse_html_list_type_precedence_matches_single_type():
+    """A retired type anywhere in the list outranks a no-rich-results one."""
+    blocks = parse_html.parse_html(_page('["FAQPage", "ClaimReview"]'))["schema"]
+    assert blocks[0]["status"] == "deprecated"
+
+
+def test_parse_html_plain_list_type_stays_active():
+    blocks = parse_html.parse_html(_page('["WebPage", "Article"]'))["schema"]
+    assert blocks[0]["status"] == "active"
+
+
+def test_article_seo_survives_list_type():
+    soup = BeautifulSoup(_page(MULTI), "html.parser")
+    blocks = article_seo.extract_structured_data(soup)
+    assert blocks[0]["status"] == "no_rich_results"
+    assert "FAQPage" in blocks[0]["note"]
+
+
+# --- internal_links: don't invent the redirect you then report --------------
+
+DOMAIN = "example.com"
+PAGE = "https://example.com/"
+
+
+def _links(*hrefs):
+    html = "<html><body>" + "".join(
+        f'<a href="{h}">link</a>' for h in hrefs
+    ) + "</body></html>"
+    return extract_internal_links(html, PAGE, DOMAIN)
+
+
+def test_trailing_slash_is_preserved():
+    """The URL reported is the one the page actually linked to."""
+    assert [l["url"] for l in _links("/gallery/")] == ["https://example.com/gallery/"]
+
+
+def test_slashless_href_stays_slashless():
+    assert [l["url"] for l in _links("/gallery")] == ["https://example.com/gallery"]
+
+
+def test_slash_variants_still_deduplicate():
+    assert len(_links("/gallery/", "/gallery")) == 1
+
+
+def test_localised_path_keeps_its_slash():
+    assert [l["url"] for l in _links("/es/galeria/")] == [
+        "https://example.com/es/galeria/"
+    ]
+
+
+def test_root_href_is_requestable():
+    assert [l["url"] for l in _links("https://example.com")] == ["https://example.com/"]
+
+
+def test_query_and_fragment_are_still_dropped():
+    assert [l["url"] for l in _links("/about/?utm_source=x#top")] == [
+        "https://example.com/about/"
+    ]

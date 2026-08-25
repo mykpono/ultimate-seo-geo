@@ -75,6 +75,21 @@ NO_RICH_RESULTS = {"HowTo", "FAQPage", "Quiz", "Dataset"}
 # Fetch
 # ---------------------------------------------------------------------------
 
+def _type_names(value) -> list:
+    """Return the @type value as a list of type strings.
+
+    JSON-LD allows @type to be a single string or a list — a multi-typed node
+    such as ["WebPage", "FAQPage"] is valid and common. Testing the raw value
+    with `value in DEPRECATED_SCHEMA` raised TypeError: unhashable type: 'list'
+    on the list form.
+    """
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [v for v in value if isinstance(v, str)]
+    return []
+
+
 def fetch_html(url: str) -> str:
     """Fetch raw HTML from a URL with a realistic browser user-agent."""
     try:
@@ -278,12 +293,18 @@ def extract_structured_data(soup: BeautifulSoup, page_text: str = "") -> list:
         status = "active"
         note = ""
 
-        if schema_type in DEPRECATED_SCHEMA:
+        # @type may be a list; a retired type anywhere in it wins, matching the
+        # single-type precedence this replaced.
+        names = _type_names(schema_type)
+        retired = next((n for n in names if n in DEPRECATED_SCHEMA), None)
+        no_rich = next((n for n in names if n in NO_RICH_RESULTS), None)
+
+        if retired:
             status = "deprecated"
-            note = f"{schema_type} is retired — Google no longer processes this type. Remove or replace."
-        elif schema_type in NO_RICH_RESULTS:
+            note = f"{retired} is retired — Google no longer processes this type. Remove or replace."
+        elif no_rich:
             status = "no_rich_results"
-            note = f"{schema_type} no longer produces a Google rich result, but the schema is still valid. Keep it."
+            note = f"{no_rich} no longer produces a Google rich result, but the schema is still valid. Keep it."
 
         # FAQ answer text in JSON-LD but not in the rendered HTML is
         # invisible to users and AI crawlers (procedures/03 step 4).

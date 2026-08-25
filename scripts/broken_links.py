@@ -70,6 +70,17 @@ def extract_links(html: str, base_url: str) -> list:
     return links
 
 
+def is_redirect_chain(link_result: dict) -> bool:
+    """True when a checked link travelled through more than one redirect hop.
+
+    `check_link` initialises "redirect" to None on every result, so the {}
+    default of `.get("redirect", {})` was never reached: the call returned None
+    and chaining `.get("hops", 0)` onto it raised AttributeError on the first
+    link that was not redirected.
+    """
+    return (link_result.get("redirect") or {}).get("hops", 0) > 1
+
+
 def check_link(link: dict, timeout: int = 10, detect_soft_404: bool = True) -> dict:
     """Check a single link's HTTP status, including soft 404 detection."""
     url = link["url"]
@@ -225,8 +236,7 @@ def check_broken_links(url: str, internal_only: bool = False,
             f"⚠️ {len(result['timeout'])} link(s) timed out"
         )
     if result["redirected"]:
-        chains = [l for l in result["redirected"]
-                  if l.get("redirect", {}).get("hops", 0) > 1]
+        chains = [l for l in result["redirected"] if is_redirect_chain(l)]
         if chains:
             result["issues"].append(
                 f"⚠️ {len(chains)} redirect chain(s) detected (>1 hop)"
@@ -312,7 +322,7 @@ def crawl_broken_links(start_url: str, max_depth: int = 2, max_pages: int = 50,
                 elif status and status >= 400:
                     all_broken.append(link_result)
                     broken_by_target[link_result["url"]].append(page_url)
-                elif link_result.get("redirect", {}).get("hops", 0) > 1:
+                elif is_redirect_chain(link_result):
                     all_chains.append(link_result)
                 else:
                     healthy_count += 1
@@ -441,8 +451,7 @@ def main():
 
     redirected = result.get("redirected", result.get("redirected_chains", []))
     if redirected:
-        chains = [l for l in redirected
-                  if l.get("redirect", {}).get("hops", 0) > 1]
+        chains = [l for l in redirected if is_redirect_chain(l)]
         if chains:
             print(f"\n⚠️ Redirect Chains (>1 hop):")
             for link in chains:

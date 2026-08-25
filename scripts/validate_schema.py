@@ -43,6 +43,21 @@ NO_RICH_RESULTS_TYPES = {
 }
 
 
+def _type_names(value) -> List[str]:
+    """Return the @type value as a list of type strings.
+
+    JSON-LD allows @type to be a single string or a list — a multi-typed node
+    such as ["WebPage", "FAQPage"] is valid and common. Testing the raw value
+    with `value in RETIRED_TYPES` raised TypeError: unhashable type: 'list' on
+    the list form, aborting validation of the whole page.
+    """
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [v for v in value if isinstance(v, str)]
+    return []
+
+
 def validate_jsonld(content: str, check_html_parity: bool = False) -> List[str]:
     """Validate JSON-LD blocks in HTML content.
 
@@ -142,13 +157,14 @@ def _validate_schema_object(
         if p.lower() in text.lower():
             errors.append(f"{prefix}: Contains placeholder text: {p}")
 
-    schema_type = obj.get("@type", "")
+    for schema_type in _type_names(obj.get("@type")):
+        if schema_type in RETIRED_TYPES:
+            errors.append(
+                f"{prefix}: @type '{schema_type}' is {RETIRED_TYPES[schema_type]}"
+            )
 
-    if schema_type in RETIRED_TYPES:
-        errors.append(f"{prefix}: @type '{schema_type}' is {RETIRED_TYPES[schema_type]}")
-
-    if schema_type in NO_RICH_RESULTS_TYPES:
-        errors.append(f"[info] {prefix}: {NO_RICH_RESULTS_TYPES[schema_type]}")
+        if schema_type in NO_RICH_RESULTS_TYPES:
+            errors.append(f"[info] {prefix}: {NO_RICH_RESULTS_TYPES[schema_type]}")
 
     return errors
 

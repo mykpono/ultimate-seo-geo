@@ -2,6 +2,35 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Three crashes and one false Critical, found by running v1.12.6 against a live site.** All four
+  survived a green 241-test suite because every one of them needs *real page shapes* to fire — the
+  fixtures in `tests/` are all well-formed single-type schema and slash-free hrefs.
+  - **`broken_links.py` aborted the crawl on the first healthy link.** `check_link()` seeds every
+    result with `"redirect": None`, so `.get("redirect", {})` returned `None` — not the `{}` default
+    — and chaining `.get("hops", 0)` onto it raised `AttributeError`. The default only applies when
+    the key is *absent*, and it never is. The expression is now the single helper
+    `is_redirect_chain()`, used at all three call sites, so the trap cannot be reintroduced in one
+    place and missed in the other two.
+  - **`@type` as a list raised `TypeError: unhashable type: 'list'`** in `validate_schema.py`,
+    `parse_html.py` and `article_seo.py` alike — the same line, copied three ways. JSON-LD allows
+    `"@type": ["WebPage", "FAQPage"]`, and testing that list against the retired-types dict dropped
+    the *whole page* from the audit; on the site that surfaced it, `/gallery/` and `/es/galeria/`
+    were reported as having no findings rather than as having failed. A `_type_names()` helper in
+    each script normalises string-or-list, and a retired type anywhere in the list still outranks a
+    no-rich-results one, matching the single-type precedence it replaced. The sets themselves stay
+    module-level and CI-pinned per D-017 — no shared module, no new drift surface.
+  - **`internal_links.py` reported 94 links-to-redirects that were not in the HTML.** Link
+    extraction stripped trailing slashes, the crawler then requested a URL the page never linked to,
+    and the site's canonical 301 back to `/path/` was recorded as an internal link pointing to a
+    redirect — a round trip this script's own normalisation created. Reported and crawled URLs now
+    keep the href's own slash; de-duplication moved to a slash-insensitive `_dedup_key()`, so
+    `/gallery` and `/gallery/` still count once and are no longer fetched twice. A link that
+    genuinely points at a redirect is still flagged.
+  - `tests/test_audit_script_crashes.py` (18 tests) covers all four. Validated by reintroducing each
+    defect one at a time and confirming the suite catches it — 259 passing, up from 241.
+
 ### Changed
 
 - **`.gitignore` covers `tier-3-4-implementation-brief.md`** — a planning document written against
