@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.12.8] - 2026-08-25
+
+The one defect v1.12.7 knowingly left behind, and the last of the family: a script that assumed the
+shape it happened to see first. This one never raised. It returned a confident wrong answer, at
+**high** severity, to exactly the users whose markup was already right.
+
 ### Fixed
 
 - **A LocalBusiness subtype now counts as a LocalBusiness.** `local_signals_checker.py` matched the
@@ -23,8 +31,7 @@
 - `local_signals_checker.py` output gains `localbusiness_types`, and its recommendation names the
   subtype it found rather than saying "LocalBusiness" back at a page that says "Restaurant".
 - `tests/test_local_business_subtypes.py` (78 tests; suite 300 -> 378), including a parametrised
-  guard that every type
-  `maps_checker.py` matched before this change is still matched.
+  guard that every type `maps_checker.py` matched before this change is still matched.
 
 ## [1.12.7] - 2026-08-24
 
