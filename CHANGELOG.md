@@ -55,6 +55,19 @@
     passing or failing.
   - `--github-annotations` prints escaped `::error` / `::warning` lines.
   - `--format none` skips the report file.
+- **`llms_txt_checker.py --check-sitemap` finds llms.txt links the site no longer lists.**
+  - **Sitemap reading:** it follows robots.txt `Sitemap:` lines (falling back to `/sitemap.xml`),
+    sitemap indexes and gzipped sitemaps, with caps on files and URLs.
+  - **Comparison:** it compares same-site llms.txt links with the sitemap, treating a page's
+    markdown twin (`/page.md`, `/page.html.md`), `index.html`, `www.` and trailing slashes as the
+    same page, and checks up to 20 of the missing links for 404/410.
+  - **What counts as the site:** every host the sitemap lists, so docs that moved domain still
+    compare. Links to nested `llms.txt` / `llms-full.txt` files are counted separately, never
+    called missing pages.
+  - **Partial reads:** when a sitemap file cannot be read, the result is "partial" and says which
+    files were read rather than calling links missing.
+  - **Safety:** every fetch of a link from the file passes the URL-safety check on each redirect hop.
+  - **Severity:** all results are Info; Google Search ignores llms.txt.
 
 ### Changed
 

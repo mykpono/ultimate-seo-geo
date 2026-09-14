@@ -294,6 +294,13 @@ Allow: /
 
 **Implemented by**: Anthropic (Claude docs), Cloudflare, Stripe
 
+**Keep it in step with the site**: `python scripts/llms_txt_checker.py https://example.com --check-sitemap --json` compares llms.txt links with the sitemap.
+- It reports same-site links the sitemap no longer lists, and checks up to 20 of them for 404/410.
+- A link to a page's markdown twin (`/page.md`) counts as the page.
+- Links to nested `llms.txt` files are counted separately, and every host the sitemap lists counts as the site.
+- If any sitemap file could not be read, it does not claim a link is missing.
+- Informational only, like everything about llms.txt.
+
 **Format** (place at `/llms.txt` in domain root):
 ```
 # [Site Name]
