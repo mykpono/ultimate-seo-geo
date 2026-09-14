@@ -87,6 +87,13 @@ LIMITS = [
     "missed, so no findings is not proof of a clean page.",
 ]
 SNIPPET_BEFORE, SNIPPET_AFTER = 60, 120
+PLACE_PHRASES = {
+    "hidden element": "a hidden element",
+    "HTML comment": "an HTML comment",
+    "attribute": "an attribute",
+    "meta tag": "a meta tag",
+    "structured data": "structured data",
+}
 
 
 def find_instruction(text: str):
@@ -181,8 +188,9 @@ def check_html(html: str, source: str) -> dict:
     issues = []
     for item in hidden:
         icon = "🔴" if item["severity"] == "critical" else "⚠️"
+        place = PLACE_PHRASES.get(item["context"], item["context"])
         issues.append(
-            f"{icon} Instruction-like text aimed at AI systems in a {item['context']} ({item['where']}): "
+            f"{icon} Instruction-like text aimed at AI systems in {place} ({item['where']}): "
             f"\"{item['snippet']}\". Visitors cannot see it. If the site did not add it, treat it as a compromise "
             "(plugin, injected script or user comments); if it did, remove it: Google's spam policies cover hidden "
             "text and attempts to manipulate generative AI responses in Google Search"
