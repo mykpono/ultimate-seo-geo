@@ -88,9 +88,9 @@ Internal graph, broken links, backlink profile (when data available).
 
 | Script | Purpose |
 |--------|---------|
-| `internal_links.py` | Link graph, orphans |
+| `internal_links.py` | Link graph, redirected internal links |
 | `broken_links.py` | 4xx/5xx |
-| `link_profile.py` | Link equity |
+| `link_profile.py` | Link equity, orphans (only from a complete crawl) |
 | `backlink_analyzer.py` | Backlink audit (CSV/API) |
 
 **References:** `references/link-building.md`, `references/backlink-quality.md`
