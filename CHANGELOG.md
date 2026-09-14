@@ -45,6 +45,16 @@
   - **In the report:** the full report runs it on the audited page as "Hidden AI instructions",
     shown but not weighted.
   - § 19 gains rule 10d: never recommend text aimed at AI systems that visitors cannot see.
+- **`generate_report.py` has a CI mode.**
+  - `--json PATH` (or `-` for stdout) writes a stable summary, `schema_version` 1: overall score and
+    grade, per-check score / weight / status, findings with ids and severities, unmeasured checks,
+    and the gate result.
+  - `--fail-under N` exits 1 below a score. `--fail-on critical|warning` exits 1 on findings at or
+    above that severity.
+  - A score built from fewer than 5 measured weighted checks exits 3 (inconclusive) instead of
+    passing or failing.
+  - `--github-annotations` prints escaped `::error` / `::warning` lines.
+  - `--format none` skips the report file.
 
 ### Changed
 
@@ -52,9 +62,17 @@
   procedure 10 and the platform table in `references/ai-search-geo.md` said ChatGPT passes no
   referrer. ChatGPT adds `utm_source=chatgpt.com` to many outbound links, so that traffic reads as
   `chatgpt.com / referral`; only untagged clicks land in Direct.
-- The README, plugin README and plugin manifest said 46 bundled scripts; the bundle holds 51.
+- The README, plugin README and plugin manifest said 46 bundled scripts. The bundle held 50 before
+  this release and holds 54 with the scripts added in it, and the counts now say so.
 
 ### Fixed
+
+- **A check that errored or never ran no longer moves the overall score.** `calculate_overall_score`
+  counted a missing or failed check as 0 for most categories. A rate-limited PageSpeed run cost the
+  full 13 weight points. Broken links, internal links and redirects counted a missing run as 100, so
+  a failed crawl scored as "no broken links". Unmeasured checks now drop out of the weighting and
+  are listed as `unmeasured`. The HTML view already showed them as "Not measured" and still gets a
+  number for each category.
 
 - **Blocking an AI search crawler no longer raises the robots score.** `generate_report.py` gave
   +2 to every AI crawler with any robots.txt rule, a full block included, so disallowing

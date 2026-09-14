@@ -926,17 +926,31 @@ def calculate_overall_score(data: dict) -> dict:
     else:
         scores["indexnow_probe"] = 0
 
+    # A check that never ran or errored is unmeasured, not a 0 -- and not a 100:
+    # a missing broken-links run used to score as "no broken links". Unmeasured
+    # checks drop out of the weighting and are listed, so a rate-limited
+    # PageSpeed call cannot move the overall score or trip a CI gate.
+    unmeasured = []
+    for key in weights:
+        section = data["sections"].get(key)
+        if (not isinstance(section, dict) or not section or section.get("error")
+                or (key == "pagespeed" and section.get("performance_score") is None)):
+            scores[key] = None
+            unmeasured.append(key)
+
     # Weighted average (only scored categories)
     total_weight = 0
     weighted_sum = 0
+    measured = 0
     for k, w in weights.items():
-        if k in scores:
-            val = scores.get(k)
-            if val is not None:
-                total_weight += w
-                weighted_sum += val * w
-    
+        val = scores.get(k)
+        if val is not None and w:
+            total_weight += w
+            weighted_sum += val * w
+            measured += 1
+
     overall = round(weighted_sum / total_weight) if total_weight else 0
+    raw_categories = dict(scores)
 
     # Coerce any None scores to 0 to prevent UI crashes
     for k in list(scores.keys()):
@@ -947,7 +961,118 @@ def calculate_overall_score(data: dict) -> dict:
         "overall": overall,
         "categories": scores,
         "weights": weights,
+        "measured_categories": measured,
+        "unmeasured": unmeasured,
+        "raw_categories": raw_categories,
     }
+
+
+# ---------------------------------------------------------------------------
+# CI mode: a stable JSON summary and exit-code gates.
+# ---------------------------------------------------------------------------
+
+SUMMARY_SCHEMA_VERSION = 1
+# A score built from fewer weighted checks than this is no basis for failing a build.
+MIN_MEASURED_FOR_GATE = 5
+EXIT_GATE_FAILED = 1
+EXIT_GATE_INCONCLUSIVE = 3
+_GATE_SEVERITIES = {"critical": ("critical",), "warning": ("critical", "warning")}
+
+
+def build_summary(data: dict, scores: dict) -> dict:
+    """The machine-readable result of one report run (schema_version 1).
+
+    Category scores are None when a check was unmeasured or does not apply;
+    the HTML view shows those as a dash, never as 0.
+    """
+    issues = _collect_issues(data)
+    raw = scores.get("raw_categories") or scores.get("categories", {})
+    categories = {}
+    for key, value in raw.items():
+        section = data["sections"].get(key)
+        section = section if isinstance(section, dict) else {}
+        categories[key] = {
+            "label": CHECK_LABELS.get(key, key),
+            "score": value,
+            "weight": scores.get("weights", {}).get(key) or None,
+            "status": _check_status(key, section, value)[1],
+        }
+    counts = {"critical": 0, "warning": 0, "info": 0}
+    for issue in issues:
+        counts[issue["severity"]] = counts.get(issue["severity"], 0) + 1
+    return {
+        "schema_version": SUMMARY_SCHEMA_VERSION,
+        "url": data.get("url"),
+        "timestamp": data.get("timestamp"),
+        "overall": scores.get("overall"),
+        "grade": _grade(scores.get("overall") or 0),
+        "measured_categories": scores.get("measured_categories"),
+        "unmeasured": scores.get("unmeasured", []),
+        "categories": categories,
+        "counts": counts,
+        "findings": [
+            {"id": i["id"], "severity": i["severity"], "section": i["section"],
+             "finding": i["finding"], "fix": i.get("fix", "")}
+            for i in issues
+        ],
+    }
+
+
+def evaluate_gate(summary: dict, fail_under=None, fail_on=None) -> dict:
+    """Decide a CI gate: {"result": pass | fail | inconclusive | not set, "reasons", "exit_code"}.
+
+    Findings at or above --fail-on fail the build whatever the coverage. A score
+    threshold is only judged when at least MIN_MEASURED_FOR_GATE weighted checks
+    were measured; below that the gate is inconclusive (exit 3), because a
+    network failure on the audit machine is not a regression on the site.
+    """
+    if fail_under is None and fail_on is None:
+        return {"result": "not set", "reasons": [], "exit_code": 0}
+    reasons, inconclusive = [], None
+    if fail_on:
+        hits = [f for f in summary["findings"] if f["severity"] in _GATE_SEVERITIES[fail_on]]
+        if hits:
+            listed = ", ".join(f"{f['id']} {f['finding'][:80]}" for f in hits[:5])
+            reasons.append(f"{len(hits)} finding(s) at or above {fail_on}: {listed}")
+    if fail_under is not None:
+        measured = summary.get("measured_categories") or 0
+        if measured < MIN_MEASURED_FOR_GATE:
+            inconclusive = (
+                f"only {measured} weighted check(s) were measured (need {MIN_MEASURED_FOR_GATE}); "
+                f"unmeasured: {', '.join(summary.get('unmeasured') or []) or 'none'}"
+            )
+        elif summary["overall"] < fail_under:
+            reasons.append(f"overall score {summary['overall']} is below --fail-under {fail_under}")
+    if reasons:
+        return {"result": "fail", "reasons": reasons, "exit_code": EXIT_GATE_FAILED}
+    if inconclusive:
+        return {"result": "inconclusive", "reasons": [inconclusive], "exit_code": EXIT_GATE_INCONCLUSIVE}
+    return {"result": "pass", "reasons": [], "exit_code": 0}
+
+
+def _escape_command_data(text) -> str:
+    return str(text).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def _escape_command_property(text) -> str:
+    return _escape_command_data(text).replace(":", "%3A").replace(",", "%2C")
+
+
+def github_annotations(summary: dict) -> list:
+    """GitHub Actions workflow commands for critical and warning findings.
+
+    Finding text comes from the audited site, so newlines are escaped: an
+    unescaped one would let a page start its own workflow command.
+    """
+    lines = []
+    for finding in summary["findings"]:
+        level = {"critical": "error", "warning": "warning"}.get(finding["severity"])
+        if not level:
+            continue
+        title = _escape_command_property(f"SEO {finding['id']} ({finding['section']})")
+        message = finding["finding"] + (f" Fix: {finding['fix']}" if finding.get("fix") else "")
+        lines.append(f"::{level} title={title}::{_escape_command_data(message)}")
+    return lines
 
 
 # ---------------------------------------------------------------------------
@@ -2496,8 +2621,9 @@ def main():
     parser.add_argument("--output", "-o", help="Output filename (default: seo-report-<domain>.<ext>)")
     parser.add_argument(
         "--format", "-f", dest="fmt", default="html",
-        choices=["html", "xlsx", "pdf", "all"],
-        help="Output format: html (default), xlsx (Excel), pdf (WeasyPrint), all (HTML + XLSX)",
+        choices=["html", "xlsx", "pdf", "all", "none"],
+        help="Output format: html (default), xlsx (Excel), pdf (WeasyPrint), all (HTML + XLSX), "
+             "none (no report file; use with --json in CI)",
     )
     parser.add_argument(
         "--crawl-deep",
@@ -2524,9 +2650,39 @@ def main():
         default="never",
         help="Render the main page HTML with Playwright before page-level checks",
     )
+    parser.add_argument(
+        "--json",
+        metavar="PATH",
+        help="Write a machine-readable summary (schema_version 1) to PATH; - writes it to stdout "
+             "and sends progress to stderr",
+    )
+    parser.add_argument(
+        "--fail-under",
+        type=int,
+        metavar="N",
+        help="Exit 1 when the overall score is below N (0-100). Exit 3 when fewer than "
+             f"{MIN_MEASURED_FOR_GATE} weighted checks were measured",
+    )
+    parser.add_argument(
+        "--fail-on",
+        choices=["critical", "warning"],
+        help="Exit 1 when any finding is at or above this severity",
+    )
+    parser.add_argument(
+        "--github-annotations",
+        action="store_true",
+        help="Print GitHub Actions ::error / ::warning annotations for critical and warning findings",
+    )
 
     args = parser.parse_args()
+    if args.fail_under is not None and not 0 <= args.fail_under <= 100:
+        parser.error("--fail-under must be between 0 and 100")
+    if args.json == "-" and args.github_annotations:
+        parser.error("--json - and --github-annotations both write to stdout; write the JSON to a file")
     domain = urlparse(args.url).netloc.replace(".", "_")
+    real_stdout = sys.stdout
+    if args.json == "-":
+        sys.stdout = sys.stderr
 
     data = collect_data(
         args.url,
@@ -2537,7 +2693,7 @@ def main():
     )
     scores = calculate_overall_score(data)
 
-    formats = ["html", "xlsx"] if args.fmt == "all" else [args.fmt]
+    formats = [] if args.fmt == "none" else ["html", "xlsx"] if args.fmt == "all" else [args.fmt]
 
     html_cache = None
     for fmt in formats:
@@ -2579,6 +2735,34 @@ def main():
                 print(f"✅ PDF report saved to: {os.path.abspath(result)}")
 
     print(f"   Overall Score: {scores['overall']}/100")
+    if scores.get("unmeasured"):
+        print(f"   Unmeasured (left out of the score): {', '.join(scores['unmeasured'])}")
+
+    summary = build_summary(data, scores)
+    gate = evaluate_gate(summary, args.fail_under, args.fail_on)
+    summary["gate"] = {"fail_under": args.fail_under, "fail_on": args.fail_on, **gate}
+    if gate["result"] != "not set":
+        print(f"   Gate: {gate['result']}")
+        for reason in gate["reasons"]:
+            print(f"     - {reason}")
+
+    sys.stdout = real_stdout
+    if args.json:
+        text = json.dumps(summary, indent=2, ensure_ascii=False)
+        if args.json == "-":
+            print(text)
+        else:
+            out_dir = os.path.dirname(args.json)
+            if out_dir:
+                os.makedirs(out_dir, exist_ok=True)
+            with open(args.json, "w", encoding="utf-8") as f:
+                f.write(text + "\n")
+            print(f"✅ JSON summary saved to: {os.path.abspath(args.json)}")
+    if args.github_annotations:
+        for line in github_annotations(summary):
+            print(line)
+    if gate["exit_code"]:
+        sys.exit(gate["exit_code"])
 
 
 if __name__ == "__main__":

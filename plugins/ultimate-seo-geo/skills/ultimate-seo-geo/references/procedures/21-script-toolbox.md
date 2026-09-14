@@ -80,6 +80,42 @@ Runs the bundled analysis pipeline (see §2): URL-based scripts, homepage HTML f
 
 **Both HTML + XLSX:** `--format all --output report` → writes `report.html` and `report.xlsx`.
 
+### CI Gate on the Full Report
+
+Fail a build when the audited site regresses:
+
+```bash
+python scripts/generate_report.py https://staging.example.com --format none --json seo-summary.json --fail-under 70 --fail-on critical --github-annotations
+```
+
+| Exit code | Meaning |
+|---|---|
+| 0 | Gates passed, or none set |
+| 1 | Gate failed: overall score below `--fail-under`, or a finding at or above `--fail-on` |
+| 2 | Usage error |
+| 3 | Inconclusive: fewer than 5 weighted checks were measured, so the score is not judged. A critical finding still fails with `--fail-on`. |
+
+- **Summary file:** `--json` writes a stable summary (`schema_version` 1). It holds:
+  - the overall score and grade
+  - each check's score (`null` when unmeasured or not applicable), weight and status
+  - the findings, with ids and severities
+  - the unmeasured checks
+  - the gate result
+
+  `--json -` writes it to stdout and sends progress to stderr.
+- **Unmeasured checks don't count.** A check that errors or never runs (a rate-limited PageSpeed call, a timeout) is left out of the overall score and listed as unmeasured, so it cannot fail the gate on its own.
+- **Target a URL the job controls,** such as a staging or preview URL. The run fetches the target from the CI runner, so rate limits and bot protection on the target can leave checks unmeasured. Treat exit 3 as "rerun", not as a pass.
+- **Annotations:** `--github-annotations` prints `::error` / `::warning` lines for critical and warning findings. Site text is escaped so it cannot inject workflow commands.
+
+GitHub Actions step:
+
+```yaml
+- name: SEO gate
+  run: |
+    pip install -r requirements.txt
+    python scripts/generate_report.py "$PREVIEW_URL" --format none --json seo-summary.json --fail-under 70 --fail-on critical --github-annotations
+```
+
 ### Script Quick Reference
 
 For the complete script-to-section mapping (all 24 scripts with purpose and audit section), see `references/audit-script-matrix.md`.

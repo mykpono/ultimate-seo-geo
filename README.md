@@ -295,6 +295,8 @@ Run the full-site report to start any audit:
 python scripts/generate_report.py https://example.com --output seo-report.html
 ```
 
+In CI, `--format none --json seo-summary.json --fail-under 70 --fail-on critical` writes a machine-readable summary and fails the build on a regression. Checks that could not run are left out of the score rather than failing it. Exit codes and a GitHub Actions step: `references/procedures/21-script-toolbox.md` → CI Gate on the Full Report.
+
 | Script | Purpose |
 |---|---|
 | `generate_report.py` | Full-site HTML report (findings and checks ledgers) — bundled analysis pipeline |
