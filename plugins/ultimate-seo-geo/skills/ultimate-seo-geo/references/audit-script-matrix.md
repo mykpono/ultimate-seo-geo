@@ -11,6 +11,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | AI crawler access through firewalls / CDNs (suspected blocks) | §3, §4 | `ai_bot_access.py` | `python scripts/ai_bot_access.py URL --json` |
 | AI crawler visits in server logs (verified against published IP ranges) | §3, §11 | `ai_bot_logs.py` | `python scripts/ai_bot_logs.py access.log --verify-ips --json` |
 | AI citation rates from repeated runs (95% intervals; no API calls) | §3, §8 | `citation_sampling.py` | `python scripts/citation_sampling.py runs.csv --domain example.com --json` |
+| Hidden instructions to AI systems (prompt injection, invisible Unicode) | §3, §4 | `hidden_instructions.py` | `python scripts/hidden_instructions.py URL --json` (a saved HTML file also works) |
 | Security headers | §4 | `security_headers.py` | `python scripts/security_headers.py URL --json` |
 | Open Graph / Twitter | §4 | `social_meta.py` | `python scripts/social_meta.py URL --json` |
 | Redirect chains | §4, §20 | `redirect_checker.py` | `python scripts/redirect_checker.py URL --json` |

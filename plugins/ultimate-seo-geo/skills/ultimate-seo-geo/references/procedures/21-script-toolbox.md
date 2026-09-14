@@ -103,6 +103,9 @@ python scripts/ai_bot_logs.py access.log --verify-ips --json
 python scripts/citation_sampling.py --template --prompts prompts.txt --engines chatgpt,perplexity --runs 5 --output runs.csv
 python scripts/citation_sampling.py runs.csv --domain example.com --json
 
+# Instructions to AI systems hidden from visitors (prompt injection, invisible Unicode)
+python scripts/hidden_instructions.py https://example.com --json
+
 # AI assistant referral sessions in GA4 (Tier 2; a floor, untagged clicks read as Direct)
 python scripts/ga4_report.py --property 123456789 --ai-referrals --json
 

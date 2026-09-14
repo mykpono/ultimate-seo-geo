@@ -620,6 +620,7 @@ def collect_data(
     if html_path and os.path.exists(html_path):
         analyses.append(("schema_validation", "validate_schema.py", [html_path]))
         analyses.append(("image_seo", "image_checker.py", [html_path, "--base-url", url]))
+        analyses.append(("hidden_instructions", "hidden_instructions.py", [html_path]))
 
     def _run_one(item: tuple) -> tuple:
         name, script, args = item
@@ -771,6 +772,10 @@ def calculate_overall_score(data: dict) -> dict:
     # user agent from the audit machine, which a firewall may treat differently
     # from the real crawler, so its result is suspected, not measured.
     scores["ai_bot_access"] = data["sections"].get("ai_bot_access", {}).get("score")
+
+    # Hidden AI instructions: displayed only, not in `weights`. A hit is already a
+    # Critical finding, and phrase matching can misfire, so it does not also move the score.
+    scores["hidden_instructions"] = data["sections"].get("hidden_instructions", {}).get("score")
 
     # llms.txt score: displayed only, not in `weights`
     llm = data["sections"].get("llms_txt", {})
@@ -960,6 +965,7 @@ CHECK_LABELS = {
     "canonical": "Canonical tags",
     "robots": "Robots and AI crawlers",
     "ai_bot_access": "AI crawler access (firewall)",
+    "hidden_instructions": "Hidden AI instructions",
     "sitemap": "Sitemaps",
     "security": "Security headers",
     "redirects": "Redirects",
@@ -1387,6 +1393,24 @@ def _check_panels(data: dict) -> dict:
              ("Crawlers tested", _esc(len(aba.get("bots") or {})))])
         + (_notice(_esc(" ".join(aba["limits"])), "info", "Suspected, not proven.") if aba.get("limits") else "")
         + (_table(["Crawler", "Role", "HTTP", "Result", "Detail"], access_rows) if access_rows else "")
+    )
+
+    # Snippets are text the audited page hides from visitors; escape every one.
+    hid = get("hidden_instructions")
+    hidden_rows = [
+        f"<tr><td>{_esc(item.get('context'))}</td><td>{_esc(item.get('where'))}</td>"
+        f"<td>{_esc(item.get('snippet'))}</td></tr>"
+        for item in (hid.get("hidden_instructions") or [])
+    ] + [
+        f"<tr><td>invisible Unicode</td><td>{_esc(item.get('kind'))}</td>"
+        f"<td>{_esc(item.get('decoded') or str(item.get('length')) + ' characters')}</td></tr>"
+        for item in (hid.get("invisible_unicode") or [])
+    ]
+    panels["hidden_instructions"] = (
+        _kv([("Hidden instruction-like text", _esc(len(hid.get("hidden_instructions") or []))),
+             ("Invisible Unicode runs", _esc(len(hid.get("invisible_unicode") or [])))])
+        + (_notice(_esc(" ".join(hid["limits"])), "info", "Pattern-based.") if hid.get("limits") else "")
+        + (_table(["Where", "Element", "Text"], hidden_rows) if hidden_rows else "")
     )
 
     sm = get("sitemap")
