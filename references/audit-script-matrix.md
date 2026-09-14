@@ -9,6 +9,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Full bundled report | §2, §21 | `generate_report.py` | `python scripts/generate_report.py https://example.com -o report.html` |
 | Robots.txt + AI crawlers | §4, §3 | `robots_checker.py` | `python scripts/robots_checker.py URL --json` |
 | AI crawler access through firewalls / CDNs (suspected blocks) | §3, §4 | `ai_bot_access.py` | `python scripts/ai_bot_access.py URL --json` |
+| AI crawler visits in server logs (verified against published IP ranges) | §3, §11 | `ai_bot_logs.py` | `python scripts/ai_bot_logs.py access.log --verify-ips --json` |
 | Security headers | §4 | `security_headers.py` | `python scripts/security_headers.py URL --json` |
 | Open Graph / Twitter | §4 | `social_meta.py` | `python scripts/social_meta.py URL --json` |
 | Redirect chains | §4, §20 | `redirect_checker.py` | `python scripts/redirect_checker.py URL --json` |

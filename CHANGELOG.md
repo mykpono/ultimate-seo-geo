@@ -17,6 +17,14 @@
   Copilot, Mistral Le Chat, DeepSeek and Meta AI by source and landing page, with totals per engine.
   Clicks with neither a referrer nor a UTM still read as Direct, so the output says the number is a
   floor.
+- **`ai_bot_logs.py` counts what AI crawlers actually requested, from server access logs.** It reads
+  Apache/Nginx combined format and JSON lines (Nginx JSON, Cloudflare Logpush fields), plain or
+  gzipped, and reports per crawler: requests, status classes, refusals, robots.txt fetches, top paths
+  and first/last seen. `--verify-ips` fetches the IP ranges OpenAI, Anthropic and Perplexity publish
+  and separates verified requests from spoofed ones. Refusal shares are then computed on verified
+  requests, because a firewall refusing fake crawlers is doing its job. A search crawler refused on
+  half or more of at least 5 requests is a warning. A crawler absent from the logs is Info, not a
+  defect, because CDN caching and partial logs undercount. IP addresses are never printed.
 
 ### Changed
 
