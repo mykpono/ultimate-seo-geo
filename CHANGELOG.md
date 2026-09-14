@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.12.9] - 2026-09-14
+
+Both changes come from one live audit whose findings were sound while the tooling around them was
+not. A 3,008-URL site was given 14 high-severity orphan pages that existed only because the crawl
+stopped at 20 URLs. The HTML report that carried them pasted the audited site's own text into the page
+unescaped, and it scored a rate-limited PageSpeed run as a failing 0.
+
 ### Changed
 
 - **The HTML report uses the Tobto design system in a Ledger layout.** `generate_report.py`'s
