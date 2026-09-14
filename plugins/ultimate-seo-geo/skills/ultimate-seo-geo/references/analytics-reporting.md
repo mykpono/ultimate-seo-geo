@@ -303,16 +303,16 @@ appear in Search Console's Search Generative AI performance reports. Use that re
 Google AI visibility from proxies when a direct measurement exists. See § Search Generative AI
 Performance Reports above, including its no-API constraint.
 
-**Every other engine is still dark.** ChatGPT, Perplexity, Claude and Copilot publish nothing. The
-proxies below remain the only option there.
+**Other engines publish no impression data.** ChatGPT, Perplexity, Claude and Copilot report nothing
+to site owners, so referral sessions and the proxies below are the only signals there.
 
 ### What to Track
 
 | Metric | Tool | What It Indicates |
 |---|---|---|
 | **AI Overviews / AI Mode impressions** | GSC Generative AI report | **Direct measurement** on Google — impressions only, no clicks or queries |
-| **Perplexity referral traffic** | GA4 (source: perplexity.ai) | Perplexity citations — trackable |
-| **Direct traffic uplift** | GA4 | ChatGPT citations (no referrer header; appears as Direct) |
+| **AI assistant referral sessions** | GA4 via `ga4_report.py --ai-referrals` (sessionSource `chatgpt.com`, `perplexity.ai`, `claude.ai`, `gemini.google.com`, `copilot.microsoft.com` and others) | Clicks from AI answers that carried a referrer or `utm_source`. A floor, not a total |
+| **Direct traffic uplift** | GA4 | AI clicks that arrived with neither (app clicks, copied links) |
 | **Branded search impressions** | GSC | Brand visibility in AI-driven discovery |
 | **Brand mention volume** | Google Alerts, Ahrefs Mentions | AI training signal health |
 
@@ -325,9 +325,12 @@ proxies below remain the only option there.
 
 This applies to **non-Google engines only**. For Google, use the Generative AI report above.
 
-ChatGPT Search does NOT pass referrer headers — traffic appears as **Direct** in GA4.
+ChatGPT adds `utm_source=chatgpt.com` to many of the links it shows, so that traffic reads as
+`chatgpt.com / referral` in GA4, not Direct. It does not tag every click: app clicks and copied links
+still arrive with no referrer and read as **Direct**. Treat `ga4_report.py --ai-referrals` as the floor
+and estimate the remainder from Direct uplift.
 
-**Estimate AI traffic share:**
+**Estimate the untagged remainder:**
 1. Establish Direct traffic baseline (12-month average before ChatGPT Search scaled)
 2. Measure Direct traffic lift after chatGPT Search growth (late 2024 onward)
 3. Segment: Direct traffic on mobile vs. desktop vs. branded landing pages

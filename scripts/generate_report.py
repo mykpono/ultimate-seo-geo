@@ -586,6 +586,7 @@ def collect_data(
 
     analyses = [
         ("robots", "robots_checker.py", [url]),
+        ("ai_bot_access", "ai_bot_access.py", [url]),
         ("security", "security_headers.py", [url]),
         ("social", "social_meta.py", [url]),
         ("redirects", "redirect_checker.py", [url]),
@@ -765,6 +766,11 @@ def calculate_overall_score(data: dict) -> dict:
     red = data["sections"].get("redirects", {})
     red_issues = len(red.get("issues", []))
     scores["redirects"] = max(0, 100 - red_issues * 25)
+
+    # AI bot access: displayed only, not in `weights`. The test sends a crawler's
+    # user agent from the audit machine, which a firewall may treat differently
+    # from the real crawler, so its result is suspected, not measured.
+    scores["ai_bot_access"] = data["sections"].get("ai_bot_access", {}).get("score")
 
     # llms.txt score: displayed only, not in `weights`
     llm = data["sections"].get("llms_txt", {})
@@ -953,6 +959,7 @@ CHECK_LABELS = {
     "schema_validation": "JSON-LD schema",
     "canonical": "Canonical tags",
     "robots": "Robots and AI crawlers",
+    "ai_bot_access": "AI crawler access (firewall)",
     "sitemap": "Sitemaps",
     "security": "Security headers",
     "redirects": "Redirects",
@@ -1099,6 +1106,11 @@ def _check_status(key: str, section: dict, score) -> tuple:
         return ("na", "Not applicable")
     if key == "pagespeed" and not section.get("performance_score"):
         return ("deferred", "Not measured")
+    if key == "ai_bot_access":
+        if section.get("status") == "inconclusive" or section.get("score") is None:
+            return ("deferred", "Not measured")
+        if section.get("refused_search"):
+            return ("flag", "Suspected block")
     value = score or 0
     if value >= 80:
         return ("ok", "Strong")
@@ -1350,6 +1362,31 @@ def _check_panels(data: dict) -> dict:
              ("Sitemaps", _esc(len(rob.get("sitemaps") or []))),
              ("User-agents", _esc(len(rob.get("user_agents") or {})))])
         + (_subhead("AI crawler access") + _table(["Crawler", "Role", "Status", "Detail"], crawler_rows) if crawler_rows else "")
+    )
+
+    aba = get("ai_bot_access")
+    access_rows = []
+    for crawler, bot in (aba.get("bots") or {}).items():
+        verdict = bot.get("verdict") or ""
+        if verdict == "allowed":
+            chip = _chip("chip-ok", "Served")
+        elif verdict in ("blocked", "challenged"):
+            label = "Challenged" if verdict == "challenged" else "Refused"
+            chip = _chip("chip-flag" if bot.get("role") == "search" else "chip-info", label)
+        else:
+            chip = _chip("chip-na", verdict.title() or "—")
+        detail = f"{bot['challenge_vendor']} challenge" if bot.get("challenge_vendor") else (bot.get("error") or "")
+        access_rows.append(
+            f"<tr><td>{_esc(crawler)}</td><td>{_esc(bot.get('role') or '—')}</td>"
+            f'<td class="num">{_esc(bot.get("status") or "—")}</td><td>{chip}</td><td>{_esc(detail)}</td></tr>'
+        )
+    baseline = aba.get("baseline") or {}
+    panels["ai_bot_access"] = (
+        _kv([("Browser baseline", _esc(baseline.get("status") or "—")),
+             ("Server", _esc(baseline.get("server") or "—")),
+             ("Crawlers tested", _esc(len(aba.get("bots") or {})))])
+        + (_notice(_esc(" ".join(aba["limits"])), "info", "Suspected, not proven.") if aba.get("limits") else "")
+        + (_table(["Crawler", "Role", "HTTP", "Result", "Detail"], access_rows) if access_rows else "")
     )
 
     sm = get("sitemap")

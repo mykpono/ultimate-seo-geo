@@ -93,6 +93,12 @@ python scripts/validate_schema.py page.html --json
 # Check AI crawler access
 python scripts/robots_checker.py https://example.com
 
+# Check whether a firewall or CDN refuses AI crawlers that robots.txt allows (suspected, not proven)
+python scripts/ai_bot_access.py https://example.com
+
+# AI assistant referral sessions in GA4 (Tier 2; a floor, untagged clicks read as Direct)
+python scripts/ga4_report.py --property 123456789 --ai-referrals --json
+
 # Check llms.txt (non-Google engines only — Google Search ignores it)
 python scripts/llms_txt_checker.py https://example.com
 

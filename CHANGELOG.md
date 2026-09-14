@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`ai_bot_access.py` checks whether a firewall or CDN refuses AI crawlers that robots.txt allows.**
+  robots.txt is advice; a WAF or CDN bot rule is enforcement, and a crawler answered with a 403 or a
+  JavaScript challenge is as absent from AI answers as one disallowed in robots.txt. The script
+  fetches a URL as a browser and then as each search and user-fetch crawler, each from a fresh
+  session. It reports refusals and challenges: Cloudflare's `cf-mitigated: challenge` header, plus
+  challenge-page markers that the browser response lacks. Requests come from the audit machine, not
+  the vendors' IP ranges, so a refusal is reported as a suspected block. 429, 5xx and a refused
+  browser are inconclusive. The full report runs it as "AI crawler access (firewall)", shown but
+  not weighted.
+- **`ga4_report.py --ai-referrals`** groups GA4 sessions from ChatGPT, Perplexity, Claude, Gemini,
+  Copilot, Mistral Le Chat, DeepSeek and Meta AI by source and landing page, with totals per engine.
+  Clicks with neither a referrer nor a UTM still read as Direct, so the output says the number is a
+  floor.
+
+### Changed
+
+- **ChatGPT traffic is no longer described as always Direct.** `references/analytics-reporting.md`,
+  procedure 10 and the platform table in `references/ai-search-geo.md` said ChatGPT passes no
+  referrer. ChatGPT adds `utm_source=chatgpt.com` to many outbound links, so that traffic reads as
+  `chatgpt.com / referral`; only untagged clicks land in Direct.
+- The README, plugin README and plugin manifest said 46 bundled scripts; the bundle holds 51.
+
 ### Fixed
 
 - **Blocking an AI search crawler no longer raises the robots score.** `generate_report.py` gave

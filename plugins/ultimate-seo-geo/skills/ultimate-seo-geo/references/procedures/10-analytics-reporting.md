@@ -33,6 +33,6 @@
 | 5 | 5–7% | Rewrite title + meta; optimize for featured snippet |
 | 10 | 2–3% | Major content upgrade to push to top 5 |
 
-**AI traffic**: Perplexity = `perplexity.ai` referral in GA4. ChatGPT = no referrer, appears as Direct.
+**AI traffic**: `python scripts/ga4_report.py --property ID --ai-referrals --json` groups GA4 sessions from ChatGPT (`chatgpt.com`, including its `utm_source=chatgpt.com` links), Perplexity, Claude, Gemini, Copilot and others by source and landing page. Clicks with neither a referrer nor a UTM still read as Direct, so the number is a floor.
 
 → See `references/analytics-reporting.md`
