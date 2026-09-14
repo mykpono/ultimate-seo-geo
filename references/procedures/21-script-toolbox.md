@@ -99,6 +99,10 @@ python scripts/ai_bot_access.py https://example.com
 # What AI crawlers actually requested, from server access logs (IPs verified, never printed)
 python scripts/ai_bot_logs.py access.log --verify-ips --json
 
+# AI citation presence as a rate: write a prompt x engine x run grid, fill it in, then score it
+python scripts/citation_sampling.py --template --prompts prompts.txt --engines chatgpt,perplexity --runs 5 --output runs.csv
+python scripts/citation_sampling.py runs.csv --domain example.com --json
+
 # AI assistant referral sessions in GA4 (Tier 2; a floor, untagged clicks read as Direct)
 python scripts/ga4_report.py --property 123456789 --ai-referrals --json
 

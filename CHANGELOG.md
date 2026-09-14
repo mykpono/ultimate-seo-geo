@@ -25,6 +25,15 @@
   requests, because a firewall refusing fake crawlers is doing its job. A search crawler refused on
   half or more of at least 5 requests is a warning. A crawler absent from the logs is Info, not a
   defect, because CDN caching and partial logs undercount. IP addresses are never printed.
+- **`citation_sampling.py` turns repeated AI-answer checks into citation rates with margins of
+  error.** AI answers change between runs, so the old guidance ("search 3–5 target keywords in
+  ChatGPT and Perplexity") produced anecdotes. The GEO procedure now measures citation as a rate: a
+  fixed set of user-phrased prompts, run at least 5 times per engine in fresh sessions.
+  `--template` writes the prompt × engine × run grid. Scoring returns per-engine and per-prompt
+  citation rates with 95% Wilson intervals, the site's share of voice, and the domains cited
+  instead. Verdicts refuse to judge a thin or middling sample ("too few runs", "inconsistent"). It
+  calls no AI engine and needs no API key, so it scores manual checks or any monitoring tool's
+  export.
 
 ### Changed
 

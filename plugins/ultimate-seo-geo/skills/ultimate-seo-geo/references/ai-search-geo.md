@@ -509,7 +509,7 @@ If DataForSEO MCP tools are available in the environment, use them for live GEO 
 | `ai_opt_llm_ment_search` | Track LLM mentions of a brand across AI platforms |
 | `ai_opt_llm_ment_top_domains` | Identify top-cited domains for target queries across AI platforms |
 
-These provide ground-truth data that supplements the structural analysis. If not available, rely on manual ChatGPT/Perplexity searches for the 3–5 target keywords.
+These provide ground-truth data that supplements the structural analysis. With or without them, score repeated runs with the sampling method in § AI Visibility Monitoring Tools → Measuring AI Citation Presence: one search per keyword is an anecdote.
 
 ---
 
@@ -562,7 +562,39 @@ Track whether AI systems are citing your content:
 | **ZipTie** | Google AI Overviews, ChatGPT, Perplexity | Brand mention + sentiment tracking |
 | **LLMrefs** | ChatGPT, Perplexity, AI Overviews, Gemini | SEO keyword → AI visibility mapping |
 
-**Manual monitoring**: Search 3–5 target keywords monthly in ChatGPT and Perplexity. Document which competitors get cited. Repeat quarterly to track improvement.
+**Manual monitoring**: use the sampling method below, monthly or quarterly with the same prompt set. A single search per keyword is an anecdote, because AI answers change between runs.
+
+### Measuring AI Citation Presence (Sampling Method)
+
+A single check that shows a competitor and not the site proves nothing either way. Measure citation as a rate over repeated runs, with a margin of error.
+
+1. **Fix a prompt set** of 10–30 prompts, written the way users ask (category, comparison, problem and brand intents), not bare keywords. Keep it unchanged between measurements.
+2. **Pick the engines** the audience uses (ChatGPT with search, Perplexity, Google AI Mode / AI Overviews, Copilot, Claude), and note location and search mode.
+3. **Run each prompt at least 5 times per engine**, each in a fresh session (logged out or history off).
+4. **Record every run**:
+   - Was the site cited as a source (a link or source card, not just a mention)?
+   - Was the brand named in the answer?
+   - Which domains were cited?
+
+   Start from a grid: `python scripts/citation_sampling.py --template --prompts prompts.txt --engines chatgpt,perplexity --runs 5 --output runs.csv`.
+5. **Score it**: `python scripts/citation_sampling.py runs.csv --domain example.com --json`. For each engine and each prompt, it returns:
+   - the citation rate with a 95% Wilson interval
+   - the site's share of voice among cited domains
+   - the domains cited instead
+
+Read the verdict, not the point estimate:
+
+| Verdict | Rule |
+|---|---|
+| Cited in most runs | Lower bound of the 95% interval above 50% |
+| Rarely or never cited | Upper bound below 30% |
+| Inconsistent | Anything between: add runs before concluding |
+| Too few runs | Fewer than 5 runs |
+
+- **0 of 5 is not "never cited".** Its interval still reaches 43%. 0 of 10 has an upper bound of 28%, which reads as rare.
+- **Compare engines or months only when their intervals do not overlap.** Overlapping intervals show no demonstrated change, whatever the point estimates say.
+- **Cited is not the same as mentioned.** A brand named without a source link came from the model's memory or an unlinked page. Record it in `mentioned` and report it separately.
+- **The script calls no AI engine and needs no API key.** Rows can come from manual checks, the DataForSEO MCP tools above, or an export from the monitoring tools in this section.
 
 ---
 
