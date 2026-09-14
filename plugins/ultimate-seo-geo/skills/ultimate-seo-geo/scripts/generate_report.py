@@ -3,7 +3,7 @@
 Generate an interactive SEO report (HTML, XLSX, PDF, or combined).
 
 Runs all analysis scripts and aggregates results into a single,
-self-contained interactive HTML file with a premium dashboard UI.
+self-contained HTML file styled with the Tobto design system (Ledger layout).
 Optionally exports to Excel (.xlsx) or PDF for offline sharing.
 
 Usage:
@@ -489,41 +489,6 @@ def build_environment_fixes(data: dict) -> list:
     return fixes
 
 
-def render_environment_fixes(fixes: list) -> str:
-    """Render environment-specific fixes for HTML output."""
-    if not fixes:
-        return '<p style="color:var(--green)">✅ No environment-specific fixes needed.</p>'
-
-    severity_order = {"critical": 0, "warning": 1, "info": 2, "pass": 3}
-    html = ""
-    for item in sorted(fixes, key=lambda x: severity_order.get(x.get("severity", "info"), 9)):
-        sev = item.get("severity", "info")
-        badge = sev.upper()
-        title = html_lib.escape(item.get("title", ""), quote=True)
-        reason = html_lib.escape(item.get("reason", ""), quote=True)
-        fix = html_lib.escape(item.get("fix", ""), quote=True)
-        dependency = html_lib.escape(item.get("dependency", ""), quote=True)
-        failure_check = html_lib.escape(item.get("failure_check", ""), quote=True)
-        leading_indicator = html_lib.escape(item.get("leading_indicator", ""), quote=True)
-        metadata = ""
-        if dependency or failure_check or leading_indicator:
-            metadata = (
-                '<div style="margin-top:8px;color:var(--text-muted);font-size:0.82rem">'
-                f'{f"<div><strong>Dependency:</strong> {dependency}</div>" if dependency else ""}'
-                f'{f"<div><strong>Failure check:</strong> {failure_check}</div>" if failure_check else ""}'
-                f'{f"<div><strong>Leading indicator:</strong> {leading_indicator}</div>" if leading_indicator else ""}'
-                '</div>'
-            )
-        html += (
-            f'<div class="issue-item {sev if sev in ("critical","warning","info") else "info"}">'
-            f'<span class="issue-badge">{badge}</span>'
-            f'<div><strong>{title}</strong><br>'
-            f'<span style="color:var(--text-muted)">{reason}</span><br>'
-            f'<span><strong>Fix:</strong> {fix}</span>{metadata}</div></div>'
-        )
-    return html
-
-
 def _recommendation_metadata(issue: dict, section_name: str) -> dict:
     """Attach falsifiable recommendation metadata to structured findings."""
     dependency = (
@@ -547,21 +512,6 @@ def _recommendation_metadata(issue: dict, section_name: str) -> dict:
         "failure_check": failure_check,
         "leading_indicator": leading_indicator,
     }
-
-
-def _render_issue_metadata(issue: dict) -> str:
-    parts = []
-    for label, key in (
-        ("Dependency", "dependency"),
-        ("Failure check", "failure_check"),
-        ("Leading indicator", "leading_indicator"),
-    ):
-        value = html_lib.escape(str(issue.get(key, "")), quote=True)
-        if value:
-            parts.append(f"<div><strong>{label}:</strong> {value}</div>")
-    if not parts:
-        return ""
-    return '<div style="margin-top:8px;color:var(--text-muted);font-size:0.82rem">' + "".join(parts) + "</div>"
 
 
 def collect_data(
@@ -948,51 +898,249 @@ def calculate_overall_score(data: dict) -> dict:
     }
 
 
-def render_recommendations(section_data: dict) -> str:
-    """Render recommendations from a section's JSON data."""
+# ---------------------------------------------------------------------------
+# HTML report view: the Tobto design system in the Ledger layout.
+#
+# Everything the audited site controls (titles, anchors, URLs, tag values,
+# script findings) is escaped with _esc before it reaches the page. Every
+# finding card and check card is present in the markup; the inline script only
+# hides the unselected ones, so print and WeasyPrint PDF export show them all.
+# ---------------------------------------------------------------------------
+
+CHECK_LABELS = {
+    "onpage": "On-page SEO",
+    "schema_validation": "JSON-LD schema",
+    "canonical": "Canonical tags",
+    "robots": "Robots and AI crawlers",
+    "sitemap": "Sitemaps",
+    "security": "Security headers",
+    "redirects": "Redirects",
+    "broken_links": "Broken links",
+    "internal_links": "Internal links",
+    "link_profile": "Link profile",
+    "pagespeed": "Performance (Core Web Vitals)",
+    "image_seo": "Image SEO",
+    "content_quality": "Content quality",
+    "readability": "Readability",
+    "duplicate_content": "Content uniqueness",
+    "article": "Article and keywords",
+    "entity": "Entity SEO",
+    "llms_txt": "llms.txt",
+    "social": "Social meta",
+    "hreflang": "Hreflang",
+    "programmatic_seo": "Programmatic SEO",
+    "local_signals": "Local signals",
+    "indexnow_probe": "IndexNow",
+}
+
+_SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2, "pass": 3}
+_SEVERITY_LABEL = {"critical": "Critical", "warning": "Warning", "info": "Info", "pass": "Pass"}
+_SEVERITY_CHIP = {"critical": "sev-critical", "warning": "sev-warning", "info": "sev-info", "pass": "chip-ok"}
+_ISSUE_SEVERITY_MAP = {
+    "critical": "critical", "high": "critical",
+    "warning": "warning", "medium": "warning",
+    "info": "info", "low": "info",
+}
+_STATUS_RANK = {"gap": 0, "flag": 1, "ok": 2, "deferred": 3, "na": 4}
+
+# Scripts prefix string issues with status emoji. Severity is read from them
+# first; they are then stripped, because the design system carries state in
+# chips and markers and allows no emoji on any surface.
+_EMOJI_PREFIX = re.compile("^\\s*(?:[\U0001F300-\U0001FAFF☀-➿ℹ⭐]️?\\s*)+")
+
+_FONTS_URL = (
+    "https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700"
+    "&family=JetBrains+Mono:wght@400;500;700&display=swap"
+)
+
+
+def _esc(value) -> str:
+    return html_lib.escape("" if value is None else str(value), quote=True)
+
+
+def _plain(text) -> str:
+    return _EMOJI_PREFIX.sub("", "" if text is None else str(text)).strip()
+
+
+def _clip(value, limit: int) -> str:
+    text = "" if value is None else str(value)
+    if len(text) > limit:
+        text = text[: limit - 1].rstrip() + "…"
+    return _esc(text)
+
+
+def _headline(text: str, limit: int = 110) -> str:
+    first = re.split(r"(?<=[.!?])\s+", text or "", maxsplit=1)[0]
+    return first if len(first) <= limit else first[: limit - 1].rstrip() + "…"
+
+
+def _join_labels(labels: list) -> str:
+    if len(labels) <= 1:
+        return "".join(labels)
+    return ", ".join(labels[:-1]) + " and " + labels[-1]
+
+
+def _stringify(item) -> str:
+    if isinstance(item, dict):
+        for key in ("title", "finding", "description", "message"):
+            if item.get(key):
+                extra = item.get("displayValue") or item.get("savings") or ""
+                return f"{item[key]} ({extra})" if extra else str(item[key])
+        return ", ".join(f"{k}: {v}" for k, v in item.items())
+    return str(item)
+
+
+def _grade(overall: int) -> str:
+    for floor, letter in ((90, "A+"), (80, "A"), (70, "B"), (60, "C"), (50, "D")):
+        if overall >= floor:
+            return letter
+    return "F"
+
+
+def _chip(kind: str, label: str) -> str:
+    return f'<span class="chip {kind}">{_esc(label)}</span>'
+
+
+def _severity_chip(severity: str) -> str:
+    return _chip(_SEVERITY_CHIP.get(severity, "sev-info"), _SEVERITY_LABEL.get(severity, severity.title()))
+
+
+def _status_chip(status: str, label: str) -> str:
+    if status == "deferred":
+        return f'<span class="mark m-deferred">⏸︎<small>{_esc(label)}</small></span>'
+    kind = {"ok": "chip-ok", "flag": "chip-flag", "gap": "chip-gap"}.get(status, "chip-na")
+    return _chip(kind, label)
+
+
+def _yes_no(flag, missing_is_bad: bool = True) -> str:
+    if flag:
+        return '<span class="yes">Yes</span>'
+    return '<span class="no">No</span>' if missing_is_bad else '<span class="muted">No</span>'
+
+
+def _kv(pairs: list) -> str:
+    cells = "".join(f"<div><dt>{_esc(label)}</dt><dd>{value}</dd></div>" for label, value in pairs)
+    return f'<dl class="kv">{cells}</dl>'
+
+
+def _table(headers: list, rows: list) -> str:
+    head = "".join(f'<th scope="col">{_esc(h)}</th>' for h in headers)
+    return (
+        f'<div class="table-scroll"><table class="tbl"><thead><tr>{head}</tr></thead>'
+        f'<tbody>{"".join(rows)}</tbody></table></div>'
+    )
+
+
+def _notice(body_html: str, tone: str = "empty", lead: str = "") -> str:
+    lead_html = f"<b>{_esc(lead)}</b> " if lead else ""
+    return f'<p class="notice {tone}">{lead_html}{body_html}</p>'
+
+
+def _subhead(text: str) -> str:
+    return f'<h4 class="subhead">{_esc(text)}</h4>'
+
+
+def _check_status(key: str, section: dict, score) -> tuple:
+    """Return (status, label) for one check.
+
+    A check that errored or never ran is not a 0: it is unmeasured, and a check
+    that does not apply to this site is not a gap.
+    """
+    if not section:
+        return ("na", "Not run")
+    if section.get("error"):
+        return ("deferred", "Not measured")
+    if key == "hreflang" and not section.get("hreflang_tags_found"):
+        return ("na", "Not applicable")
+    if key == "local_signals" and not section.get("likely_local_business"):
+        return ("na", "Not applicable")
+    if key == "programmatic_seo" and not section.get("pattern_groups_found"):
+        return ("na", "Not applicable")
+    if key == "pagespeed" and not section.get("performance_score"):
+        return ("deferred", "Not measured")
+    value = score or 0
+    if value >= 80:
+        return ("ok", "Strong")
+    if value >= 50:
+        return ("flag", "Needs work")
+    return ("gap", "Gap")
+
+
+def _render_issue_metadata(issue: dict) -> str:
+    parts = []
+    for label, key in (
+        ("Dependency:", "dependency"),
+        ("Failure check:", "failure_check"),
+        ("Leading indicator:", "leading_indicator"),
+    ):
+        value = issue.get(key, "")
+        if value:
+            parts.append(f"<div><dt>{label}</dt><dd>{_esc(value)}</dd></div>")
+    if not parts:
+        return ""
+    return '<dl class="meta">' + "".join(parts) + "</dl>"
+
+
+def render_environment_fixes(fixes: list) -> str:
+    """Render environment-specific fixes for HTML output."""
+    if not fixes:
+        return _notice("No environment-specific fixes needed.")
+    items = []
+    for item in sorted(fixes, key=lambda x: _SEVERITY_ORDER.get(x.get("severity", "info"), 9)):
+        severity = item.get("severity", "info")
+        reason = item.get("reason", "")
+        fix = item.get("fix", "")
+        reason_html = f'<p class="issue-reason">{_esc(reason)}</p>' if reason else ""
+        fix_html = f'<p class="issue-fix"><span class="lbl">Fix</span> {_esc(fix)}</p>' if fix else ""
+        items.append(
+            '<li class="issue">'
+            f'<div class="issue-head">{_severity_chip(severity)}<strong>{_esc(_plain(item.get("title", "")))}</strong></div>'
+            f"{reason_html}{fix_html}{_render_issue_metadata(item)}</li>"
+        )
+    return '<ul class="issues">' + "".join(items) + "</ul>"
+
+
+def _section_recommendations(section_data: dict) -> list:
     recs = section_data.get("recommendations", section_data.get("suggestions", []))
     if isinstance(recs, dict):
         items = [f"{k}: {v}" for k, v in recs.items()]
     elif isinstance(recs, list):
-        items = recs
+        items = list(recs)
     else:
         items = []
-    # Also check opportunities from pagespeed
     opps = section_data.get("opportunities", [])
     if isinstance(opps, list):
         items.extend(opps)
+    return items
 
-    # Render structured issues (used by entity_checker, hreflang_checker, etc.)
+
+def render_recommendations(section_data: dict) -> str:
+    """Render one check's structured issues and recommendations."""
+    items = _section_recommendations(section_data)
+    issue_rows = []
     issues = section_data.get("issues", [])
-    issues_html = ""
-    if isinstance(issues, list) and issues:
-        severity_map = {"critical": "critical", "high": "critical", "warning": "warning", "medium": "warning", "info": "info", "low": "info"}
+    if isinstance(issues, list):
         for issue in issues[:15]:
             if isinstance(issue, dict):
-                sev = severity_map.get(issue.get("severity", "info").lower(), "info")
-                badge = html_lib.escape(issue.get("severity", "INFO").upper(), quote=True)
-                finding = html_lib.escape(str(issue.get("finding", "")), quote=True)
-                fix = html_lib.escape(str(issue.get("fix", "")), quote=True)
+                severity = _ISSUE_SEVERITY_MAP.get(str(issue.get("severity", "info")).lower(), "info")
+                fix = issue.get("fix", "")
+                fix_html = f'<p class="issue-fix"><span class="lbl">Fix</span> {_esc(fix)}</p>' if fix else ""
                 meta = _render_issue_metadata(_recommendation_metadata(issue, "section"))
-                issues_html += (
-                    f'<div class="issue-item {sev}">'
-                    f'<span class="issue-badge">{badge}</span>'
-                    f'<div><strong>{finding}</strong>'
-                    f'{f"<br><span style=&quot;color:var(--text-muted)&quot;>Fix: {fix}</span>" if fix else ""}'
-                    f'{meta}</div></div>'
+                issue_rows.append(
+                    '<li class="issue">'
+                    f'<div class="issue-head">{_severity_chip(severity)}'
+                    f'<strong>{_esc(_plain(issue.get("finding", "")))}</strong></div>'
+                    f"{fix_html}{meta}</li>"
                 )
             elif isinstance(issue, str):
                 items.append(issue)
 
     html = ""
-    if issues_html:
-        html += f'<div style="margin-top:16px"><h3 style="font-size:0.95rem;margin-bottom:8px;">🔍 Issues Found</h3>{issues_html}</div>'
+    if issue_rows:
+        html += _subhead("Issues found") + '<ul class="issues">' + "".join(issue_rows) + "</ul>"
     if items:
-        html += '<div style="margin-top:16px"><h3 style="font-size:0.95rem;margin-bottom:8px;">💡 Recommendations</h3>'
-        for item in items[:15]:
-            item_str = str(item) if not isinstance(item, str) else item
-            html += f'<div class="issue-item info"><span class="issue-badge">FIX</span> {item_str}</div>'
-        html += '</div>'
+        lis = "".join(f"<li>{_esc(_plain(_stringify(item)))}</li>" for item in items[:15])
+        html += _subhead("Recommendations") + f'<ul class="recs">{lis}</ul>'
     return html
 
 
@@ -1001,1025 +1149,1054 @@ def render_readability_rewrites(readability_data: dict) -> str:
     rewrites = readability_data.get("sentence_rewrites", [])
     if not rewrites:
         return ""
-
-    html = (
-        '<div style="margin-top:16px">'
-        '<h3 style="font-size:0.95rem;margin-bottom:8px;">✍️ What To Replace (Before/After)</h3>'
-    )
+    rows = []
     for item in rewrites[:5]:
-        current = html_lib.escape(str(item.get("current", "")), quote=True)
-        suggested = html_lib.escape(str(item.get("suggested", "")), quote=True)
         wc_raw = item.get("current_word_count", "")
-        wc_label = f"{wc_raw}w" if isinstance(wc_raw, (int, float)) else str(wc_raw)
-        wc = html_lib.escape(wc_label, quote=True)
-        html += (
-            '<div class="issue-item warning">'
-            f'<span class="issue-badge">SENTENCE ({wc})</span>'
-            '<div>'
-            f'<div><strong>Current:</strong> {current}</div>'
-            f'<div style="margin-top:6px;"><strong>Replace with:</strong> {suggested}</div>'
-            '</div>'
-            '</div>'
+        length = f"{wc_raw} words" if isinstance(wc_raw, (int, float)) else str(wc_raw)
+        rows.append(
+            f"<tr><td>{_esc(item.get('current', ''))}</td>"
+            f"<td>{_esc(item.get('suggested', ''))}</td>"
+            f'<td class="num">{_esc(length)}</td></tr>'
         )
-    html += "</div>"
-    return html
+    return _subhead("What to replace") + _table(["Current sentence", "Replace with", "Length"], rows)
 
 
 def render_all_recommendations(data: dict) -> str:
-    """Render all recommendations from all sections."""
-    section_names = {
-        "security": "🔒 Security", "social": "📱 Social Meta", "robots": "🤖 Robots",
-        "broken_links": "🔗 Links", "internal_links": "🕸️ Internal Links",
-        "redirects": "↪️ Redirects", "llms_txt": "🧠 AI Search",
-        "pagespeed": "⚡ Performance", "onpage": "📝 On-Page", "readability": "📖 Readability",
-        "article": "📄 Article SEO", "entity": "🏛️ Entity SEO",
-        "link_profile": "🔗 Link Profile", "hreflang": "🌍 Hreflang",
-        "duplicate_content": "📋 Content Uniqueness",
-        "content_quality": "🧪 Content Quality",
-        "programmatic_seo": "🏭 Programmatic SEO",
-        "canonical": "🔗 Canonical Tags",
-        "schema_validation": "🧩 JSON-LD",
-        "image_seo": "🖼️ Image SEO",
-        "sitemap": "🗺️ Sitemaps",
-        "local_signals": "📍 Local signals",
-        "indexnow_probe": "📡 IndexNow",
-    }
-    html = ""
-    env_fixes = data.get("environment_fixes", [])
-    if env_fixes:
-        html += '<h3 style="font-size:0.95rem;margin:16px 0 8px;">🛠️ Environment-Specific Fixes</h3>'
-        for item in env_fixes[:8]:
-            title = html_lib.escape(item.get("title", ""), quote=True)
-            fix = html_lib.escape(item.get("fix", ""), quote=True)
-            html += f'<div class="issue-item info"><span class="issue-badge">FIX</span> <strong>{title}</strong>: {fix}</div>'
-
-    for key, label in section_names.items():
+    """Render every recommendation the checks returned, grouped by check."""
+    groups = []
+    env_items = [
+        f"{_plain(item.get('title', ''))}: {item.get('fix', '')}"
+        for item in data.get("environment_fixes", [])[:8]
+        if item.get("severity") != "pass"
+    ]
+    if env_items:
+        groups.append(("Platform fixes", env_items))
+    for key, label in CHECK_LABELS.items():
         section = data["sections"].get(key, {})
-        recs = section.get("recommendations", section.get("suggestions", []))
-        if isinstance(recs, dict):
-            items = [f"{k}: {v}" for k, v in recs.items()]
-        elif isinstance(recs, list):
-            items = recs
-        else:
-            items = []
-        opps = section.get("opportunities", [])
-        if isinstance(opps, list):
-            items.extend(opps)
+        if not isinstance(section, dict):
+            continue
+        items = _section_recommendations(section)
         if key == "readability":
-            for rw in section.get("sentence_rewrites", [])[:3]:
-                cur = html_lib.escape(str(rw.get("current", ""))[:180], quote=True)
-                sug = html_lib.escape(str(rw.get("suggested", ""))[:180], quote=True)
-                items.append(f"Rewrite: {cur} → {sug}")
+            for rewrite in section.get("sentence_rewrites", [])[:3]:
+                current = str(rewrite.get("current", ""))[:180]
+                suggested = str(rewrite.get("suggested", ""))[:180]
+                items.append(f"Rewrite: {current} → {suggested}")
         if items:
-            html += f'<h3 style="font-size:0.95rem;margin:16px 0 8px;">{label}</h3>'
-            for item in items[:10]:
-                html += f'<div class="issue-item info"><span class="issue-badge">FIX</span> {item}</div>'
-    return html if html else '<p style="color:var(--green)">✅ No recommendations — everything looks good!</p>'
+            groups.append((label, items[:10]))
+    if not groups:
+        return _notice("No recommendations. Every check came back clean.")
+    html = ""
+    for label, items in groups:
+        lis = "".join(f"<li>{_esc(_plain(_stringify(item)))}</li>" for item in items)
+        html += f'<section class="rec-group">{_subhead(label)}<ul class="recs">{lis}</ul></section>'
+    return html
+
+
+def _collect_issues(data: dict) -> list:
+    issues = []
+    for section_name, section_data in data["sections"].items():
+        if not isinstance(section_data, dict):
+            continue
+        for issue in section_data.get("issues", []) or []:
+            if isinstance(issue, dict):
+                severity = _ISSUE_SEVERITY_MAP.get(str(issue.get("severity", "info")).lower(), "info")
+                finding = _plain(issue.get("finding", "")) or _plain(str(issue))
+                fix = str(issue.get("fix", "") or "")
+                issues.append({
+                    "text": f"{finding} — Fix: {fix}" if fix else finding,
+                    "finding": finding,
+                    "fix": fix,
+                    "severity": severity,
+                    "section": section_name,
+                    **_recommendation_metadata(issue, section_name),
+                })
+            elif isinstance(issue, str):
+                severity = "critical" if "🔴" in issue else "warning" if "⚠" in issue else "info"
+                text = _plain(issue)
+                issues.append({"text": text, "finding": text, "fix": "", "severity": severity,
+                               "section": section_name})
+    issues.sort(key=lambda x: _SEVERITY_ORDER[x["severity"]])
+    for number, issue in enumerate(issues, 1):
+        issue["id"] = f"F{number:02d}"
+    return issues
+
+
+def _check_panels(data: dict) -> dict:
+    """Build the detail body for every check, keyed like CHECK_LABELS."""
+    sections = data["sections"]
+    env = data.get("environment", {}) or {}
+
+    def get(key: str) -> dict:
+        value = sections.get(key)
+        return value if isinstance(value, dict) else {}
+
+    panels = {}
+
+    op = get("onpage")
+    title = op.get("title") or ""
+    meta = op.get("meta_description") or ""
+    h1_value = op.get("h1")
+    if isinstance(h1_value, list):
+        h1 = str(h1_value[0]) if h1_value else ""
+    else:
+        h1 = str(h1_value or "")
+    canonical = op.get("canonical") or ""
+    disclaimer = ""
+    if _needs_raw_html_disclaimer(env):
+        disclaimer = _notice(
+            "Title, meta description, canonical and H1 are read from the initial response. On "
+            f"{_esc(env.get('primary') or 'this stack')} and other JavaScript-heavy sites, tags may be "
+            "injected client-side; confirm in DevTools or the Rich Results Test if this disagrees "
+            "with the browser.",
+            "info",
+            "Raw HTML snapshot.",
+        )
+    meta_note = ' <span class="muted">(og:description fallback)</span>' if op.get("meta_description_source") == "og_fallback" else ""
+    canonical_note = ' <span class="muted">(from canonical audit)</span>' if op.get("canonical_from_audit") else ""
+    onpage_rows = [
+        f'<tr><td>Title</td><td>{_clip(title, 90) or "—"}</td><td class="num">{len(title)}</td></tr>',
+        f'<tr><td>Meta description</td><td>{_clip(meta, 170) or "—"}</td><td class="num">{len(meta)}{meta_note}</td></tr>',
+        f'<tr><td>H1</td><td>{_clip(h1, 90) or "—"}</td><td class="num">{len(h1) if h1 else "—"}</td></tr>',
+        f'<tr><td>Canonical</td><td class="url">{_clip(canonical, 110) or "—"}{canonical_note}</td><td class="num">—</td></tr>',
+    ]
+    panels["onpage"] = (
+        disclaimer
+        + _kv([("Title", _yes_no(title)), ("Meta description", _yes_no(meta)),
+               ("H1", _yes_no(h1)), ("Canonical", _yes_no(canonical))])
+        + _table(["Element", "Value", "Length"], onpage_rows)
+        + render_recommendations(op)
+    )
+
+    sch = get("schema_validation")
+    panels["schema_validation"] = (
+        _kv([("JSON-LD blocks", _esc(sch.get("jsonld_blocks", 0))),
+             ("Issues", _esc(sch.get("error_count", 0))),
+             ("Critical", _esc(sch.get("critical_count", 0)))])
+        + render_recommendations(sch)
+    )
+
+    can = get("canonical")
+    self_ref = can.get("is_self_referencing")
+    panels["canonical"] = (
+        _kv([("Canonical", _yes_no(can.get("canonical"))),
+             ("Self-referencing", "—" if self_ref is None else _yes_no(self_ref)),
+             ("Target HTTP", _esc(can.get("canonical_status", "—"))),
+             ("Score", _esc(can.get("score", "—")))])
+        + render_recommendations(can)
+    )
+
+    rob = get("robots")
+    crawler_rows = []
+    for crawler, status in (rob.get("ai_crawler_status") or {}).items():
+        status_text = str(status)
+        if "not managed" in status_text:
+            chip = _chip("chip-na", "Unmanaged")
+        elif "partially" in status_text:
+            chip = _chip("chip-info", "Partial")
+        elif "blocked" in status_text:
+            chip = _chip("chip-flag", "Blocked")
+        else:
+            chip = _chip("chip-ok", "Allowed")
+        crawler_rows.append(f"<tr><td>{_esc(crawler)}</td><td>{chip}</td><td>{_esc(status_text)}</td></tr>")
+    panels["robots"] = (
+        _kv([("robots.txt", _esc(rob.get("status", "—"))),
+             ("Sitemaps", _esc(len(rob.get("sitemaps") or []))),
+             ("User-agents", _esc(len(rob.get("user_agents") or {})))])
+        + (_subhead("AI crawler access") + _table(["Crawler", "Status", "Detail"], crawler_rows) if crawler_rows else "")
+    )
+
+    sm = get("sitemap")
+    health = sm.get("url_health") or {}
+    health_html = ""
+    if health.get("checked"):
+        health_html = _subhead("URL health") + _kv([
+            ("Checked", _esc(health.get("checked", 0))),
+            ("Healthy", _esc(health.get("healthy", 0))),
+            ("404", _esc(len(health.get("not_found_404") or []))),
+            ("Soft 404", _esc(len(health.get("soft_404s") or []))),
+            ("5xx", _esc(len(health.get("server_errors_5xx") or []))),
+        ])
+    panels["sitemap"] = (
+        _kv([("Sitemaps listed", _esc(len(sm.get("sitemap_urls") or []))),
+             ("Primary HTTP", _esc(sm.get("primary_status", "—"))),
+             ("URLs in first sitemap", _esc(sm.get("url_count_estimate", "—")))])
+        + health_html
+        + render_recommendations(sm)
+    )
+
+    sec = get("security")
+    present = sec.get("headers_present") or {}
+    missing = sec.get("headers_missing") or {}
+    header_rows = [
+        f'<tr><td>{_esc(h)}</td><td>{_chip("chip-ok", "Present")}</td><td class="url">{_clip(v, 90)}</td></tr>'
+        for h, v in present.items()
+    ] + [
+        f'<tr><td>{_esc(h)}</td><td>{_chip("chip-gap", "Missing")}</td><td>{_esc(d)}</td></tr>'
+        for h, d in missing.items()
+    ]
+    panels["security"] = (
+        _kv([("HTTPS", _yes_no(sec.get("https"))), ("Present", _esc(len(present))), ("Missing", _esc(len(missing)))])
+        + (_table(["Header", "Status", "Value or description"], header_rows) if header_rows else "")
+    )
+
+    red = get("redirects")
+    hop_rows = []
+    for hop in red.get("chain") or []:
+        status = hop.get("status", "?")
+        if hop.get("final"):
+            ok = isinstance(status, int) and 200 <= status < 300
+            chip = _chip("chip-ok" if ok else "chip-gap", str(status))
+            kind = "Final"
+        else:
+            chip = _chip("chip-flag", str(status))
+            kind = hop.get("redirect_type", "")
+        hop_rows.append(
+            f'<tr><td class="num">{_esc(hop.get("step", ""))}</td><td>{chip}</td>'
+            f'<td class="url">{_clip(hop.get("url", ""), 110)}</td>'
+            f'<td class="num">{_esc(hop.get("time_ms", 0))} ms</td><td>{_esc(kind)}</td></tr>'
+        )
+    panels["redirects"] = (
+        _kv([("Hops", _esc(red.get("total_hops", 0)))])
+        + (_table(["Step", "Status", "URL", "Time", "Type"], hop_rows) if hop_rows
+           else _notice("No redirect chain. The URL answers directly."))
+    )
+
+    bl = get("broken_links")
+    bl_summary = bl.get("summary") or {}
+    link_rows = []
+    for link in (bl.get("broken") or [])[:20]:
+        internal = link.get("is_internal")
+        kind = _chip("chip-gap", "Internal") if internal else _chip("chip-flag", "External")
+        link_rows.append(
+            f'<tr><td>{kind}</td><td class="num">{_esc(link.get("status") or link.get("error", "?"))}</td>'
+            f'<td class="url">{_clip(link.get("url", ""), 110)}</td><td>{_clip(link.get("anchor_text", ""), 60)}</td></tr>'
+        )
+    panels["broken_links"] = (
+        _kv([("Links checked", _esc(bl_summary.get("total", 0))),
+             ("Healthy", _esc(bl_summary.get("healthy", 0))),
+             ("Broken", _esc(bl_summary.get("broken", 0))),
+             ("Soft 404s", _esc(bl_summary.get("soft_404s", 0))),
+             ("Redirected", _esc(bl_summary.get("redirected", 0))),
+             ("Timeouts", _esc(bl_summary.get("timeout", 0)))])
+        + (_table(["Type", "Status", "URL", "Anchor"], link_rows) if link_rows
+           else _notice("No broken links found."))
+    )
+
+    il = get("internal_links")
+    distribution = il.get("link_distribution") or {}
+    anchors = list((il.get("anchor_texts") or {}).items())[:10]
+    anchor_rows = []
+    if anchors:
+        top = max((count for _, count in anchors if isinstance(count, (int, float))), default=1) or 1
+        for text, count in anchors:
+            pct = round((count if isinstance(count, (int, float)) else 0) / top * 100)
+            anchor_rows.append(
+                f'<tr><td>{_clip(text, 50)}</td><td class="num">{_esc(count)}</td>'
+                f'<td><span class="meter wide"><span style="width:{pct}%"></span></span></td></tr>'
+            )
+    panels["internal_links"] = (
+        _kv([("Pages crawled", _esc(il.get("pages_crawled", 0))),
+             ("Internal links", _esc(il.get("total_internal_links", 0))),
+             ("Avg links per page", _esc(distribution.get("avg", 0))),
+             ("Pages found", _esc(il.get("unique_pages_found", 0)))])
+        + (_subhead("Top anchor texts") + _table(["Anchor text", "Links", "Share of top anchor"], anchor_rows) if anchor_rows else "")
+    )
+
+    lp = get("link_profile")
+    orphans = lp.get("orphan_pages") or {}
+    # A partial crawl cannot count orphans; "0" would read as a clean result.
+    orphan_value = "—" if orphans.get("status") == "inconclusive" else _esc(orphans.get("count", 0))
+    panels["link_profile"] = (
+        _kv([("Pages crawled", _esc(lp.get("pages_crawled", "—"))),
+             ("Avg links per page", _esc(lp.get("avg_internal_links_per_page", "—"))),
+             ("Orphan pages", orphan_value),
+             ("Dead ends", _esc((lp.get("dead_end_pages") or {}).get("count", 0)))])
+        + render_recommendations(lp)
+    )
+
+    psi = get("pagespeed")
+    metrics = psi.get("field_data") or psi.get("lab_data") or {}
+    psi_note = ""
+    if psi.get("error") or not psi.get("performance_score"):
+        detail = f" ({_esc(psi.get('error'))})" if psi.get("error") else ""
+        psi_note = _notice(
+            f"Rerun <code>pagespeed.py --api-key YOUR_KEY</code> or check pagespeed.web.dev{detail}. "
+            "Without that data this report states no LCP, INP or CLS figures.",
+            "flag",
+            "PageSpeed data unavailable.",
+        )
+    panels["pagespeed"] = (
+        psi_note
+        + _kv([("Performance", _esc(psi.get("performance_score") or "—")),
+               ("LCP", _esc(metrics.get("LCP", "—"))),
+               ("INP or TBT", _esc(metrics.get("INP", metrics.get("TBT", "—")))),
+               ("CLS", _esc(metrics.get("CLS", "—")))])
+        + render_recommendations(psi)
+    )
+
+    img = get("image_seo")
+    missing_pct = img.get("missing_alt_pct")
+    panels["image_seo"] = (
+        _kv([("Images", _esc(img.get("total_images", "—"))),
+             ("Missing alt", _esc(img.get("missing_alt", "—"))),
+             ("Missing alt share", f"{_esc(missing_pct)}%" if missing_pct is not None else "—")])
+        + render_recommendations(img)
+    )
+
+    cq = get("content_quality")
+    panels["content_quality"] = (
+        _kv([("Words", _esc(cq.get("word_count", "—"))),
+             ("Filler phrases", _esc(len(cq.get("filler_phrases") or []))),
+             ("Citation gap", _esc(cq.get("citation_gap", 0)))])
+        + render_recommendations(cq)
+    )
+
+    rd = get("readability")
+    panels["readability"] = (
+        _kv([("Flesch reading ease", _esc(rd.get("flesch_reading_ease", "—"))),
+             ("Grade level", _esc(rd.get("flesch_kincaid_grade", "—"))),
+             ("Words", _esc(rd.get("word_count", "—"))),
+             ("Reading time", f'{_esc(rd.get("estimated_reading_time_min", "—"))} min')])
+        + render_recommendations(rd)
+        + render_readability_rewrites(rd)
+    )
+
+    dc = get("duplicate_content")
+    panels["duplicate_content"] = (
+        _kv([("Pages analyzed", _esc(dc.get("pages_analyzed", "—"))),
+             ("Near duplicates", _esc(len(dc.get("near_duplicates") or []))),
+             ("Thin pages", _esc(len(dc.get("thin_pages") or [])))])
+        + render_recommendations(dc)
+    )
+
+    art = get("article")
+    headings = art.get("headings") if isinstance(art.get("headings"), dict) else {}
+    related = art.get("lsi_keywords") or []
+    keyword_row = (
+        f'<tr><td>{_esc(art.get("target_keyword") or "—")}</td>'
+        f'<td>{_esc(", ".join(str(k) for k in related) if related else "—")}</td></tr>'
+    )
+    panels["article"] = (
+        _kv([("Words", _esc(art.get("word_count", "—"))),
+             ("H2 headings", _esc(len(headings.get("h2") or []))),
+             ("Images", _esc(len(art.get("images") or [])))])
+        + _table(["Target keyword", "Related keywords"], [keyword_row])
+        + render_recommendations(art)
+    )
+
+    ent = get("entity")
+    panels["entity"] = (
+        _kv([("Wikidata", _yes_no((ent.get("wikidata") or {}).get("found"))),
+             ("Wikipedia", _yes_no((ent.get("wikipedia") or {}).get("found"))),
+             ("sameAs links", _esc((ent.get("sameas_analysis") or {}).get("total_found", 0))),
+             ("Issues", _esc(len(ent.get("issues") or [])))])
+        + render_recommendations(ent)
+    )
+
+    llm = get("llms_txt")
+    quality = llm.get("quality") or {}
+    tips = "".join(f"<li>{_esc(_plain(tip))}</li>" for tip in quality.get("suggestions") or [])
+    panels["llms_txt"] = (
+        _notice("Google Search ignores llms.txt; its absence costs nothing there.", "empty")
+        + _kv([("llms.txt", _yes_no(llm.get("exists"), False)),
+               ("llms-full.txt", _yes_no(llm.get("full_exists"), False)),
+               ("Quality score", _esc(quality.get("score", 0)))])
+        + (_subhead("Suggestions") + f'<ul class="recs">{tips}</ul>' if tips else "")
+    )
+
+    soc = get("social")
+    og = soc.get("og_tags") or {}
+    tw = soc.get("twitter_tags") or {}
+    social_rows = []
+    for tag in ("og:title", "og:description", "og:image", "og:url", "og:type", "og:site_name"):
+        value = og.get(tag, "")
+        status = _chip("chip-ok", "Present") if value else _chip("chip-gap", "Missing")
+        social_rows.append(f'<tr><td class="mono">{tag}</td><td>{status}</td><td class="url">{_clip(value, 90) or "—"}</td></tr>')
+    for tag in ("twitter:card", "twitter:title", "twitter:description", "twitter:image", "twitter:site"):
+        value = tw.get(tag, "")
+        status = _chip("chip-ok", "Present") if value else _chip("chip-flag", "Missing")
+        social_rows.append(f'<tr><td class="mono">{tag}</td><td>{status}</td><td class="url">{_clip(value, 90) or "—"}</td></tr>')
+    panels["social"] = _table(["Tag", "Status", "Value"], social_rows)
+
+    hf = get("hreflang")
+    tags_found = hf.get("hreflang_tags_found", 0)
+    panels["hreflang"] = (
+        _kv([("Method", _esc(hf.get("implementation_method", "none"))), ("Tags found", _esc(tags_found))])
+        + (render_recommendations(hf) if tags_found
+           else _notice("No hreflang tags. That is expected for a single-language site."))
+    )
+
+    ps = get("programmatic_seo")
+    panels["programmatic_seo"] = (
+        _kv([("Pattern groups", _esc(ps.get("pattern_groups_found", 0))),
+             ("Critical issues", _esc(ps.get("total_critical_issues", 0))),
+             ("Warnings", _esc(ps.get("total_warnings", 0)))])
+        + render_recommendations(ps)
+    )
+
+    loc = get("local_signals")
+    panels["local_signals"] = (
+        _kv([("LocalBusiness schema", _yes_no(loc.get("localbusiness_jsonld"), False)),
+             ("tel: links", _esc(loc.get("tel_links", "—"))),
+             ("Address markup", _yes_no(loc.get("structured_address_signals"), False))])
+        + render_recommendations(loc)
+    )
+
+    inx = get("indexnow_probe")
+    panels["indexnow_probe"] = (
+        _kv([("Meta tag", _yes_no(inx.get("meta_indexnow_present"), False)),
+             ("robots.txt hint", _yes_no(inx.get("robots_mentions_indexnow"), False)),
+             ("Sitemap in robots.txt", _yes_no(inx.get("robots_has_sitemap")))])
+        + render_recommendations(inx)
+    )
+
+    for key in CHECK_LABELS:
+        section = sections.get(key)
+        if not isinstance(section, dict) or not section:
+            prefix = _notice("This check did not run, usually because the page could not be fetched.")
+        elif section.get("error") and key != "pagespeed":
+            prefix = _notice(_esc(section.get("error")), "flag", "Check did not complete.")
+        else:
+            prefix = ""
+        panels[key] = prefix + panels.get(key, "")
+    return panels
+
+
+_STEPPER = (
+    '<span class="stepper"><button type="button" data-step="-1">Previous</button>'
+    '<button type="button" data-step="1">Next</button></span>'
+)
+
+
+def _render_findings(issues: list) -> str:
+    counts = {s: sum(1 for i in issues if i["severity"] == s) for s in ("critical", "warning", "info")}
+    head = (
+        '<div class="section-head"><h2 id="findings-h">Findings</h2>'
+        f'<span class="mono note">{len(issues)} · {counts["critical"]} critical · '
+        f'{counts["warning"]} warning · {counts["info"]} info</span>'
+    )
+    if not issues:
+        return head + "</div>" + _notice("No findings. Every check came back without an issue.")
+
+    filters = "".join(
+        f'<button type="button" data-filter="{key}" aria-pressed="{"true" if key == "all" else "false"}">'
+        f'{label} <span class="mono">{count}</span></button>'
+        for key, label, count in (
+            ("all", "All", len(issues)),
+            ("critical", "Critical", counts["critical"]),
+            ("warning", "Warning", counts["warning"]),
+            ("info", "Info", counts["info"]),
+        )
+    )
+    head += f'<div class="filter" id="finding-filter" role="group" aria-label="Filter by severity">{filters}</div></div>'
+
+    rows, cards = [], []
+    for issue in issues:
+        fid = issue["id"]
+        severity = issue["severity"]
+        section = issue["section"]
+        label = CHECK_LABELS.get(section, section.replace("_", " ").capitalize())
+        headline = _headline(issue["finding"] or issue["text"])
+        id_class = "id hi" if severity == "critical" else "id"
+        rows.append(
+            f'<tr data-key="{fid}" data-filter="{severity}" aria-selected="false">'
+            f'<td class="{id_class}">{fid}</td>'
+            f'<td><button type="button" class="row-title" aria-controls="finding-detail">{_esc(headline)}</button></td>'
+            f"<td>{_severity_chip(severity)}</td>"
+            f'<td class="small col-check">{_esc(label)}</td></tr>'
+        )
+        finding_field = ""
+        if issue["finding"] and issue["finding"] != headline:
+            finding_field = f'<div class="field"><p class="lbl">Finding</p><p>{_esc(issue["finding"])}</p></div>'
+        fix_field = f'<div class="field"><p class="lbl">Fix</p><p>{_esc(issue["fix"])}</p></div>' if issue["fix"] else ""
+        check_link = (
+            f'<a class="mono" href="#check-{section}" data-open-check="{section}">Open the {_esc(label)} check</a>'
+            if section in CHECK_LABELS else f'<span class="mono">{_esc(label)}</span>'
+        )
+        cards.append(
+            f'<article class="card detail" data-key="{fid}" id="{fid}" aria-labelledby="{fid}-title">'
+            '<div class="card-body">'
+            f'<div class="card-top"><span class="id">{fid}</span>{_severity_chip(severity)}<span class="lbl">{_esc(label)}</span></div>'
+            f'<h3 id="{fid}-title">{_esc(headline)}</h3>'
+            f"{finding_field}{fix_field}{_render_issue_metadata(issue)}"
+            "</div>"
+            f'<div class="card-foot">{check_link}{_STEPPER}</div>'
+            "</article>"
+        )
+    return (
+        head
+        + '<div class="ledger-grid"><div class="panel"><div class="table-scroll">'
+        '<table class="ledger" aria-label="Findings"><thead><tr>'
+        '<th class="lbl" scope="col" style="width:52px">ID</th>'
+        '<th class="lbl" scope="col">Finding</th>'
+        '<th class="lbl" scope="col" style="width:108px">Severity</th>'
+        '<th class="lbl col-check" scope="col" style="width:170px">Check</th>'
+        f'</tr></thead><tbody id="finding-rows">{"".join(rows)}</tbody></table></div>'
+        '<p class="legend">Arrow keys move through the list.</p></div>'
+        f'<aside class="detail-stack" id="finding-detail" aria-live="polite">{"".join(cards)}</aside></div>'
+    )
+
+
+def _render_checks(data: dict, scores: dict, issues: list) -> str:
+    categories = scores.get("categories", {})
+    weights = scores.get("weights", {})
+    panels = _check_panels(data)
+    finding_counts = {}
+    for issue in issues:
+        finding_counts[issue["section"]] = finding_counts.get(issue["section"], 0) + 1
+
+    entries = []
+    for key, label in CHECK_LABELS.items():
+        section = data["sections"].get(key)
+        section = section if isinstance(section, dict) else {}
+        status, status_label = _check_status(key, section, categories.get(key))
+        entries.append((key, label, status, status_label, categories.get(key) or 0))
+    entries.sort(key=lambda e: (_STATUS_RANK[e[2]], e[4]))
+
+    rows, cards = [], []
+    for key, label, status, status_label, score in entries:
+        measured = status not in ("deferred", "na")
+        pct = max(0, min(100, int(score)))
+        score_html = (
+            f'<span class="score"><span class="mono">{pct}</span>'
+            f'<span class="meter {status}"><span style="width:{pct}%"></span></span></span>'
+            if measured else '<span class="mono muted">—</span>'
+        )
+        weight = weights.get(key)
+        weight_html = _esc(weight) if weight and measured else "—"
+        count = finding_counts.get(key, 0)
+        chip = _status_chip(status, status_label)
+        rows.append(
+            f'<tr data-key="{key}" aria-selected="false">'
+            f'<td><button type="button" class="row-title" aria-controls="check-detail">{_esc(label)}</button></td>'
+            f"<td>{score_html}</td><td>{chip}</td>"
+            f'<td class="num">{count}</td><td class="num col-weight">{weight_html}</td></tr>'
+        )
+        score_top = f'<span class="mono">{pct} / 100</span>' if measured else ""
+        noun = "finding" if count == 1 else "findings"
+        cards.append(
+            f'<article class="card detail" data-key="{key}" id="check-{key}" aria-labelledby="check-{key}-title">'
+            '<div class="card-body">'
+            f'<div class="card-top"><span class="lbl">Check</span>{chip}{score_top}</div>'
+            f'<h3 id="check-{key}-title">{_esc(label)}</h3>'
+            f'<div class="panel-body">{panels.get(key, "")}</div>'
+            "</div>"
+            f'<div class="card-foot"><span class="mono">{count} {noun} · weight {weight_html}</span>{_STEPPER}</div>'
+            "</article>"
+        )
+    return (
+        '<div class="section-head"><h2 id="checks-h">Checks</h2>'
+        '<p class="note">Sorted by status, weakest first. Scores run 0 to 100, and weight sets how much '
+        "each check counts toward the overall score.</p></div>"
+        '<div class="panel"><div class="table-scroll"><table class="ledger" aria-label="Checks"><thead><tr>'
+        '<th class="lbl" scope="col">Check</th>'
+        '<th class="lbl" scope="col" style="width:150px">Score</th>'
+        '<th class="lbl" scope="col" style="width:150px">Status</th>'
+        '<th class="lbl" scope="col" style="width:90px">Findings</th>'
+        '<th class="lbl col-weight" scope="col" style="width:80px">Weight</th>'
+        f'</tr></thead><tbody id="check-rows">{"".join(rows)}</tbody></table></div></div>'
+        f'<div class="detail-stack check-detail" id="check-detail" aria-live="polite">{"".join(cards)}</div>'
+    )
+
+
+def _render_platform(data: dict) -> str:
+    env = data.get("environment", {}) or {}
+    platform = env.get("primary", "Unknown")
+    signals = env.get("signals", []) or []
+    alternatives = env.get("alternatives", []) or []
+    signal_list = "".join(f"<li>{_esc(sig)}</li>" for sig in signals)
+    left = (
+        _kv([("Platform", _esc(platform)),
+             ("Runtime", _esc(env.get("runtime", "Unknown"))),
+             ("Confidence", _esc(str(env.get("confidence", "low")).capitalize())),
+             ("Signals matched", _esc(len(signals)))])
+        + (_subhead("Detection signals") + f'<ul class="recs">{signal_list}</ul>' if signal_list else "")
+        + (f'<p class="note">Also possible: {_esc(", ".join(alternatives))}</p>' if alternatives else "")
+    )
+    plan_title = "Fix plan" if platform == "Unknown" else f"Fix plan for {platform}"
+    return (
+        '<div class="section-head"><h2 id="platform-h">Platform</h2>'
+        '<p class="note">Inferred from signals in the HTML source. Fixes are phrased for the detected platform.</p></div>'
+        f'<div class="two-col"><div>{left}</div>'
+        f'<div>{_subhead(plan_title)}{render_environment_fixes(data.get("environment_fixes", []))}</div></div>'
+    )
 
 
 def generate_html(data: dict, scores: dict) -> str:
-    """Generate the interactive HTML report."""
+    """Generate the HTML report: Tobto design system, Ledger layout."""
     domain = data["domain"]
     url = data["url"]
     timestamp = data["timestamp"]
+    sections = data.get("sections", {})
+    env = data.get("environment", {}) or {}
     overall = scores["overall"]
+    categories = scores.get("categories", {})
+    issues = _collect_issues(data)
+    counts = {s: sum(1 for i in issues if i["severity"] == s) for s in ("critical", "warning", "info")}
 
-    # Determine overall grade
-    if overall >= 90:
-        grade, grade_color = "A+", "#22c55e"
-    elif overall >= 80:
-        grade, grade_color = "A", "#22c55e"
-    elif overall >= 70:
-        grade, grade_color = "B", "#eab308"
-    elif overall >= 60:
-        grade, grade_color = "C", "#f97316"
-    elif overall >= 50:
-        grade, grade_color = "D", "#ef4444"
+    statuses = {}
+    for key in CHECK_LABELS:
+        section = sections.get(key)
+        statuses[key] = _check_status(key, section if isinstance(section, dict) else {}, categories.get(key))
+    not_measured = sum(1 for status, _ in statuses.values() if status == "deferred")
+    gaps = sorted((k for k, (status, _) in statuses.items() if status == "gap"),
+                  key=lambda k: categories.get(k) or 0)[:3]
+    ran = sum(1 for value in sections.values() if isinstance(value, dict) and not value.get("error"))
+
+    try:
+        generated = datetime.fromisoformat(timestamp)
+        date_label = generated.strftime("%Y-%m-%d")
+        stamp = generated.strftime("%Y-%m-%d %H:%M")
+    except (TypeError, ValueError):
+        date_label = stamp = str(timestamp)
+
+    lede = (
+        f"{len(issues)} findings: {counts['critical']} critical, {counts['warning']} warnings "
+        f"and {counts['info']} informational."
+    )
+    if gaps:
+        lede += " Weakest checks: " + _join_labels([CHECK_LABELS[k] for k in gaps]) + "."
+
+    lead = next((i for i in issues if i["severity"] == "critical"), None) or next(
+        (i for i in issues if i["severity"] == "warning"), None)
+    if lead:
+        lead_label = CHECK_LABELS.get(lead["section"], lead["section"])
+        lead_fix = f'<p>{_esc(lead["fix"])}</p>' if lead["fix"] else ""
+        callout = (
+            '<div class="callout"><p class="lbl">Start here</p>'
+            f'<p class="callout-title">{_esc(_headline(lead["finding"]))}</p>{lead_fix}'
+            f'<p class="mono note"><a href="#{lead["id"]}" data-open-finding="{lead["id"]}">Open {lead["id"]}</a>'
+            f" · {_esc(lead_label)}</p></div>"
+        )
     else:
-        grade, grade_color = "F", "#dc2626"
-
-    # Collect all issues
-    all_issues = []
-    for section_name, section_data in data["sections"].items():
-        issues = section_data.get("issues", [])
-        for issue in issues:
-            if isinstance(issue, dict):
-                # Structured issue from entity_checker, hreflang_checker, etc.
-                sev_raw = issue.get("severity", "info").lower()
-                severity_map = {"critical": "critical", "high": "critical", "warning": "warning", "medium": "warning", "info": "info", "low": "info"}
-                severity = severity_map.get(sev_raw, "info")
-                text = f"{issue.get('finding', '')} — Fix: {issue.get('fix', '')}" if issue.get('fix') else issue.get('finding', str(issue))
-                meta = _recommendation_metadata(issue, section_name)
-                all_issues.append({"text": text, "severity": severity, "section": section_name, **meta})
-            elif isinstance(issue, str):
-                severity = "critical" if "🔴" in issue else "warning" if "⚠️" in issue else "info"
-                all_issues.append({"text": issue, "severity": severity, "section": section_name})
-
-    critical_count = sum(1 for i in all_issues if i["severity"] == "critical")
-    warning_count = sum(1 for i in all_issues if i["severity"] == "warning")
-    pass_count = sum(1 for i in all_issues if i["severity"] == "info")
-
-    # Section data extraction
-    sec = data["sections"].get("security", {})
-    soc = data["sections"].get("social", {})
-    rob = data["sections"].get("robots", {})
-    bl = data["sections"].get("broken_links", {})
-    il = data["sections"].get("internal_links", {})
-    red = data["sections"].get("redirects", {})
-    llm = data["sections"].get("llms_txt", {})
-    psi = data["sections"].get("pagespeed", {})
-    op = data["sections"].get("onpage", {})
-    rd = data["sections"].get("readability", {})
-    art = data["sections"].get("article", {})
-    ent = data["sections"].get("entity", {})
-    lp = data["sections"].get("link_profile", {})
-    lp_orphans = lp.get("orphan_pages", {})
-    # A partial crawl cannot count orphans; "0" would read as a clean result.
-    lp_orphan_val = "—" if lp_orphans.get("status") == "inconclusive" else lp_orphans.get("count", 0)
-    hf = data["sections"].get("hreflang", {})
-    dc = data["sections"].get("duplicate_content", {})
-    cq = data["sections"].get("content_quality", {})
-    sch = data["sections"].get("schema_validation", {})
-    imgsec = data["sections"].get("image_seo", {})
-    smap = data["sections"].get("sitemap", {})
-    cansec = data["sections"].get("canonical", {})
-    lsig = data["sections"].get("local_signals", {})
-    inxp = data["sections"].get("indexnow_probe", {})
-    env = data.get("environment", {})
-    env_fixes = data.get("environment_fixes", [])
-
-    env_primary = html_lib.escape(env.get("primary", "Unknown"), quote=True)
-    env_runtime = html_lib.escape(env.get("runtime", "Unknown"), quote=True)
-    env_confidence = html_lib.escape(env.get("confidence", "low").upper(), quote=True)
-    env_alts = [html_lib.escape(x, quote=True) for x in env.get("alternatives", [])]
-    env_signals_html = "".join(
-        f'<li class="mono" style="margin:4px 0;">{html_lib.escape(sig, quote=True)}</li>'
-        for sig in env.get("signals", [])
-    ) or '<li style="color:var(--text-muted)">No strong platform markers found.</li>'
-    env_fixes_html = render_environment_fixes(env_fixes)
-
-    # Build issues HTML
-    issues_html = ""
-    for issue in sorted(all_issues, key=lambda x: {"critical": 0, "warning": 1, "info": 2}[x["severity"]]):
-        badge_class = issue["severity"]
-        text = html_lib.escape(str(issue["text"]), quote=True)
-        issues_html += (
-            f'<div class="issue-item {badge_class}"><span class="issue-badge">{badge_class.upper()}</span>'
-            f'<div>{text}{_render_issue_metadata(issue)}</div></div>\n'
+        callout = (
+            '<div class="callout"><p class="lbl">Start here</p>'
+            '<p class="callout-title">No critical or warning findings.</p>'
+            "<p>Review the informational items and keep running regular reports.</p></div>"
         )
 
-    # Build category cards
-    category_labels = {
-        "security": ("🔒", "Security Headers"),
-        "social": ("📱", "Social Meta"),
-        "robots": ("🤖", "Robots & Crawlers"),
-        "broken_links": ("🔗", "Broken Links"),
-        "internal_links": ("🕸️", "Internal Links"),
-        "redirects": ("↪️", "Redirects"),
-        "llms_txt": ("🧠", "AI Search (llms.txt)"),
-        "pagespeed": ("⚡", "Performance (CWV)"),
-        "onpage": ("📝", "On-Page SEO"),
-        "readability": ("📖", "Readability"),
-        "article": ("📄", "Article Extractor"),
-        "entity": ("🏛️", "Entity SEO"),
-        "link_profile": ("🔗", "Link Profile"),
-        "hreflang": ("🌍", "Hreflang"),
-        "duplicate_content": ("📋", "Content Uniqueness"),
-        "content_quality": ("🧪", "Content Quality"),
-        "programmatic_seo": ("🏭", "Programmatic SEO"),
-        "canonical": ("🔗", "Canonical Tags"),
-        "schema_validation": ("🧩", "JSON-LD"),
-        "image_seo": ("🖼️", "Image SEO"),
-        "sitemap": ("🗺️", "Sitemaps"),
-        "local_signals": ("📍", "Local signals"),
-        "indexnow_probe": ("📡", "IndexNow"),
+    strip = (
+        f'<span class="count"><b>{overall}</b>/100 · grade {_grade(overall)}</span>'
+        f'<span class="count"><b>{counts["critical"]}</b> critical</span>'
+        f'<span class="count"><b>{counts["warning"]}</b> warning</span>'
+        f'<span class="count"><b>{counts["info"]}</b> info</span>'
+    )
+    if not_measured:
+        plural = "check" if not_measured == 1 else "checks"
+        strip += f'<span class="mark m-deferred">⏸︎<small>{not_measured} {plural} not measured</small></span>'
+
+    return (
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n"
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        f"<title>SEO report · {_esc(domain)}</title>\n"
+        '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+        f'<link rel="stylesheet" href="{_esc(_FONTS_URL)}">\n'
+        f"<style>{_REPORT_CSS}</style>\n</head>\n<body>\n"
+        '<div class="hero">\n'
+        '<header class="site-header"><div class="wrap">'
+        '<span class="brand">Ultimate SEO + GEO</span>'
+        '<nav class="site-nav" aria-label="Report sections">'
+        '<a href="#findings">Findings</a><a href="#checks">Checks</a>'
+        '<a href="#platform">Platform</a><a href="#recommendations">Recommendations</a></nav>'
+        '<button type="button" class="theme-toggle" id="theme-toggle">Theme: system</button>'
+        "</div></header>\n"
+        '<div class="wrap"><div class="intro">'
+        '<div class="intro-main">'
+        f'<p class="lbl">SEO + GEO report · {_esc(domain)}</p>'
+        f"<h1>{_esc(domain)}</h1>"
+        f'<p class="mono note">{_esc(date_label)} · {_esc(env.get("primary", "Unknown"))} · '
+        f"{ran} of {len(sections)} checks ran</p>"
+        f'<p class="lede">{_esc(lede)}</p>'
+        f'<div class="strip" aria-label="Score and findings">{strip}</div>'
+        "</div>"
+        f'<div class="intro-side">{callout}'
+        '<p class="scope"><span class="mark">◇</span><span><b>Automated checks.</b> Every finding '
+        f"and score comes from scripts run against {_esc(url)}. Scores are a triage signal; confirm "
+        "high-risk changes such as redirects, canonicals and robots.txt before acting.</span></p>"
+        "</div></div></div>\n</div>\n"
+        '<main class="wrap">\n'
+        f'<section class="section band" id="findings" aria-labelledby="findings-h">{_render_findings(issues)}</section>\n'
+        f'<section class="section" id="checks" aria-labelledby="checks-h">{_render_checks(data, scores, issues)}</section>\n'
+        f'<section class="section" id="platform" aria-labelledby="platform-h">{_render_platform(data)}</section>\n'
+        '<section class="section" id="recommendations" aria-labelledby="recommendations-h">'
+        '<div class="section-head"><h2 id="recommendations-h">Recommendations</h2>'
+        '<p class="note">Every recommendation the checks returned, grouped by check.</p></div>'
+        f'<div class="rec-grid">{render_all_recommendations(data)}</div></section>\n'
+        "</main>\n"
+        '<footer class="site-footer"><div class="wrap">'
+        f'<span class="mono">Generated by ultimate-seo-geo generate_report.py · {_esc(stamp)}</span>'
+        f'<span>Findings and scores come from automated checks against <a href="{_esc(url)}">{_esc(url)}</a>.</span>'
+        "</div></footer>\n"
+        f"<script>{_REPORT_JS}</script>\n</body>\n</html>"
+    )
+
+
+_REPORT_CSS = """
+:root{
+  --font-sans:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --page:#ffffff;--card:#ffffff;--sunk:#f5f6f8;--band:#f5f6f8;--hover:#fafbfc;
+  --text-strong:#0b0d10;--text-body:#16191e;--text-muted:#5b626d;--text-faint:#838a95;
+  --link:#0057b7;--link-hover:#003c7f;--line:#d7dbe1;--line-strong:#b4bac3;
+  --ring:rgba(11,13,16,.10);--focus:rgba(0,87,183,.35);
+  --head-bg:#eef4fc;--head-text:#003c7f;
+  --ok-text:#2f5e18;--ok-bg:#e8efe4;--ok-border:rgba(63,125,32,.35);
+  --flag-text:#6e4c05;--flag-bg:#fdf6e3;--flag-border:rgba(153,106,8,.40);
+  --danger-text:#a2213a;--danger-bg:#f8e7ea;--danger-border:rgba(194,51,79,.35);
+  --info-text:#003c7f;--info-bg:#eef4fc;--info-border:rgba(0,87,183,.30);
+  --warn-chip-text:#ffffff;--warn-chip-bg:#262a31;
+  --st-deferred:#838a95;--accent:#b83f00;--observed:#0e7490;
+  --hero-bg:#eef4fc;--hero-grid:rgba(0,87,183,.07);--hero-line:rgba(0,87,183,.18);--hero-code:#ffffff;
+  --callout-bg:#ffffff;--callout-border:rgba(0,87,183,.22);
+  --meter-ok:#3f7d20;--meter-flag:#996a08;--meter-gap:#c2334f;
+  --code-bg:#f5f6f8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0b0d10;--card:#16191e;--sunk:#1d2127;--band:#111418;--hover:rgba(255,255,255,.04);
+    --text-strong:#ffffff;--text-body:#eaedf1;--text-muted:#838a95;--text-faint:#5b626d;
+    --link:#7faae4;--link-hover:#b0ccf0;--line:rgba(255,255,255,.12);--line-strong:rgba(255,255,255,.24);
+    --ring:rgba(255,255,255,.12);--focus:rgba(127,170,228,.45);
+    --head-bg:#0d213b;--head-text:#7faae4;
+    --ok-text:#8fce6e;--ok-bg:#16260f;--ok-border:rgba(63,125,32,.6);
+    --flag-text:#e5c86a;--flag-bg:#2a200a;--flag-border:rgba(153,106,8,.6);
+    --danger-text:#f08fa2;--danger-bg:#321219;--danger-border:rgba(194,51,79,.55);
+    --info-text:#7faae4;--info-bg:#0d213b;--info-border:rgba(0,87,183,.55);
+    --warn-chip-text:#0b0d10;--warn-chip-bg:#d7dbe1;
+    --meter-ok:#8fce6e;--meter-flag:#e5c86a;--meter-gap:#f08fa2;
+    --code-bg:rgba(255,255,255,.08);
+  --hero-bg:#09192b;--hero-grid:rgba(255,255,255,.05);--hero-line:rgba(255,255,255,.12);--hero-code:rgba(255,255,255,.10);
+  --callout-bg:#16191e;--callout-border:rgba(255,255,255,.14);--accent:#ff6a1a;--observed:#7fd4e8;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0b0d10;--card:#16191e;--sunk:#1d2127;--band:#111418;--hover:rgba(255,255,255,.04);
+  --text-strong:#ffffff;--text-body:#eaedf1;--text-muted:#838a95;--text-faint:#5b626d;
+  --link:#7faae4;--link-hover:#b0ccf0;--line:rgba(255,255,255,.12);--line-strong:rgba(255,255,255,.24);
+  --ring:rgba(255,255,255,.12);--focus:rgba(127,170,228,.45);
+  --head-bg:#0d213b;--head-text:#7faae4;
+  --ok-text:#8fce6e;--ok-bg:#16260f;--ok-border:rgba(63,125,32,.6);
+  --flag-text:#e5c86a;--flag-bg:#2a200a;--flag-border:rgba(153,106,8,.6);
+  --danger-text:#f08fa2;--danger-bg:#321219;--danger-border:rgba(194,51,79,.55);
+  --info-text:#7faae4;--info-bg:#0d213b;--info-border:rgba(0,87,183,.55);
+  --warn-chip-text:#0b0d10;--warn-chip-bg:#d7dbe1;
+  --meter-ok:#8fce6e;--meter-flag:#e5c86a;--meter-gap:#f08fa2;
+  --code-bg:rgba(255,255,255,.08);
+  --hero-bg:#09192b;--hero-grid:rgba(255,255,255,.05);--hero-line:rgba(255,255,255,.12);--hero-code:rgba(255,255,255,.10);
+  --callout-bg:#16191e;--callout-border:rgba(255,255,255,.14);--accent:#ff6a1a;--observed:#7fd4e8;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--page);color:var(--text-body);font-family:var(--font-sans);font-size:17px;line-height:1.7;-webkit-font-smoothing:antialiased;text-wrap:pretty}
+h1,h2,h3,h4{margin:0;color:var(--text-strong);font-weight:600;letter-spacing:-0.02em;line-height:1.2;text-wrap:balance}
+p{margin:0}
+a{color:var(--link);text-underline-offset:.15em}
+a:hover{color:var(--link-hover)}
+code{font-family:var(--font-mono);font-size:.86em;background:var(--code-bg);border-radius:4px;padding:.1em .35em;overflow-wrap:anywhere}
+button{font:inherit;color:inherit}
+:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus);border-radius:6px}
+.wrap{max-width:76rem;margin-inline:auto;padding-inline:24px}
+.lbl{font-family:var(--font-mono);font-size:12px;line-height:1.4;text-transform:uppercase;letter-spacing:.12em;font-weight:500;color:var(--text-muted)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--text-muted)}
+.note{font-size:14px;line-height:1.5;color:var(--text-muted)}
+.subhead{font-size:15px;margin:20px 0 8px}
+
+.hero{--line:var(--hero-line);--code-bg:var(--hero-code);--st-deferred:var(--text-muted);
+  color:var(--text-body);background-color:var(--hero-bg);background-image:linear-gradient(var(--hero-grid) 1px,transparent 1px),linear-gradient(90deg,var(--hero-grid) 1px,transparent 1px);background-size:28px 28px;border-bottom:1px solid var(--line)}
+.site-header{border-bottom:1px solid var(--line)}
+.site-header .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;padding-block:16px}
+.brand{font-size:17px;font-weight:600;letter-spacing:-0.02em;color:var(--text-strong)}
+.site-nav{display:flex;flex-wrap:wrap;gap:4px 20px;font-size:14px}
+.site-nav a{color:var(--text-muted);text-decoration:none;transition:color 100ms cubic-bezier(.2,0,.2,1)}
+.site-nav a:hover{color:var(--text-strong)}
+.theme-toggle{display:none;margin-left:auto;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer}
+.js .theme-toggle{display:inline-block}
+.theme-toggle:hover{color:var(--text-strong)}
+.intro{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:24px 48px;align-items:start;padding-block:48px 44px}
+.intro-main{display:flex;flex-direction:column;gap:12px}
+h1{font-size:36px;letter-spacing:-0.022em;line-height:1.15;overflow-wrap:anywhere}
+.lede{font-size:18px;line-height:1.6;color:var(--text-muted);max-width:44rem}
+.strip{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 28px;margin-top:12px;padding-top:16px;border-top:1px solid var(--line)}
+.strip .count{font-family:var(--font-mono);font-size:14px;color:var(--text-body)}
+.strip .count b{font-weight:700;color:var(--text-strong)}
+.intro-side{display:flex;flex-direction:column;gap:12px}
+.callout{border:1px solid var(--callout-border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--callout-bg)}
+.callout .lbl{color:var(--accent)}
+.callout p{font-size:15px;line-height:1.6}
+.callout .callout-title{font-size:17px;font-weight:600;color:var(--text-strong);line-height:1.4}
+.scope{font-size:14px;line-height:1.5;color:var(--text-muted);display:flex;gap:10px;align-items:baseline}
+.scope .mark{color:var(--observed)}
+.scope b{font-weight:500;color:var(--text-strong)}
+
+.notice{padding:12px 16px;border-radius:10px;border:1px solid var(--line);background:var(--sunk);font-size:14px;line-height:1.5;color:var(--text-muted);margin:0 0 12px}
+.notice b{font-weight:500;color:var(--text-strong)}
+.notice.info{background:var(--info-bg);border-color:var(--info-border)}
+.notice.flag{background:var(--flag-bg);border-color:var(--flag-border)}
+
+.section{margin-top:48px;border-top:1px solid var(--line);padding-top:32px}
+.band{background:var(--band);box-shadow:0 0 0 100vmax var(--band);clip-path:inset(0 -100vmax)}
+.band.section{border-top:0;margin-top:0;padding-block:40px 44px}
+.section-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;margin-bottom:20px}
+.section-head h2{font-size:20px}
+.section-head .note{flex-basis:100%}
+
+.chip{display:inline-block;font-family:var(--font-mono);font-size:12px;line-height:18px;text-transform:uppercase;letter-spacing:.12em;font-weight:500;padding:1px 8px;border-radius:6px;border:1px solid;white-space:nowrap}
+.sev-critical,.chip-gap{color:var(--danger-text);background:var(--danger-bg);border-color:var(--danger-border)}
+.sev-warning{color:var(--warn-chip-text);background:var(--warn-chip-bg);border-color:var(--warn-chip-bg)}
+.sev-info,.chip-na{color:var(--text-muted);background:transparent;border-color:var(--line)}
+.chip-ok{color:var(--ok-text);background:var(--ok-bg);border-color:var(--ok-border)}
+.chip-flag{color:var(--flag-text);background:var(--flag-bg);border-color:var(--flag-border)}
+.chip-info{color:var(--info-text);background:var(--info-bg);border-color:var(--info-border)}
+.mark{display:inline-flex;align-items:baseline;gap:8px;font-family:var(--font-mono);font-size:14px;font-weight:700;white-space:nowrap;font-variant-emoji:text}
+.mark small{font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:500}
+.m-deferred{color:var(--st-deferred)}
+.yes{color:var(--ok-text);font-weight:600}
+.no{color:var(--danger-text);font-weight:600}
+
+.filter{display:none;flex-wrap:wrap;gap:8px;margin-left:auto}
+.js .filter{display:flex}
+.filter button{cursor:pointer;display:inline-flex;align-items:baseline;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:transparent;font-size:14px;line-height:30px;color:var(--text-muted)}
+.filter button:hover{background:var(--hover);color:var(--text-strong)}
+.filter button:active{transform:translateY(1px)}
+.filter button[aria-pressed="true"]{background:var(--card);border-color:var(--line-strong);color:var(--text-strong);font-weight:500}
+.filter .mono{font-size:12px;color:var(--text-faint)}
+
+.panel{border-radius:14px;box-shadow:0 0 0 1px var(--ring);background:var(--card);padding:12px 16px 14px}
+.ledger-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:32px;align-items:start}
+.table-scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+.ledger{font-size:15px;line-height:1.45}
+.ledger th{padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--line-strong);white-space:nowrap;color:var(--head-text)}
+.ledger td{padding:0 8px;border-bottom:1px solid var(--line);vertical-align:baseline}
+.ledger tbody tr:last-child td{border-bottom:0}
+.js .ledger tbody tr{cursor:pointer}
+.ledger tbody tr:hover{background:var(--hover)}
+.ledger tbody tr[aria-selected="true"]{background:var(--sunk)}
+.ledger tbody tr[aria-selected="true"] .row-title{font-weight:600}
+.ledger td.id{font-family:var(--font-mono);font-size:13px;color:var(--text-muted);padding-block:12px}
+.ledger td.id.hi{color:var(--danger-text)}
+.row-title{all:unset;display:block;cursor:pointer;padding-block:12px;color:var(--text-strong);border-radius:6px;overflow-wrap:anywhere}
+.row-title:focus-visible{box-shadow:0 0 0 3px var(--focus)}
+.ledger td.small{font-size:14px;color:var(--text-muted)}
+.legend{display:none;margin-top:12px;font-family:var(--font-mono);font-size:13px;color:var(--text-muted)}
+.js .legend{display:block}
+.score{display:inline-flex;align-items:center;gap:10px}
+.meter{display:inline-block;width:64px;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.meter.wide{width:160px}
+.meter>span{display:block;height:100%;background:var(--link)}
+.meter.ok>span{background:var(--meter-ok)}
+.meter.flag>span{background:var(--meter-flag)}
+.meter.gap>span{background:var(--meter-gap)}
+
+.detail-stack{display:flex;flex-direction:column;gap:16px}
+.check-detail{margin-top:16px}
+.card{border-radius:14px;box-shadow:0 0 0 1px var(--ring);background:var(--card);overflow:hidden}
+.card-body{padding:16px;display:flex;flex-direction:column;gap:14px}
+.card-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
+.card-top .id{font-family:var(--font-mono);font-size:13px;color:var(--text-muted)}
+.card h3{font-size:20px;line-height:1.25;overflow-wrap:anywhere}
+.field{display:flex;flex-direction:column;gap:4px}
+.field p{font-size:15px;line-height:1.6;overflow-wrap:anywhere}
+.card-foot{border-top:1px solid var(--line);background:var(--sunk);padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:13px}
+.card-foot .mono{font-size:13px;color:var(--text-muted)}
+.stepper{display:none;margin-left:auto;gap:8px}
+.js .stepper{display:flex}
+.stepper button{cursor:pointer;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--card);font-size:14px;color:var(--text-strong)}
+.stepper button:hover{background:var(--hover)}
+.stepper button:active{transform:translateY(1px)}
+.stepper button:disabled{opacity:.5;pointer-events:none}
+
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0;margin:0 0 12px;border-top:1px solid var(--line)}
+.kv>div{padding:10px 12px 10px 0;border-bottom:1px solid var(--line)}
+.kv dt{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:500;color:var(--text-muted)}
+.kv dd{margin:2px 0 0;font-family:var(--font-mono);font-size:15px;color:var(--text-strong);overflow-wrap:anywhere}
+.tbl{font-size:14px;line-height:1.5;margin:0 0 12px}
+.tbl th,.tbl td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tbl thead th{background:var(--head-bg);font-weight:600;color:var(--head-text)}
+.tbl .num{text-align:right;font-family:var(--font-mono);font-size:13px;white-space:nowrap}
+.url{font-family:var(--font-mono);font-size:13px;overflow-wrap:anywhere}
+.issues{list-style:none;margin:0 0 12px;padding:0;border-top:1px solid var(--line)}
+.issue{padding:12px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.issue-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
+.issue-head strong{font-weight:600;color:var(--text-strong);font-size:15px;line-height:1.45}
+.issue-reason,.issue-fix{font-size:14px;line-height:1.55}
+.issue-reason{color:var(--text-muted)}
+.issue-fix .lbl{margin-right:6px}
+.meta{margin:0;display:grid;gap:2px;font-size:13px;line-height:1.5;color:var(--text-muted)}
+.meta>div{display:flex;flex-wrap:wrap;gap:0 6px}
+.meta dt{font-weight:600;color:var(--text-body)}
+.meta dd{margin:0}
+.recs{margin:0 0 12px;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.55}
+
+.two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:start}
+.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px 32px}
+.site-footer{margin-top:64px;border-top:1px solid var(--line)}
+.site-footer .wrap{padding-block:24px 48px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--text-muted)}
+
+@media (max-width: 960px){
+  .intro,.ledger-grid,.two-col{grid-template-columns:minmax(0,1fr)}
+  .filter{margin-left:0}
+}
+@media (max-width: 640px){
+  h1{font-size:28px}
+  .col-check,.col-weight{display:none}
+  .theme-toggle{margin-left:0}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;scroll-behavior:auto!important}
+}
+@media print{
+  body{font-size:11pt;background:#ffffff}
+  .hero{--text-strong:#0b0d10;--text-body:#16191e;--text-muted:#5b626d;--line:#d7dbe1;--link:#0057b7;background:none!important;color:#16191e}
+  .callout{border-color:#d7dbe1;background:none}
+  .band{box-shadow:none!important;background:none!important}
+  .site-nav,.filter,.stepper,.theme-toggle,.legend{display:none!important}
+  .detail[hidden]{display:block!important}
+  .ledger-grid,.two-col,.intro{grid-template-columns:minmax(0,1fr)!important}
+  .ledger tbody tr[aria-selected="true"]{background:transparent}
+  .card{break-inside:avoid;box-shadow:none;border:1px solid #d7dbe1}
+}
+"""
+
+_REPORT_JS = """
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  var THEME_KEY = 'ultimate-seo-geo-report-theme';
+  var toggle = document.getElementById('theme-toggle');
+  function applyTheme(theme) {
+    if (theme === 'light' || theme === 'dark') root.setAttribute('data-theme', theme);
+    else root.removeAttribute('data-theme');
+    if (toggle) toggle.textContent = 'Theme: ' + (theme || 'system');
+  }
+  var saved = null;
+  try { saved = localStorage.getItem(THEME_KEY); } catch (e) { saved = null; }
+  applyTheme(saved);
+  if (toggle) {
+    toggle.addEventListener('click', function () {
+      var current = root.getAttribute('data-theme');
+      var next = current === null ? 'light' : current === 'light' ? 'dark' : null;
+      try {
+        if (next) localStorage.setItem(THEME_KEY, next);
+        else localStorage.removeItem(THEME_KEY);
+      } catch (e) { /* storage unavailable: the choice lasts for this page view */ }
+      applyTheme(next);
+    });
+  }
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var stacked = window.matchMedia('(max-width: 960px)');
+
+  function makeLedger(bodyId, detailId, filterId) {
+    var body = document.getElementById(bodyId);
+    var detail = document.getElementById(detailId);
+    if (!body || !detail) return null;
+    var rows = Array.prototype.slice.call(body.querySelectorAll('tr[data-key]'));
+    var cards = Array.prototype.slice.call(detail.querySelectorAll('article[data-key]'));
+    var selected = null;
+
+    function visibleRows() { return rows.filter(function (r) { return !r.hidden; }); }
+    function indexOfSelected(list) {
+      for (var i = 0; i < list.length; i++) if (list[i].getAttribute('data-key') === selected) return i;
+      return -1;
+    }
+    function syncStepper() {
+      var list = visibleRows();
+      var i = indexOfSelected(list);
+      cards.forEach(function (card) {
+        var prev = card.querySelector('[data-step="-1"]');
+        var next = card.querySelector('[data-step="1"]');
+        if (prev) prev.disabled = i <= 0;
+        if (next) next.disabled = i < 0 || i >= list.length - 1;
+      });
+    }
+    function select(key, opts) {
+      opts = opts || {};
+      var row = body.querySelector('tr[data-key="' + key + '"]');
+      if (!row) return;
+      if (row.hidden) setFilter('all');
+      selected = key;
+      rows.forEach(function (r) { r.setAttribute('aria-selected', r === row ? 'true' : 'false'); });
+      cards.forEach(function (card) { card.hidden = card.getAttribute('data-key') !== key; });
+      syncStepper();
+      if (opts.focus) {
+        var button = row.querySelector('.row-title');
+        if (button) button.focus();
+      }
+      if (opts.reveal) {
+        var target = stacked.matches ? detail : body.closest('section');
+        if (target) target.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'start' });
+      }
+    }
+    function setFilter(value) {
+      rows.forEach(function (r) {
+        r.hidden = !(value === 'all' || r.getAttribute('data-filter') === value);
+      });
+      if (filterId) {
+        var buttons = document.querySelectorAll('#' + filterId + ' button[data-filter]');
+        Array.prototype.forEach.call(buttons, function (b) {
+          b.setAttribute('aria-pressed', b.getAttribute('data-filter') === value ? 'true' : 'false');
+        });
+      }
+      var list = visibleRows();
+      if (list.length && indexOfSelected(list) < 0) select(list[0].getAttribute('data-key'));
+      else syncStepper();
+    }
+    function step(delta) {
+      var list = visibleRows();
+      var next = list[indexOfSelected(list) + delta];
+      if (next) select(next.getAttribute('data-key'), { focus: true });
     }
 
-    category_cards = ""
-    for key, (icon, label) in category_labels.items():
-        score = scores["categories"].get(key, 0)
-        if score is None:
-            score = 0
-        if score >= 80:
-            ring_color = "#22c55e"
-        elif score >= 50:
-            ring_color = "#eab308"
-        else:
-            ring_color = "#ef4444"
-        dash = round(score * 2.51327, 1)  # circumference = 251.327
-        category_cards += f'''
-        <div class="category-card" onclick="scrollToSection('{key}')">
-            <svg class="ring" viewBox="0 0 90 90">
-                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
-                <circle cx="45" cy="45" r="40" fill="none" stroke="{ring_color}" stroke-width="6"
-                    stroke-dasharray="{dash} 251.327" stroke-linecap="round"
-                    transform="rotate(-90 45 45)" class="ring-progress"/>
-            </svg>
-            <div class="ring-label">{score}</div>
-            <div class="category-icon">{icon}</div>
-            <div class="category-name">{label}</div>
-        </div>'''
+    body.addEventListener('click', function (e) {
+      var row = e.target.closest('tr[data-key]');
+      if (row) select(row.getAttribute('data-key'), { reveal: stacked.matches });
+    });
+    body.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); step(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
+    });
+    detail.addEventListener('click', function (e) {
+      var button = e.target.closest('[data-step]');
+      if (button) step(Number(button.getAttribute('data-step')));
+    });
+    if (filterId) {
+      var filterEl = document.getElementById(filterId);
+      if (filterEl) {
+        filterEl.addEventListener('click', function (e) {
+          var button = e.target.closest('button[data-filter]');
+          if (button) setFilter(button.getAttribute('data-filter'));
+        });
+      }
+    }
+    if (rows.length) select(rows[0].getAttribute('data-key'));
+    return {
+      select: select,
+      has: function (key) { return !!body.querySelector('tr[data-key="' + key + '"]'); }
+    };
+  }
 
-    # Security details
-    security_rows = ""
-    for header, value in sec.get("headers_present", {}).items():
-        security_rows += f'<tr><td>{header}</td><td><span class="badge pass">Present</span></td><td class="mono">{value[:60]}</td></tr>'
-    for header, desc in sec.get("headers_missing", {}).items():
-        security_rows += f'<tr><td>{header}</td><td><span class="badge critical">Missing</span></td><td>{desc}</td></tr>'
+  var findings = makeLedger('finding-rows', 'finding-detail', 'finding-filter');
+  var checks = makeLedger('check-rows', 'check-detail', null);
 
-    # Social meta details
-    social_rows = ""
-    og = soc.get("og_tags", {})
-    tw = soc.get("twitter_tags", {})
-    for tag in ["og:title", "og:description", "og:image", "og:url", "og:type", "og:site_name"]:
-        val = og.get(tag, "")
-        status = '<span class="badge pass">✅</span>' if val else '<span class="badge critical">Missing</span>'
-        social_rows += f'<tr><td>{tag}</td><td>{status}</td><td>{val[:60] if val else "—"}</td></tr>'
-    for tag in ["twitter:card", "twitter:title", "twitter:description", "twitter:image", "twitter:site"]:
-        val = tw.get(tag, "")
-        status = '<span class="badge pass">✅</span>' if val else '<span class="badge warning">Missing</span>'
-        social_rows += f'<tr><td>{tag}</td><td>{status}</td><td>{val[:60] if val else "—"}</td></tr>'
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest('[data-open-finding],[data-open-check]');
+    if (!link) return;
+    e.preventDefault();
+    if (link.hasAttribute('data-open-finding') && findings) findings.select(link.getAttribute('data-open-finding'), { reveal: true });
+    if (link.hasAttribute('data-open-check') && checks) checks.select(link.getAttribute('data-open-check'), { reveal: true });
+  });
 
-    # AI Crawlers details
-    ai_rows = ""
-    for crawler, status in rob.get("ai_crawler_status", {}).items():
-        if "blocked" in status:
-            badge = '<span class="badge pass">Blocked</span>'
-        elif "not managed" in status:
-            badge = '<span class="badge warning">Unmanaged</span>'
-        else:
-            badge = '<span class="badge info">Info</span>'
-        ai_rows += f'<tr><td>{crawler}</td><td>{badge}</td><td>{status}</td></tr>'
-
-    # Broken links details
-    broken_rows = ""
-    for link in bl.get("broken", [])[:20]:
-        status = link.get("status") or link.get("error", "?")
-        loc = "Internal" if link.get("is_internal") else "External"
-        broken_rows += f'<tr><td><span class="badge {"critical" if link.get("is_internal") else "warning"}">{loc}</span></td><td class="mono">{status}</td><td class="link-url">{link["url"][:80]}</td><td>{link.get("anchor_text", "")[:40]}</td></tr>'
-
-    bl_summary = bl.get("summary", {})
-    bl_total = bl_summary.get("total", 0)
-    bl_healthy = bl_summary.get("healthy", 0)
-    bl_broken = bl_summary.get("broken", 0)
-
-    # Internal links details
-    il_pages = il.get("pages_crawled", 0)
-    il_total = il.get("total_internal_links", 0)
-    il_dist = il.get("link_distribution", {})
-
-    # Redirect details
-    redirect_rows = ""
-    for hop in red.get("chain", []):
-        status = hop.get("status", "?")
-        time_ms = hop.get("time_ms", 0)
-        if hop.get("final"):
-            icon_c = "pass" if 200 <= status < 300 else "critical"
-            redirect_rows += f'<tr><td>{hop["step"]}</td><td><span class="badge {icon_c}">{status}</span></td><td class="link-url">{hop["url"][:80]}</td><td>{time_ms}ms</td><td>FINAL</td></tr>'
-        else:
-            redirect_rows += f'<tr><td>{hop["step"]}</td><td><span class="badge warning">{status}</span></td><td class="link-url">{hop["url"][:80]}</td><td>{time_ms}ms</td><td>{hop.get("redirect_type", "")}</td></tr>'
-
-    # Anchor text chart data
-    anchor_data = il.get("anchor_texts", {})
-    anchor_items = list(anchor_data.items())[:10]
-    anchor_bars = ""
-    if anchor_items:
-        max_val = max(v for _, v in anchor_items) if anchor_items else 1
-        for text, count in anchor_items:
-            pct = round(count / max_val * 100)
-            anchor_bars += f'<div class="bar-row"><span class="bar-label">{text[:25]}</span><div class="bar-track"><div class="bar-fill" style="width:{pct}%"></div></div><span class="bar-value">{count}</span></div>'
-
-    html = f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SEO Report — {domain}</title>
-<style>
-:root {{
-    --bg: #0f172a;
-    --surface: #1e293b;
-    --card: #1e293b;
-    --card-border: #334155;
-    --text: #f1f5f9;
-    --text-muted: #94a3b8;
-    --accent: #6366f1;
-    --accent-glow: rgba(99, 102, 241, 0.3);
-    --green: #22c55e;
-    --yellow: #eab308;
-    --red: #ef4444;
-    --orange: #f97316;
-    --radius: 12px;
-}}
-[data-theme="light"] {{
-    --bg: #f8fafc;
-    --surface: #ffffff;
-    --card: #ffffff;
-    --card-border: #e2e8f0;
-    --text: #1e293b;
-    --text-muted: #64748b;
-    --accent-glow: rgba(99, 102, 241, 0.15);
-}}
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-    min-height: 100vh;
-}}
-.container {{ max-width: 1200px; margin: 0 auto; padding: 24px; }}
-
-/* Header */
-.header {{
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
-    padding: 48px 0 60px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-}}
-.header::before {{
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(ellipse at center, rgba(99,102,241,0.15) 0%, transparent 70%);
-    animation: pulse 4s ease-in-out infinite;
-}}
-@keyframes pulse {{ 0%,100% {{ opacity: 0.5; }} 50% {{ opacity: 1; }} }}
-.header h1 {{ font-size: 2rem; font-weight: 700; color: white; position: relative; }}
-.header .domain {{ font-size: 1.1rem; color: #a5b4fc; margin-top: 8px; position: relative; }}
-.header .timestamp {{ font-size: 0.85rem; color: #818cf8; margin-top: 4px; position: relative; }}
-
-/* Theme Toggle */
-.theme-toggle {{
-    position: fixed; top: 16px; right: 16px; z-index: 100;
-    background: var(--surface); border: 1px solid var(--card-border);
-    border-radius: 50%; width: 44px; height: 44px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 1.2rem; transition: all 0.3s;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}}
-.theme-toggle:hover {{ transform: scale(1.1); }}
-
-/* Overall Score */
-.score-hero {{
-    display: flex; justify-content: center; align-items: center;
-    gap: 48px; padding: 40px 0; flex-wrap: wrap;
-}}
-.score-gauge {{ position: relative; width: 180px; height: 180px; }}
-.score-gauge svg {{ width: 100%; height: 100%; }}
-.score-gauge .gauge-value {{
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    text-align: center;
-}}
-.score-gauge .gauge-number {{ font-size: 3rem; font-weight: 800; color: {grade_color}; }}
-.score-gauge .gauge-grade {{ font-size: 1rem; color: var(--text-muted); }}
-.score-stats {{ display: flex; gap: 24px; }}
-.stat-card {{
-    background: var(--card); border: 1px solid var(--card-border);
-    border-radius: var(--radius); padding: 20px 28px; text-align: center;
-    min-width: 100px;
-}}
-.stat-value {{ font-size: 2rem; font-weight: 700; }}
-.stat-label {{ font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }}
-.stat-critical .stat-value {{ color: var(--red); }}
-.stat-warning .stat-value {{ color: var(--yellow); }}
-.stat-pass .stat-value {{ color: var(--green); }}
-
-/* Category Cards Grid */
-.categories {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin: 32px 0; }}
-.category-card {{
-    background: var(--card); border: 1px solid var(--card-border);
-    border-radius: var(--radius); padding: 20px; text-align: center;
-    cursor: pointer; transition: all 0.3s;
-    position: relative;
-}}
-.category-card:hover {{ transform: translateY(-4px); box-shadow: 0 8px 24px var(--accent-glow); border-color: var(--accent); }}
-.category-card .ring {{ width: 70px; height: 70px; margin: 0 auto 8px; }}
-.category-card .ring-label {{
-    position: absolute; top: 52px; left: 50%; transform: translate(-50%, -50%);
-    font-size: 1.1rem; font-weight: 700;
-}}
-.ring-progress {{ transition: stroke-dasharray 1s ease; }}
-.category-icon {{ font-size: 1.3rem; margin: 4px 0; }}
-.category-name {{ font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }}
-
-/* Sections */
-.section {{
-    background: var(--card); border: 1px solid var(--card-border);
-    border-radius: var(--radius); margin: 24px 0; overflow: hidden;
-}}
-.section-header {{
-    padding: 20px 24px; cursor: pointer; display: flex;
-    align-items: center; justify-content: space-between;
-    transition: background 0.2s;
-}}
-.section-header:hover {{ background: rgba(99,102,241,0.05); }}
-.section-header h2 {{ font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }}
-.section-header .chevron {{ transition: transform 0.3s; font-size: 1.2rem; color: var(--text-muted); }}
-.section-header .chevron.open {{ transform: rotate(180deg); }}
-.section-body {{ padding: 0 24px 24px; display: none; }}
-.section-body.open {{ display: block; animation: fadeIn 0.3s; }}
-@keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(-8px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-
-/* Tables */
-table {{ width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }}
-th {{ text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--card-border); color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }}
-td {{ padding: 10px 12px; border-bottom: 1px solid var(--card-border); vertical-align: top; }}
-tr:last-child td {{ border-bottom: none; }}
-tr:hover td {{ background: rgba(99,102,241,0.03); }}
-.mono {{ font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85rem; }}
-.link-url {{ word-break: break-all; max-width: 400px; color: var(--accent); }}
-
-/* Badges */
-.badge {{
-    display: inline-block; padding: 2px 10px; border-radius: 100px;
-    font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-}}
-.badge.critical {{ background: rgba(239,68,68,0.15); color: var(--red); }}
-.badge.warning {{ background: rgba(234,179,8,0.15); color: var(--yellow); }}
-.badge.pass {{ background: rgba(34,197,94,0.15); color: var(--green); }}
-.badge.info {{ background: rgba(99,102,241,0.15); color: var(--accent); }}
-
-/* Issues */
-.issue-item {{
-    padding: 12px 16px; border-radius: 8px; margin: 6px 0;
-    font-size: 0.9rem; display: flex; align-items: flex-start; gap: 10px;
-}}
-.issue-item.critical {{ background: rgba(239,68,68,0.08); border-left: 3px solid var(--red); }}
-.issue-item.warning {{ background: rgba(234,179,8,0.08); border-left: 3px solid var(--yellow); }}
-.issue-item.info {{ background: rgba(99,102,241,0.08); border-left: 3px solid var(--accent); }}
-.issue-badge {{ flex-shrink: 0; }}
-
-/* Bar Chart */
-.bar-row {{ display: flex; align-items: center; gap: 10px; margin: 6px 0; }}
-.bar-label {{ width: 150px; font-size: 0.85rem; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }}
-.bar-track {{ flex: 1; height: 22px; background: var(--card-border); border-radius: 4px; overflow: hidden; }}
-.bar-fill {{ height: 100%; background: linear-gradient(90deg, var(--accent), #818cf8); border-radius: 4px; transition: width 1s ease; }}
-.bar-value {{ width: 30px; font-size: 0.85rem; font-weight: 600; }}
-
-/* Summary cards row */
-.summary-row {{ display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }}
-.summary-item {{
-    flex: 1; min-width: 120px; background: var(--bg); border-radius: 8px;
-    padding: 16px; text-align: center;
-}}
-.summary-item .val {{ font-size: 1.5rem; font-weight: 700; }}
-.summary-item .lbl {{ font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }}
-
-/* Footer */
-.footer {{ text-align: center; padding: 32px 0; color: var(--text-muted); font-size: 0.8rem; }}
-
-@media (max-width: 768px) {{
-    .score-hero {{ flex-direction: column; gap: 24px; }}
-    .score-stats {{ flex-wrap: wrap; justify-content: center; }}
-    .categories {{ grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }}
-    .container {{ padding: 16px; }}
-}}
-</style>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-</head>
-<body>
-
-<div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</div>
-
-<div class="header">
-    <div class="container">
-        <h1>SEO Analysis Report</h1>
-        <div class="domain">{domain}</div>
-        <div class="timestamp">Generated: {datetime.fromisoformat(timestamp).strftime("%B %d, %Y at %I:%M %p")}</div>
-    </div>
-</div>
-
-<div class="container">
-
-    <!-- Overall Score -->
-    <div class="score-hero">
-        <div class="score-gauge">
-            <svg viewBox="0 0 200 200">
-                <circle cx="100" cy="100" r="85" fill="none" stroke="var(--card-border)" stroke-width="12"/>
-                <circle cx="100" cy="100" r="85" fill="none" stroke="{grade_color}" stroke-width="12"
-                    stroke-dasharray="{round(overall * 5.341, 1)} 534.07" stroke-linecap="round"
-                    transform="rotate(-90 100 100)"/>
-            </svg>
-            <div class="gauge-value">
-                <div class="gauge-number">{overall}</div>
-                <div class="gauge-grade">Grade: {grade}</div>
-            </div>
-        </div>
-        <div class="score-stats">
-            <div class="stat-card stat-critical">
-                <div class="stat-value">{critical_count}</div>
-                <div class="stat-label">Critical</div>
-            </div>
-            <div class="stat-card stat-warning">
-                <div class="stat-value">{warning_count}</div>
-                <div class="stat-label">Warnings</div>
-            </div>
-            <div class="stat-card stat-pass">
-                <div class="stat-value">{pass_count}</div>
-                <div class="stat-label">Info</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Category Cards -->
-    <div class="categories">
-        {category_cards}
-    </div>
-
-    <!-- Environment Detection -->
-    <div class="section" id="section-environment">
-        <div class="section-header" onclick="toggleSection('environment')">
-            <h2>🧭 Environment Detection (LLM-Inferred)</h2>
-            <span class="chevron" id="chevron-environment">▼</span>
-        </div>
-        <div class="section-body" id="body-environment">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{env_primary}</div><div class="lbl">Primary Platform</div></div>
-                <div class="summary-item"><div class="val">{env_runtime}</div><div class="lbl">Runtime Type</div></div>
-                <div class="summary-item"><div class="val">{env_confidence}</div><div class="lbl">Confidence</div></div>
-                <div class="summary-item"><div class="val">{len(env.get("signals", []))}</div><div class="lbl">Matched Signals</div></div>
-            </div>
-            <h3 style="margin: 16px 0 8px; font-size: 0.95rem;">Detection Signals</h3>
-            <ul style="padding-left:20px;">{env_signals_html}</ul>
-            {f'<p style="margin-top:10px;color:var(--text-muted)"><strong>Alternative matches:</strong> {", ".join(env_alts)}</p>' if env_alts else ''}
-        </div>
-    </div>
-
-    <!-- Environment-specific Fix Plan -->
-    <div class="section" id="section-env_fixes">
-        <div class="section-header" onclick="toggleSection('env_fixes')">
-            <h2>🛠️ Environment-Specific Fix Plan</h2>
-            <span class="chevron" id="chevron-env_fixes">▼</span>
-        </div>
-        <div class="section-body" id="body-env_fixes">
-            {env_fixes_html}
-        </div>
-    </div>
-
-    <!-- Issues Summary -->
-    <div class="section" id="section-issues">
-        <div class="section-header" onclick="toggleSection('issues')">
-            <h2>🚨 All Issues ({len(all_issues)})</h2>
-            <span class="chevron" id="chevron-issues">▼</span>
-        </div>
-        <div class="section-body" id="body-issues">
-            {issues_html if issues_html else '<p style="color:var(--text-muted)">No issues found — excellent!</p>'}
-        </div>
-    </div>
-
-    <!-- Security Headers -->
-    <div class="section" id="section-security">
-        <div class="section-header" onclick="toggleSection('security')">
-            <h2>🔒 Security Headers <span class="badge {"pass" if scores["categories"].get("security",0) >= 80 else "warning" if scores["categories"].get("security",0) >= 50 else "critical"}">{scores["categories"].get("security",0)}/100</span></h2>
-            <span class="chevron" id="chevron-security">▼</span>
-        </div>
-        <div class="section-body" id="body-security">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{"✅" if sec.get("https") else "❌"}</div><div class="lbl">HTTPS</div></div>
-                <div class="summary-item"><div class="val">{len(sec.get("headers_present", {}))}</div><div class="lbl">Present</div></div>
-                <div class="summary-item"><div class="val">{len(sec.get("headers_missing", {}))}</div><div class="lbl">Missing</div></div>
-            </div>
-            <table>
-                <thead><tr><th>Header</th><th>Status</th><th>Value / Description</th></tr></thead>
-                <tbody>{security_rows}</tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Social Meta -->
-    <div class="section" id="section-social">
-        <div class="section-header" onclick="toggleSection('social')">
-            <h2>📱 Social Meta Tags <span class="badge {"pass" if scores["categories"].get("social",0) >= 80 else "warning" if scores["categories"].get("social",0) >= 50 else "critical"}">{scores["categories"].get("social",0)}/100</span></h2>
-            <span class="chevron" id="chevron-social">▼</span>
-        </div>
-        <div class="section-body" id="body-social">
-            <table>
-                <thead><tr><th>Tag</th><th>Status</th><th>Value</th></tr></thead>
-                <tbody>{social_rows}</tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- AI Crawlers -->
-    <div class="section" id="section-robots">
-        <div class="section-header" onclick="toggleSection('robots')">
-            <h2>🤖 Robots & AI Crawlers <span class="badge {"pass" if scores["categories"].get("robots",0) >= 80 else "warning" if scores["categories"].get("robots",0) >= 50 else "critical"}">{scores["categories"].get("robots",0)}/100</span></h2>
-            <span class="chevron" id="chevron-robots">▼</span>
-        </div>
-        <div class="section-body" id="body-robots">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{rob.get("status", "?")}</div><div class="lbl">robots.txt</div></div>
-                <div class="summary-item"><div class="val">{len(rob.get("sitemaps", []))}</div><div class="lbl">Sitemaps</div></div>
-                <div class="summary-item"><div class="val">{len(rob.get("user_agents", {}))}</div><div class="lbl">User-Agents</div></div>
-            </div>
-            <h3 style="margin: 16px 0 8px; font-size: 0.95rem;">AI Crawler Management</h3>
-            <table>
-                <thead><tr><th>Crawler</th><th>Status</th><th>Details</th></tr></thead>
-                <tbody>{ai_rows}</tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Broken Links -->
-    <div class="section" id="section-broken_links">
-        <div class="section-header" onclick="toggleSection('broken_links')">
-            <h2>🔗 Broken Links <span class="badge {"pass" if bl_broken == 0 and bl_summary.get("soft_404s", 0) == 0 else "critical" if bl_broken > 0 else "warning"}">{bl_broken} broken{f" / {bl_summary.get('soft_404s', 0)} soft 404" if bl_summary.get('soft_404s', 0) > 0 else ""} / {bl_total} total</span></h2>
-            <span class="chevron" id="chevron-broken_links">▼</span>
-        </div>
-        <div class="section-body" id="body-broken_links">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val" style="color:var(--green)">{bl_healthy}</div><div class="lbl">Healthy</div></div>
-                <div class="summary-item"><div class="val" style="color:var(--red)">{bl_broken}</div><div class="lbl">Broken</div></div>
-                <div class="summary-item"><div class="val" style="color:var(--orange)">{bl_summary.get("soft_404s", 0)}</div><div class="lbl">Soft 404s</div></div>
-                <div class="summary-item"><div class="val" style="color:var(--yellow)">{bl_summary.get("redirected", 0)}</div><div class="lbl">Redirected</div></div>
-                <div class="summary-item"><div class="val" style="color:var(--orange)">{bl_summary.get("timeout", 0)}</div><div class="lbl">Timeout</div></div>
-            </div>
-            {"<table><thead><tr><th>Type</th><th>Status</th><th>URL</th><th>Anchor</th></tr></thead><tbody>" + broken_rows + "</tbody></table>" if broken_rows else '<p style="color:var(--green);margin-top:12px">✅ No broken links found</p>'}
-        </div>
-    </div>
-
-    <!-- Internal Links -->
-    <div class="section" id="section-internal_links">
-        <div class="section-header" onclick="toggleSection('internal_links')">
-            <h2>🕸️ Internal Link Structure <span class="badge {"pass" if scores["categories"].get("internal_links",0) >= 80 else "warning" if scores["categories"].get("internal_links",0) >= 50 else "critical"}">{scores["categories"].get("internal_links",0)}/100</span></h2>
-            <span class="chevron" id="chevron-internal_links">▼</span>
-        </div>
-        <div class="section-body" id="body-internal_links">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{il_pages}</div><div class="lbl">Pages Crawled</div></div>
-                <div class="summary-item"><div class="val">{il_total}</div><div class="lbl">Internal Links</div></div>
-                <div class="summary-item"><div class="val">{il_dist.get("avg", 0)}</div><div class="lbl">Avg Links/Page</div></div>
-                <div class="summary-item"><div class="val">{il.get("unique_pages_found", 0)}</div><div class="lbl">Pages Found</div></div>
-            </div>
-            {f'<h3 style="margin:16px 0 8px;font-size:0.95rem;">Top Anchor Texts</h3>' + anchor_bars if anchor_bars else ''}        </div>
-    </div>
-
-    <!-- Redirects -->
-    <div class="section" id="section-redirects">
-        <div class="section-header" onclick="toggleSection('redirects')">
-            <h2>↪️ Redirect Chain <span class="badge {"pass" if red.get("total_hops", 0) <= 1 else "warning"}">{red.get("total_hops", 0)} hops</span></h2>
-            <span class="chevron" id="chevron-redirects">▼</span>
-        </div>
-        <div class="section-body" id="body-redirects">
-            {f'<table><thead><tr><th>#</th><th>Status</th><th>URL</th><th>Time</th><th>Type</th></tr></thead><tbody>{redirect_rows}</tbody></table>' if redirect_rows else '<p style="color:var(--green)">✅ No redirects — direct access</p>'}
-        </div>
-    </div>
-
-    <!-- llms.txt -->
-    <div class="section" id="section-llms_txt">
-        <div class="section-header" onclick="toggleSection('llms_txt')">
-            <h2>🧠 AI Search Readiness (llms.txt) <span class="badge {"pass" if llm.get("exists") else "critical"}">{"Found" if llm.get("exists") else "Not Found"}</span></h2>
-            <span class="chevron" id="chevron-llms_txt">▼</span>
-        </div>
-        <div class="section-body" id="body-llms_txt">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{"✅" if llm.get("exists") else "❌"}</div><div class="lbl">llms.txt</div></div>
-                <div class="summary-item"><div class="val">{"✅" if llm.get("full_exists") else "❌"}</div><div class="lbl">llms-full.txt</div></div>
-                <div class="summary-item"><div class="val">{llm.get("quality", {}).get("score", 0)}</div><div class="lbl">Quality Score</div></div>
-            </div>
-            {"".join(f'<div class="issue-item warning"><span class="issue-badge">TIP</span> {s}</div>' for s in llm.get("quality", {}).get("suggestions", []))}
-        </div>
-    </div>
-
-    <!-- PageSpeed / Core Web Vitals -->
-    <div class="section" id="section-pagespeed">
-        <div class="section-header" onclick="toggleSection('pagespeed')">
-            <h2>⚡ Performance & Core Web Vitals <span class="badge {"pass" if scores["categories"].get("pagespeed",0) >= 80 else "warning" if scores["categories"].get("pagespeed",0) >= 50 else "critical"}">{scores["categories"].get("pagespeed",0)}/100</span></h2>
-            <span class="chevron" id="chevron-pagespeed">▼</span>
-        </div>
-        <div class="section-body" id="body-pagespeed">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{psi.get("performance_score", "?")}</div><div class="lbl">Performance</div></div>
-                <div class="summary-item"><div class="val">{psi.get("field_data", psi.get("lab_data", {})).get("LCP", "?")}</div><div class="lbl">LCP</div></div>
-                <div class="summary-item"><div class="val">{psi.get("field_data", psi.get("lab_data", {})).get("INP", psi.get("field_data", psi.get("lab_data", {})).get("TBT", "?"))}</div><div class="lbl">INP/TBT</div></div>
-                <div class="summary-item"><div class="val">{psi.get("field_data", psi.get("lab_data", {})).get("CLS", "?")}</div><div class="lbl">CLS</div></div>
-            </div>
-            {'<div class="issue-item warning"><span class="issue-badge">NOTE</span> <div><strong>PageSpeed API returned an error or was rate-limited.</strong><br><span style="color:var(--text-muted)">Try running <code>python3 scripts/pagespeed.py URL --api-key YOUR_KEY</code> manually, or rerun the report later. The LLM can still analyze Core Web Vitals by reading the page directly.</span></div></div>' if psi.get('error') or psi.get('performance_score', 0) == 0 else ''}
-            {render_recommendations(psi)}
-        </div>
-    </div>
-
-    <!-- On-Page SEO -->
-    <div class="section" id="section-onpage">
-        <div class="section-header" onclick="toggleSection('onpage')">
-            <h2>📝 On-Page SEO <span class="badge {"pass" if scores["categories"].get("onpage",0) >= 80 else "warning" if scores["categories"].get("onpage",0) >= 50 else "critical"}">{scores["categories"].get("onpage",0)}/100</span></h2>
-            <span class="chevron" id="chevron-onpage">▼</span>
-        </div>
-        <div class="section-body" id="body-onpage">
-            {f'<div class="issue-item info"><span class="issue-badge">NOTE</span> <div><strong>Raw HTML snapshot</strong> — title, meta description, canonical, and H1 are read from the initial response body. On {html_lib.escape(env.get("primary") or "this stack", quote=True)} / JS-heavy sites, tags may be injected client-side; confirm in DevTools or Google Rich Results Test if this section disagrees with what you see in the browser.</div></div>' if _needs_raw_html_disclaimer(env) else ''}
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{'✅' if op.get('title') else '❌'}</div><div class="lbl">Title Tag</div></div>
-                <div class="summary-item"><div class="val">{'✅' if op.get('meta_description') else '❌'}</div><div class="lbl">Meta Desc</div></div>
-                <div class="summary-item"><div class="val">{'✅' if op.get('h1') else '❌'}</div><div class="lbl">H1</div></div>
-                <div class="summary-item"><div class="val">{'✅' if op.get('canonical') else '❌'}</div><div class="lbl">Canonical</div></div>
-            </div>
-            <table>
-                <thead><tr><th>Element</th><th>Value</th><th>Length</th></tr></thead>
-                <tbody>
-                    <tr><td>Title</td><td>{(op.get('title','') or '—')[:70]}</td><td>{len(op.get('title','') or '')}</td></tr>
-                    <tr><td>Meta Description</td><td>{(op.get('meta_description','') or '—')[:100]}</td><td>{len(op.get('meta_description','') or '')}{' <span style="color:var(--text-muted)">(og:description fallback)</span>' if op.get('meta_description_source') == 'og_fallback' else ''}</td></tr>
-                    <tr><td>H1</td><td>{(op.get('h1',[''])[0] if isinstance(op.get('h1'), list) and op.get('h1') else op.get('h1','') or '—')[:70]}</td><td>—</td></tr>
-                    <tr><td>Canonical</td><td class="link-url">{(op.get('canonical') or '—')[:80]}{' <span style="color:var(--text-muted)">(from canonical audit)</span>' if op.get('canonical_from_audit') else ''}</td><td>—</td></tr>
-                </tbody>
-            </table>
-            {render_recommendations(op)}
-        </div>
-    </div>
-
-    <!-- Readability -->
-    <div class="section" id="section-readability">
-        <div class="section-header" onclick="toggleSection('readability')">
-            <h2>📖 Readability <span class="badge {"pass" if scores["categories"].get("readability",0) >= 80 else "warning" if scores["categories"].get("readability",0) >= 50 else "critical"}">{scores["categories"].get("readability",0)}/100</span></h2>
-            <span class="chevron" id="chevron-readability">▼</span>
-        </div>
-        <div class="section-body" id="body-readability">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{rd.get('flesch_reading_ease', '?')}</div><div class="lbl">Flesch Score</div></div>
-                <div class="summary-item"><div class="val">{rd.get('flesch_kincaid_grade', '?')}</div><div class="lbl">Grade Level</div></div>
-                <div class="summary-item"><div class="val">{rd.get('word_count', '?')}</div><div class="lbl">Words</div></div>
-                <div class="summary-item"><div class="val">{rd.get('estimated_reading_time_min', '?')} min</div><div class="lbl">Read Time</div></div>
-            </div>
-            {render_recommendations(rd)}
-            {render_readability_rewrites(rd)}
-        </div>
-    </div>
-
-    <!-- Article SEO Extractor -->
-    <div class="section" id="section-article">
-        <div class="section-header" onclick="toggleSection('article')">
-            <h2>📄 Article Info & Keywords <span class="badge {"pass" if scores["categories"].get("article",0) >= 80 else "warning" if scores["categories"].get("article",0) >= 50 else "critical"}">{scores["categories"].get("article",0)}/100</span></h2>
-            <span class="chevron" id="chevron-article">▼</span>
-        </div>
-        <div class="section-body" id="body-article">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{art.get('word_count', '?')}</div><div class="lbl">Words</div></div>
-                <div class="summary-item"><div class="val">{len(art.get('headings', dict()).get('h2', []))}</div><div class="lbl">H2 Headings</div></div>
-                <div class="summary-item"><div class="val">{len(art.get('images', []))}</div><div class="lbl">Images</div></div>
-            </div>
-            <h3 style="margin: 16px 0 8px; font-size: 0.95rem;">Extracted Keywords</h3>
-            <table>
-                <thead><tr><th>Target Keyword</th><th>LSI / Related Keywords</th></tr></thead>
-                <tbody>
-                    <tr>
-                        <td style="font-weight: 600; color: var(--accent);">{art.get('target_keyword', '—')}</td>
-                        <td>{', '.join(art.get('lsi_keywords', [])) if art.get('lsi_keywords') else '—'}</td>
-                    </tr>
-                </tbody>
-            </table>
-            {render_recommendations(art)}
-        </div>
-    </div>
-
-    <!-- Entity SEO -->
-    <div class="section" id="section-entity">
-        <div class="section-header" onclick="toggleSection('entity')">
-            <h2>🏛️ Entity SEO <span class="badge {"pass" if scores["categories"].get("entity",0) >= 50 else "warning" if scores["categories"].get("entity",0) >= 20 else "critical"}">{scores["categories"].get("entity",0)}/100</span></h2>
-            <span class="chevron" id="chevron-entity">▼</span>
-        </div>
-        <div class="section-body" id="body-entity">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{'✅' if ent.get('wikidata', {}).get('found') else '❌'}</div><div class="lbl">Wikidata</div></div>
-                <div class="summary-item"><div class="val">{'✅' if ent.get('wikipedia', {}).get('found') else '❌'}</div><div class="lbl">Wikipedia</div></div>
-                <div class="summary-item"><div class="val">{ent.get('sameas_analysis', {}).get('total_found', 0)}</div><div class="lbl">sameAs Links</div></div>
-                <div class="summary-item"><div class="val">{len(ent.get('issues', []))}</div><div class="lbl">Issues</div></div>
-            </div>
-            {render_recommendations(ent)}
-        </div>
-    </div>
-
-    <!-- Link Profile -->
-    <div class="section" id="section-link_profile">
-        <div class="section-header" onclick="toggleSection('link_profile')">
-            <h2>🔗 Link Profile <span class="badge {"pass" if scores["categories"].get("link_profile",0) >= 70 else "warning" if scores["categories"].get("link_profile",0) >= 40 else "critical"}">{scores["categories"].get("link_profile",0)}/100</span></h2>
-            <span class="chevron" id="chevron-link_profile">▼</span>
-        </div>
-        <div class="section-body" id="body-link_profile">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{lp.get('pages_crawled', '?')}</div><div class="lbl">Pages Crawled</div></div>
-                <div class="summary-item"><div class="val">{lp.get('avg_internal_links_per_page', '?')}</div><div class="lbl">Avg Links/Page</div></div>
-                <div class="summary-item"><div class="val">{lp_orphan_val}</div><div class="lbl">Orphan Pages</div></div>
-                <div class="summary-item"><div class="val">{lp.get('dead_end_pages', {}).get('count', 0)}</div><div class="lbl">Dead Ends</div></div>
-            </div>
-            {render_recommendations(lp)}
-        </div>
-    </div>
-
-    <!-- Hreflang -->
-    <div class="section" id="section-hreflang">
-        <div class="section-header" onclick="toggleSection('hreflang')">
-            <h2>🌍 Hreflang / International SEO <span class="badge {"pass" if hf.get('hreflang_tags_found', 0) > 0 else "info"}">{hf.get('hreflang_tags_found', 0)} tags</span></h2>
-            <span class="chevron" id="chevron-hreflang">▼</span>
-        </div>
-        <div class="section-body" id="body-hreflang">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{hf.get('implementation_method', 'none')}</div><div class="lbl">Method</div></div>
-                <div class="summary-item"><div class="val">{hf.get('hreflang_tags_found', 0)}</div><div class="lbl">Tags Found</div></div>
-            </div>
-            {'<p style="color:var(--text-muted);margin-top:12px">No hreflang tags found — this is expected for single-language sites.</p>' if hf.get('hreflang_tags_found', 0) == 0 else render_recommendations(hf)}
-        </div>
-    </div>
-
-    <!-- Duplicate Content -->
-    <div class="section" id="section-duplicate_content">
-        <div class="section-header" onclick="toggleSection('duplicate_content')">
-            <h2>📋 Content Uniqueness <span class="badge {"pass" if len(dc.get('near_duplicates', [])) == 0 else "warning"}">{len(dc.get('near_duplicates', []))} dupes / {len(dc.get('thin_pages', []))} thin</span></h2>
-            <span class="chevron" id="chevron-duplicate_content">▼</span>
-        </div>
-        <div class="section-body" id="body-duplicate_content">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{dc.get('pages_analyzed', '?')}</div><div class="lbl">Pages Analyzed</div></div>
-                <div class="summary-item"><div class="val">{len(dc.get('near_duplicates', []))}</div><div class="lbl">Near Duplicates</div></div>
-                <div class="summary-item"><div class="val">{len(dc.get('thin_pages', []))}</div><div class="lbl">Thin Pages</div></div>
-            </div>
-            {render_recommendations(dc)}
-        </div>
-    </div>
-
-    <!-- Content Quality -->
-    <div class="section" id="section-content_quality">
-        <div class="section-header" onclick="toggleSection('content_quality')">
-            <h2>🧪 Content Quality <span class="badge {"pass" if scores["categories"].get("content_quality",0) >= 75 else "warning"}">{scores["categories"].get("content_quality",0)}/100</span></h2>
-            <span class="chevron" id="chevron-content_quality">▼</span>
-        </div>
-        <div class="section-body" id="body-content_quality">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{cq.get('word_count', '?')}</div><div class="lbl">Words</div></div>
-                <div class="summary-item"><div class="val">{len(cq.get('filler_phrases', []))}</div><div class="lbl">Filler Hits</div></div>
-                <div class="summary-item"><div class="val">{cq.get('citation_gap', 0)}</div><div class="lbl">Citation Gap</div></div>
-            </div>
-            {render_recommendations(cq)}
-        </div>
-    </div>
-
-    <!-- JSON-LD validation -->
-    <div class="section" id="section-schema_validation">
-        <div class="section-header" onclick="toggleSection('schema_validation')">
-            <h2>🧩 JSON-LD / Schema <span class="badge {"pass" if scores["categories"].get("schema_validation",0) >= 70 else "warning"}">{scores["categories"].get("schema_validation",0)}/100</span></h2>
-            <span class="chevron" id="chevron-schema_validation">▼</span>
-        </div>
-        <div class="section-body" id="body-schema_validation">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{sch.get("jsonld_blocks", 0) if sch and not sch.get("error") else "—"}</div><div class="lbl">Blocks</div></div>
-                <div class="summary-item"><div class="val">{sch.get("error_count", 0) if sch and not sch.get("error") else "—"}</div><div class="lbl">Issues</div></div>
-                <div class="summary-item"><div class="val">{sch.get("critical_count", 0) if sch and not sch.get("error") else "—"}</div><div class="lbl">Critical</div></div>
-            </div>
-            {f'<p style="color:var(--red)">{html_lib.escape(str(sch.get("error","")))}</p>' if sch.get("error") else ""}
-            {render_recommendations(sch) if sch and not sch.get("error") else ""}
-        </div>
-    </div>
-
-    <!-- Image SEO -->
-    <div class="section" id="section-image_seo">
-        <div class="section-header" onclick="toggleSection('image_seo')">
-            <h2>🖼️ Image SEO <span class="badge {"pass" if scores["categories"].get("image_seo",0) >= 70 else "warning"}">{scores["categories"].get("image_seo",0)}/100</span></h2>
-            <span class="chevron" id="chevron-image_seo">▼</span>
-        </div>
-        <div class="section-body" id="body-image_seo">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{imgsec.get("total_images", "—") if imgsec and not imgsec.get("error") else "—"}</div><div class="lbl">Images</div></div>
-                <div class="summary-item"><div class="val">{imgsec.get("missing_alt", "—") if imgsec and not imgsec.get("error") else "—"}</div><div class="lbl">Missing alt</div></div>
-                <div class="summary-item"><div class="val">{imgsec.get("missing_alt_pct", "—") if imgsec and not imgsec.get("error") else "—"}%</div><div class="lbl">Missing %</div></div>
-            </div>
-            {f'<p style="color:var(--red)">{html_lib.escape(str(imgsec.get("error","")))}</p>' if imgsec.get("error") else ""}
-            {render_recommendations(imgsec) if imgsec and not imgsec.get("error") else ""}
-        </div>
-    </div>
-
-    <!-- Sitemaps -->
-    <div class="section" id="section-sitemap">
-        <div class="section-header" onclick="toggleSection('sitemap')">
-            <h2>🗺️ Sitemaps <span class="badge {"pass" if scores["categories"].get("sitemap",0) >= 70 else "warning" if scores["categories"].get("sitemap",0) >= 40 else "critical"}">{scores["categories"].get("sitemap",0)}/100</span></h2>
-            <span class="chevron" id="chevron-sitemap">▼</span>
-        </div>
-        <div class="section-body" id="body-sitemap">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{len(smap.get("sitemap_urls", [])) if smap and not smap.get("error") else "—"}</div><div class="lbl">Sitemaps listed</div></div>
-                <div class="summary-item"><div class="val">{smap.get("primary_status", "—") if smap and not smap.get("error") else "—"}</div><div class="lbl">Primary HTTP</div></div>
-                <div class="summary-item"><div class="val">{smap.get("url_count_estimate", "—") if smap and not smap.get("error") else "—"}</div><div class="lbl">URLs (1st)</div></div>
-                <div class="summary-item"><div class="val" style="color:{'var(--green)' if len(smap.get('url_health', {}).get('not_found_404', [])) == 0 else 'var(--red)'}">{smap.get("url_health", {}).get("checked", "—")}</div><div class="lbl">URLs Checked</div></div>
-            </div>
-            {"<h3 style='margin:16px 0 8px;font-size:0.95rem;'>URL Health Check</h3><div class='summary-row'><div class='summary-item'><div class='val' style='color:var(--green)'>" + str(smap.get("url_health", {}).get("healthy", 0)) + "</div><div class='lbl'>Healthy</div></div><div class='summary-item'><div class='val' style='color:var(--red)'>" + str(len(smap.get("url_health", {}).get("not_found_404", []))) + "</div><div class='lbl'>404 Not Found</div></div><div class='summary-item'><div class='val' style='color:var(--orange)'>" + str(len(smap.get("url_health", {}).get("soft_404s", []))) + "</div><div class='lbl'>Soft 404s</div></div><div class='summary-item'><div class='val' style='color:var(--red)'>" + str(len(smap.get("url_health", {}).get("server_errors_5xx", []))) + "</div><div class='lbl'>5xx Errors</div></div></div>" if smap.get("url_health", {}).get("checked", 0) > 0 else ""}
-            {f'<p style="color:var(--red)">{html_lib.escape(str(smap.get("error","")))}</p>' if smap.get("error") else ""}
-            {render_recommendations(smap) if smap and not smap.get("error") else ""}
-        </div>
-    </div>
-
-    <!-- Canonical Tags -->
-    <div class="section" id="section-canonical">
-        <div class="section-header" onclick="toggleSection('canonical')">
-            <h2>🔗 Canonical Tags <span class="badge {"pass" if scores["categories"].get("canonical",0) >= 70 else "warning" if scores["categories"].get("canonical",0) >= 40 else "critical"}">{scores["categories"].get("canonical",0)}/100</span></h2>
-            <span class="chevron" id="chevron-canonical">▼</span>
-        </div>
-        <div class="section-body" id="body-canonical">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{'✅' if cansec.get('canonical') else '❌'}</div><div class="lbl">Canonical</div></div>
-                <div class="summary-item"><div class="val">{'✅' if cansec.get('is_self_referencing') else '❌' if cansec.get('is_self_referencing') is False else '—'}</div><div class="lbl">Self-Ref</div></div>
-                <div class="summary-item"><div class="val">{cansec.get('canonical_status', '—')}</div><div class="lbl">Target HTTP</div></div>
-                <div class="summary-item"><div class="val">{cansec.get('score', '—')}</div><div class="lbl">Score</div></div>
-            </div>
-            {f'<p style="color:var(--red)">{html_lib.escape(str(cansec.get("error","")))}</p>' if cansec.get("error") else ""}
-            {render_recommendations(cansec) if cansec and not cansec.get("error") else ""}
-        </div>
-    </div>
-
-    <!-- Local signals -->
-    <div class="section" id="section-local_signals">
-        <div class="section-header" onclick="toggleSection('local_signals')">
-            <h2>📍 Local signals <span class="badge {"pass" if scores["categories"].get("local_signals",0) >= 70 else "warning"}">{scores["categories"].get("local_signals",0)}/100</span></h2>
-            <span class="chevron" id="chevron-local_signals">▼</span>
-        </div>
-        <div class="section-body" id="body-local_signals">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{"Yes" if lsig.get("localbusiness_jsonld") else "No"}</div><div class="lbl">LocalBusiness</div></div>
-                <div class="summary-item"><div class="val">{lsig.get("tel_links", "—")}</div><div class="lbl">tel: links</div></div>
-                <div class="summary-item"><div class="val">{"Yes" if lsig.get("structured_address_signals") else "No"}</div><div class="lbl">Address JSON</div></div>
-            </div>
-            {f'<p style="color:var(--red)">{html_lib.escape(str(lsig.get("error","")))}</p>' if lsig.get("error") else ""}
-            {render_recommendations(lsig) if lsig and not lsig.get("error") else ""}
-        </div>
-    </div>
-
-    <!-- IndexNow probe -->
-    <div class="section" id="section-indexnow_probe">
-        <div class="section-header" onclick="toggleSection('indexnow_probe')">
-            <h2>📡 IndexNow (probe) <span class="badge info">{scores["categories"].get("indexnow_probe",0)}/100</span></h2>
-            <span class="chevron" id="chevron-indexnow_probe">▼</span>
-        </div>
-        <div class="section-body" id="body-indexnow_probe">
-            <div class="summary-row">
-                <div class="summary-item"><div class="val">{"Yes" if inxp.get("meta_indexnow_present") else "No"}</div><div class="lbl">Meta tag</div></div>
-                <div class="summary-item"><div class="val">{"Yes" if inxp.get("robots_mentions_indexnow") else "No"}</div><div class="lbl">robots hint</div></div>
-                <div class="summary-item"><div class="val">{"Yes" if inxp.get("robots_has_sitemap") else "No"}</div><div class="lbl">Sitemap in robots</div></div>
-            </div>
-            {f'<p style="color:var(--red)">{html_lib.escape(str(inxp.get("error","")))}</p>' if inxp.get("error") else ""}
-            {render_recommendations(inxp) if inxp and not inxp.get("error") else ""}
-        </div>
-    </div>
-
-    <!-- Recommendations Summary -->
-    <div class="section" id="section-recs">
-        <div class="section-header" onclick="toggleSection('recs')">
-            <h2>💡 All Recommendations</h2>
-            <span class="chevron" id="chevron-recs">▼</span>
-        </div>
-        <div class="section-body" id="body-recs">
-            {render_all_recommendations(data)}
-        </div>
-    </div>
-
-</div>
-
-<div class="footer">
-    <p>Generated by SEO Skill · {datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M")}</p>
-</div>
-
-<script>
-function toggleSection(id) {{
-    const body = document.getElementById('body-' + id);
-    const chevron = document.getElementById('chevron-' + id);
-    body.classList.toggle('open');
-    chevron.classList.toggle('open');
-}}
-function scrollToSection(id) {{
-    const el = document.getElementById('section-' + id);
-    if (el) {{
-        el.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
-        // Auto-open
-        const body = document.getElementById('body-' + id);
-        const chevron = document.getElementById('chevron-' + id);
-        if (!body.classList.contains('open')) {{
-            body.classList.add('open');
-            chevron.classList.add('open');
-        }}
-    }}
-}}
-function toggleTheme() {{
-    const html = document.documentElement;
-    const btn = document.querySelector('.theme-toggle');
-    if (html.getAttribute('data-theme') === 'light') {{
-        html.removeAttribute('data-theme');
-        btn.textContent = '🌙';
-    }} else {{
-        html.setAttribute('data-theme', 'light');
-        btn.textContent = '☀️';
-    }}
-}}
-// Auto-open issues section
-document.getElementById('body-issues').classList.add('open');
-document.getElementById('chevron-issues').classList.add('open');
-</script>
-
-</body>
-</html>'''
-
-    return html
+  var hash = decodeURIComponent((location.hash || '').slice(1));
+  if (findings && findings.has(hash)) findings.select(hash, { reveal: true });
+  else if (hash.indexOf('check-') === 0 && checks && checks.has(hash.slice(6))) checks.select(hash.slice(6), { reveal: true });
+})();
+"""
 
 
 def export_xlsx(data: dict, scores: dict, output_path: str) -> str:

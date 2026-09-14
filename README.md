@@ -297,7 +297,7 @@ python scripts/generate_report.py https://example.com --output seo-report.html
 
 | Script | Purpose |
 |---|---|
-| `generate_report.py` | Full-site HTML dashboard — bundled analysis pipeline |
+| `generate_report.py` | Full-site HTML report (findings and checks ledgers) — bundled analysis pipeline |
 | `requirements-check.py` | Preflight: `requests` + `beautifulsoup4` installed (`--json`) |
 | `score_eval_transcript.py` | Score replies vs `evals/evals.json` (`--eval-id` or `--all-fixtures`) |
 | `meta_lengths_checker.py` | Title / meta description / H1 lengths (`--url` or local HTML) |
