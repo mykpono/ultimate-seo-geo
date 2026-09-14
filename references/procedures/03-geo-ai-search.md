@@ -20,7 +20,7 @@ For 2026 platform reach and traffic signal data, see `references/ai-search-geo.m
 
 ### GEO Audit — Step by Step
 
-1. **Check AI crawler access** — Fetch `/robots.txt`. Confirm OAI-SearchBot, PerplexityBot, ClaudeBot are not Disallowed.
+1. **Check AI crawler access** — Fetch `/robots.txt`. Confirm the search crawlers OAI-SearchBot, Claude-SearchBot and PerplexityBot are not Disallowed; they build the indexes that AI answers cite. GPTBot and ClaudeBot are training crawlers, so blocking them is a licensing choice, not a visibility defect.
 2. **Check llms.txt** — Fetch `/llms.txt`. **Google confirmed (June 2026) that Search ignores llms.txt entirely** — it neither helps nor hurts, including in AI Overviews and AI Mode. Absence is **not a finding** and must not be scored; do not claim any Google SEO or Google AI citation benefit. Offer the template in `references/ai-search-geo.md` only if the user has named a non-Google AI engine as a target. Also check for **RSL 1.0 (Really Simple Licensing)** — December 2025 standard backed by Reddit, Yahoo, Medium, Quora, Cloudflare, Akamai, and Creative Commons. Check for a `/rsl.txt` file or RSL `<meta>` tag on key pages. Absence is not a penalty but early adoption signals AI-friendly intent.
 3. **Score citability** — For each key page: does the first 40–60 words answer the target query? Self-contained 134–167 word answer blocks? Question-format headings? Pages already optimized for Featured Snippets (§ 7c) have a structural head-start on AI citation.
    - **FAQPage markup routes here.** Since Google withdrew FAQ rich results (May 7, 2026), FAQPage is no longer scored as a Google rich-result opportunity in § 5 — it is scored here, as a Citability signal. Q&A pairs are self-contained question-and-answer blocks, which is the shape AI engines cite. Assess the *content*: does each answer stand alone and directly answer its question? Do not assess the markup for SERP benefit. See § 5 step 6.
@@ -47,11 +47,11 @@ For the Quora, Reddit, influencer, and newsletter outreach playbooks, see `refer
 
 For Google AI Mode–specific optimization (zero blue links, follow-up queries, Related Questions sections), see `references/ai-search-geo.md` → Platform-Specific Optimization.
 
-For the AI crawler allow/block table (OAI-SearchBot, PerplexityBot, ClaudeBot, GPTBot, Google-Extended) and the llms.txt quick template, see `references/ai-search-geo.md`.
+For the AI crawler allow/block table, with search / user / training roles (OAI-SearchBot, Claude-SearchBot, PerplexityBot, GPTBot, ClaudeBot, Google-Extended and more), and the llms.txt quick template, see `references/ai-search-geo.md`.
 
 ### robots.txt: GEO vs traditional crawl directives
 
-- **GEO guidance applies to AI-named crawlers** (e.g. OAI-SearchBot, PerplexityBot, GPTBot, ClaudeBot) and to `User-agent: *` rules that effectively block them from important content.
+- **GEO guidance applies to AI-named crawlers** (e.g. OAI-SearchBot, Claude-SearchBot, PerplexityBot, GPTBot, ClaudeBot) and to `User-agent: *` rules that effectively block them from important content.
 - **Do not** recommend removing **Googlebot/Bingbot** `Disallow` rules used for facets (`/*?`), filtered URLs, pagination, category/author paths, or other intentional crawl hygiene **unless** the user explicitly asks for a crawl-budget or indexation review of those rules.
 - `robots_checker.py` focuses on AI crawler status; it does **not** flag facet or low-value-path disallows as errors — do not over-generalize GEO fixes into “remove all Disallow.”
 

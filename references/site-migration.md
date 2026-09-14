@@ -134,7 +134,7 @@ In Google Search Console → URL Inspection → Request Indexing, manually reque
 Confirm production robots.txt:
 - Does NOT have `Disallow: /` (a common migration mistake when copying staging config)
 - References new sitemap URL
-- Allows all major crawlers (Googlebot, Bingbot, OAI-SearchBot, PerplexityBot, ClaudeBot)
+- Allows all major crawlers (Googlebot, Bingbot, OAI-SearchBot, Claude-SearchBot, PerplexityBot)
 
 ### Step 5: Monitor Real-Time Crawl
 Watch Google Search Console → Coverage report for the first 24–48 hours. Look for sudden spikes in:

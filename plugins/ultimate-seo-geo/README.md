@@ -124,7 +124,7 @@ We're moving from Magento to Shopify — 3,000 product pages. What do we need fo
 - **Platform Coverage** — Google AI Overviews, AI Mode, ChatGPT Search, Perplexity, Bing Copilot
 - **Citability Scoring** — Passage-level optimization, answer placement optimization
 - **Brand Mention Strategy** — YouTube/Reddit/Wikipedia/LinkedIn correlation data, Wikidata entity setup
-- **AI Crawler Management** — robots.txt for GPTBot, OAI-SearchBot, PerplexityBot, ClaudeBot
+- **AI Crawler Management** — robots.txt checks by crawler role: search (OAI-SearchBot, Claude-SearchBot, PerplexityBot), user fetch, and training (GPTBot, ClaudeBot)
 - **llms.txt** — Template generation for the emerging AI content standard
 - **RSL 1.0** — Machine-readable AI licensing (December 2025 standard)
 

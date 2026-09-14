@@ -32,7 +32,7 @@ Scoring: base = (positive / (positive + deficit)) × 100. Deduct: Critical −15
 
 ## GEO (AI Search)
 
-Check: OAI-SearchBot, PerplexityBot, ClaudeBot, GPTBot allowed in robots.txt (blocking OAI-SearchBot removes site from ChatGPT Search entirely — distinct from GPTBot which only affects training)? Answer in first 60 words? Content in raw HTML (not JS-only)? Named author + date? Brand on YouTube/Reddit?
+Check: search crawlers OAI-SearchBot, Claude-SearchBot, PerplexityBot allowed in robots.txt (blocking OAI-SearchBot removes site from ChatGPT Search entirely — GPTBot and ClaudeBot only affect training)? Answer in first 60 words? Content in raw HTML (not JS-only)? Named author + date? Brand on YouTube/Reddit?
 
 GEO Score: Citability 25%, Structural Readability 20%, Authority/Brand 20%, Technical Access 20%, Multi-Modal 15%.
 

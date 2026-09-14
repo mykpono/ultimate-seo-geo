@@ -66,7 +66,7 @@ no Health Score assigned. Findings are based solely on publicly crawlable pages.
 Finding: Homepage serves content via client-side JS only — empty <body> in raw HTML
 Evidence: curl -s https://rivalapp.com | grep -c '<main>' returned 0; content
            renders after JavaScript execution
-Impact: AI crawlers (PerplexityBot, ClaudeBot) likely cannot index this content;
+Impact: AI crawlers (PerplexityBot, Claude-SearchBot) likely cannot index this content;
         Googlebot renders JS but with delay
 Fix: [External Observation Only — recommend SSR or pre-rendering if advising this site]
 Confidence: Confirmed
@@ -99,7 +99,7 @@ Date: 2026-03-22 | Focus: AI Search Citation | Pages Reviewed: 6
 
 | # | Question | Status |
 |---|----------|--------|
-| 1 | AI crawlers allowed in robots.txt? | ✅ Yes — OAI-SearchBot, PerplexityBot, ClaudeBot all allowed |
+| 1 | AI crawlers allowed in robots.txt? | ✅ Yes — OAI-SearchBot, Claude-SearchBot, PerplexityBot all allowed |
 | 2 | Key answer in first 60 words? | ❌ No — /features answers "What is TaskForge?" in paragraph 4 |
 | 3 | Content in raw HTML (not JS-only)? | ✅ Yes — Next.js with SSR |
 | 4 | Named author with credentials? | ❌ No — blog posts have no author bylines |
