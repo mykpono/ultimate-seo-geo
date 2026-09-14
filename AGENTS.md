@@ -27,7 +27,7 @@ What to read, what to run, which procedure file has the detail. Full script inde
 | Goal | Read | Run | Procedure |
 |------|------|-----|-----------|
 | Full scored audit | `references/audit-script-matrix.md`, `references/thinking-framework.md` | `generate_report.py` | `02-full-site-audit.md` (Mode 3 = execute + verify) |
-| GEO / AI citations | `references/ai-search-geo.md`, `references/entity-optimization.md` | `robots_checker.py`, `ai_bot_access.py`, `entity_checker.py`, `preferred_sources_checker.py` | `03-geo-ai-search.md` |
+| GEO / AI citations | `references/ai-search-geo.md`, `references/entity-optimization.md` | `robots_checker.py`, `ai_bot_access.py`, `ai_bot_logs.py`, `entity_checker.py`, `preferred_sources_checker.py` | `03-geo-ai-search.md` |
 | Schema markup | `references/schema-types.md` | `validate_schema.py` | `05-schema-structured-data.md` |
 | Technical / CWV | `references/technical-checklist.md` | `pagespeed.py`, `robots_checker.py`, `security_headers.py` | `04-technical-seo.md` |
 | Content / E-E-A-T | `references/eeat-framework.md`, `references/core-eeat-framework.md` | `readability.py`, `article_seo.py` | `06-content-eeat-and-pruning.md` (§6b = pruning tree) |

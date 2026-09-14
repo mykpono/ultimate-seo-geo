@@ -258,6 +258,19 @@ Server logs reveal what Googlebot *actually* crawled — not what you think it c
 | Only desktop Googlebot seen | Possible verification issue | Investigate; confirm mobile-first indexing in GSC |
 | Crawl rate spikes then drops | Server throttling | Optimize server response time (TTFB) |
 
+### AI Crawlers in Logs
+
+robots.txt says what is allowed, and `scripts/ai_bot_access.py` says what a spoofed request gets from the firewall. Only logs show what OAI-SearchBot, Claude-SearchBot, PerplexityBot and the other AI crawlers actually requested, and what the server answered.
+
+```bash
+python scripts/ai_bot_logs.py access.log access.log.1.gz --verify-ips --json
+```
+
+- **Formats:** Apache/Nginx combined format and JSON lines (Nginx JSON, Cloudflare Logpush field names), plain or gzipped. Output is aggregate: IP addresses are used only for verification and are never printed.
+- **Verification:** `--verify-ips` fetches the IP ranges OpenAI, Anthropic and Perplexity publish and separates verified requests from spoofed ones. Refusal shares are then computed on verified requests only, because a firewall refusing fake crawlers is doing its job. Other vendors publish no ranges, so their requests stay unverified; say so in any finding.
+- **Threshold:** a search crawler refused (401/403/406/451) on half or more of at least 5 requests is a warning.
+- **Not seen is not proof.** Origin logs miss requests a CDN answers from cache, and sampled or rotated logs undercount. Report an absent crawler as information about the log window, never as a defect.
+
 ---
 
 ## Indexation Health Checks

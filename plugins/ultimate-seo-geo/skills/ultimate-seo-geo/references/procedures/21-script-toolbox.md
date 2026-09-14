@@ -96,6 +96,9 @@ python scripts/robots_checker.py https://example.com
 # Check whether a firewall or CDN refuses AI crawlers that robots.txt allows (suspected, not proven)
 python scripts/ai_bot_access.py https://example.com
 
+# What AI crawlers actually requested, from server access logs (IPs verified, never printed)
+python scripts/ai_bot_logs.py access.log --verify-ips --json
+
 # AI assistant referral sessions in GA4 (Tier 2; a floor, untagged clicks read as Direct)
 python scripts/ga4_report.py --property 123456789 --ai-referrals --json
 
