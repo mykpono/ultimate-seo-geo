@@ -250,7 +250,7 @@ GEO = getting content cited by AI engines: Google AI Overviews, AI Mode, ChatGPT
 
 | # | Question | If No → Fix |
 |---|---|---|
-| 1 | AI crawlers (OAI-SearchBot, PerplexityBot) allowed in robots.txt? | Remove **only** Disallow rules (or `*` blocks) that block those AI crawlers — scoped rule in `references/procedures/03-geo-ai-search.md` |
+| 1 | AI search crawlers (OAI-SearchBot, Claude-SearchBot, PerplexityBot) allowed in robots.txt? | Remove **only** Disallow rules (or `*` blocks) that block those AI crawlers — scoped rule in `references/procedures/03-geo-ai-search.md` |
 | 2 | Page answers target query in first 60 words? | Move answer to opening paragraph |
 | 3 | Content in raw HTML (not JS-only)? | Implement SSR |
 | 4 | Named author with credentials + publication date? | Add author bio + date |

@@ -19,21 +19,50 @@ except ImportError:
     sys.exit(1)
 
 
-# AI crawlers to check for explicit management
-AI_CRAWLERS = [
-    "OAI-SearchBot",    # ChatGPT Search indexing — distinct from GPTBot (training)
-    "GPTBot",           # OpenAI training crawler
-    "ChatGPT-User",     # ChatGPT browsing/plugins
-    "ClaudeBot",
-    "anthropic-ai",
-    "PerplexityBot",
-    "Google-Extended",  # Gemini training only — does NOT affect Google Search or AI Overviews
-    "Applebot-Extended",
-    "Bytespider",
-    "CCBot",
-    "FacebookBot",
-    "Amazonbot",
-]
+# AI crawler tokens, grouped by what blocking each one costs. Roles follow each
+# vendor's own crawler documentation (checked 2026-09-14):
+#   search   -- builds the index an AI search product cites from. Blocking it
+#               removes the site from that engine's answers.
+#   user     -- fetches a page when a user asks. OpenAI, Perplexity, Meta and
+#               Amazon say these may not follow robots.txt.
+#   training -- collects content for model training, or is a control token
+#               governing training use of content another bot crawled. Blocking
+#               it is a licensing choice with no search-citation cost.
+AI_CRAWLER_ROLES = {
+    "OAI-SearchBot": "search",          # ChatGPT search — distinct from GPTBot
+    "Claude-SearchBot": "search",
+    "PerplexityBot": "search",
+    "meta-webindexer": "search",        # Meta AI search
+    "DuckAssistBot": "search",          # DuckDuckGo AI-assisted answers; not used for training
+    "Amzn-SearchBot": "search",         # not used for training
+    "ChatGPT-User": "user",
+    "Claude-User": "user",
+    "Perplexity-User": "user",          # Perplexity: generally ignores robots.txt
+    "meta-externalfetcher": "user",
+    "Amzn-User": "user",
+    "MistralAI-User": "user",
+    "GPTBot": "training",
+    "ClaudeBot": "training",
+    "Google-Extended": "training",      # control token — does NOT affect Google Search or AI Overviews
+    "Applebot-Extended": "training",    # control token — does not crawl, does not affect Apple search
+    "meta-externalagent": "training",
+    "Amazonbot": "training",
+    "MistralAI-Training": "training",
+    "Bytespider": "training",
+    "CCBot": "training",
+}
+AI_CRAWLERS = list(AI_CRAWLER_ROLES)
+
+# Statuses under which a crawler cannot fetch the site root.
+BLOCKING_STATUSES = ("fully blocked", "blocked by wildcard (*)")
+
+# Tokens their vendors no longer document, mapped to the current tokens. They
+# are reported when a robots.txt names them, never scored.
+LEGACY_AI_TOKENS = {
+    "anthropic-ai": "ClaudeBot, Claude-SearchBot and Claude-User",
+    "Claude-Web": "ClaudeBot, Claude-SearchBot and Claude-User",
+    "FacebookBot": "meta-externalagent, meta-webindexer and meta-externalfetcher",
+}
 
 # Standard crawlers for reference
 STANDARD_CRAWLERS = [
@@ -62,6 +91,7 @@ def fetch_robots_txt(url: str, timeout: int = 15) -> dict:
         "sitemaps": [],
         "crawl_delays": {},
         "ai_crawler_status": {},
+        "ai_crawler_roles": dict(AI_CRAWLER_ROLES),
         "issues": [],
         "error": None,
     }
@@ -73,8 +103,11 @@ def fetch_robots_txt(url: str, timeout: int = 15) -> dict:
         result["status"] = resp.status_code
 
         if resp.status_code == 404:
-            result["issues"].append("🔴 No robots.txt found — all crawlers allowed by default")
-            # Still check AI crawlers
+            # A missing robots.txt lets every crawler in (RFC 9309 sec 2.3.1.3):
+            # a missing hygiene file, not a block.
+            result["issues"].append(
+                "⚠️ No robots.txt found — every crawler is allowed; add one to declare your sitemap"
+            )
             for crawler in AI_CRAWLERS:
                 result["ai_crawler_status"][crawler] = "allowed (no robots.txt)"
             return result
@@ -183,8 +216,25 @@ def _parse_robots(content: str, result: dict):
                  if "not managed" in s or "allowed by default" in s]
     if unmanaged:
         result["issues"].append(
-            f"⚠️ {len(unmanaged)} AI crawlers not explicitly managed: {', '.join(unmanaged[:5])}"
+            f"ℹ️ {len(unmanaged)} AI crawlers have no rule of their own (allowed unless * blocks them): "
+            f"{', '.join(unmanaged[:5])}"
         )
+
+    blocked_search = [c for c, s in result["ai_crawler_status"].items()
+                      if s in BLOCKING_STATUSES and AI_CRAWLER_ROLES.get(c) == "search"]
+    if blocked_search:
+        result["issues"].append(
+            f"⚠️ AI search crawlers blocked: {', '.join(blocked_search)} — these build the "
+            "indexes AI search answers cite, so the site cannot be cited from them"
+        )
+
+    for token, successors in LEGACY_AI_TOKENS.items():
+        declared = agents_by_lower.get(token.lower())
+        if declared is not None:
+            result["issues"].append(
+                f"ℹ️ robots.txt names {declared}, which its vendor no longer documents — "
+                f"write the rule for {successors} instead"
+            )
 
     if not result["sitemaps"]:
         result["issues"].append("⚠️ No Sitemap directive found in robots.txt")
@@ -230,8 +280,14 @@ def main():
 
     print(f"\nAI Crawler Management:")
     for crawler, status in result["ai_crawler_status"].items():
-        icon = "✅" if "blocked" in status else "⚠️" if "not managed" in status else "ℹ️"
-        print(f"  {icon} {crawler}: {status}")
+        role = AI_CRAWLER_ROLES.get(crawler, "unknown")
+        if status in BLOCKING_STATUSES and role == "search":
+            icon = "⛔"
+        elif "not managed" in status:
+            icon = "⚠️"
+        else:
+            icon = "ℹ️"
+        print(f"  {icon} {crawler} ({role}): {status}")
 
     if result["issues"]:
         print(f"\nIssues ({len(result['issues'])}):")

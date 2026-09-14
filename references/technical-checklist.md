@@ -237,29 +237,29 @@ As of 2025-2026, managing AI crawlers is a critical technical SEO consideration.
 
 | Crawler | Token | Purpose | Recommendation |
 |---|---|---|---|
-| GPTBot | `GPTBot` | OpenAI training | Allow for AI visibility |
 | OAI-SearchBot | `OAI-SearchBot` | ChatGPT Search | Always allow |
-| ChatGPT-User | `ChatGPT-User` | ChatGPT browsing | Always allow |
-| ClaudeBot | `ClaudeBot` | Anthropic training | Allow |
+| Claude-SearchBot | `Claude-SearchBot` | Claude search | Always allow |
 | PerplexityBot | `PerplexityBot` | Perplexity index | Always allow |
+| ChatGPT-User | `ChatGPT-User` | ChatGPT user-initiated fetch | Allow |
+| Claude-User | `Claude-User` | Claude user-initiated fetch | Allow |
+| GPTBot | `GPTBot` | OpenAI training | Optional. No effect on ChatGPT Search |
+| ClaudeBot | `ClaudeBot` | Anthropic training | Optional. No effect on Claude search |
 | Google-Extended | `Google-Extended` | Gemini training ONLY | Optional block — does NOT affect Google Search |
 | Bytespider | `Bytespider` | ByteDance/TikTok AI | Optional block |
 | CCBot | `CCBot` | Common Crawl dataset | Optional block |
 
+The full table, with Meta, DuckDuckGo, Amazon and Mistral tokens and the search / user / training roles, is in `references/ai-search-geo.md`.
+
 **Recommended robots.txt for AI visibility:**
 ```
-User-agent: GPTBot
-Allow: /
-
 User-agent: OAI-SearchBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
-
+User-agent: Claude-SearchBot
 User-agent: PerplexityBot
+User-agent: ChatGPT-User
+User-agent: Claude-User
 Allow: /
 
+User-agent: GPTBot
 User-agent: ClaudeBot
 Allow: /
 

@@ -58,7 +58,7 @@ Built for **developers, founders, and marketers using AI coding agents** who wan
 - **Platform Coverage** — Google AI Overviews, Google AI Mode, ChatGPT Search, Perplexity, Bing Copilot
 - **Citability Scoring** — Passage-level optimization (134–167 word answer blocks), answer placement in first 60 words
 - **Brand Mention Strategy** — YouTube/Reddit/Wikipedia/LinkedIn correlation data, Wikidata entity setup
-- **AI Crawler Management** — robots.txt configuration for GPTBot, OAI-SearchBot, PerplexityBot, ClaudeBot
+- **AI Crawler Management** — robots.txt checks by crawler role: search (OAI-SearchBot, Claude-SearchBot, PerplexityBot), user fetch, and training (GPTBot, ClaudeBot)
 - **llms.txt** — Template generation for the emerging AI content standard
 - **RSL 1.0** — Machine-readable AI licensing (December 2025 standard)
 

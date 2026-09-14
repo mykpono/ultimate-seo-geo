@@ -144,7 +144,7 @@ gap this test exists to find.
 | 33 | Entity definition quotable in first paragraph | Clear "X is..." definition in opening of about/homepage | Definition buried or missing |
 | 34 | Factual claims verifiable | Key claims have authoritative sources | Unsourced claims |
 | 35 | Entity name used consistently | Same entity name across all platforms and content | Name variations causing confusion |
-| 36 | Content crawlable by AI systems | The crawlers that govern *recognition* are allowed: `OAI-SearchBot` (ChatGPT Search), `ChatGPT-User` (live fetches), `PerplexityBot`, `ClaudeBot`. `GPTBot` is training-only and does **not** affect signals 28–29 | Search/fetch crawlers blocked |
+| 36 | Content crawlable by AI systems | The crawlers that govern *recognition* are allowed: `OAI-SearchBot` (ChatGPT Search), `Claude-SearchBot` (Claude search), `PerplexityBot`, and the live fetchers `ChatGPT-User` and `Claude-User`. `GPTBot` and `ClaudeBot` are training-only and do **not** affect signals 28–29 | Search/fetch crawlers blocked |
 | 37 | Fresh information available | Key pages updated within last 6 months | Stale content (12+ months) |
 
 ### Priority 4: Advanced Signals (Nice-to-Have) — Signals 38–47

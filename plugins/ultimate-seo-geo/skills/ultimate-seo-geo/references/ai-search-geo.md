@@ -222,37 +222,60 @@ Wikipedia and Wikidata entities are among the highest-signal sources for AI cita
 
 **AI crawlers do NOT execute JavaScript** — content that requires JS to render is invisible to AI crawlers.
 
-| Crawler | Owner | Purpose | Recommendation |
+| Crawler | Owner | Role | Recommendation |
 |---|---|---|---|
-| GPTBot | OpenAI | ChatGPT model training | **Allow** — enables ChatGPT to learn your content |
-| OAI-SearchBot | OpenAI | ChatGPT Search index | **Always allow** — needed for ChatGPT Search citations |
-| ChatGPT-User | OpenAI | ChatGPT browsing | **Always allow** — real-time browsing citations |
-| ClaudeBot | Anthropic | Claude training | **Allow** — brand awareness |
-| PerplexityBot | Perplexity | Perplexity index | **Always allow** — essential for Perplexity citations |
-| Google-Extended | Google | Gemini AI training | Optional block — does NOT affect Google Search or AI Overviews |
-| Bytespider | ByteDance | TikTok AI | Optional |
+| OAI-SearchBot | OpenAI | Search index (ChatGPT search) | **Always allow**. Blocking it removes the site from ChatGPT search results |
+| Claude-SearchBot | Anthropic | Search index (Claude search) | **Always allow**. Blocking it reduces visibility in Claude's search results |
+| PerplexityBot | Perplexity | Search index (Perplexity) | **Always allow**. Essential for Perplexity citations |
+| meta-webindexer | Meta | Search index (Meta AI search) | Allow |
+| DuckAssistBot | DuckDuckGo | Search: real-time fetch for AI-assisted answers, not used for training | Allow. Blocking it does not affect organic DuckDuckGo rankings |
+| Amzn-SearchBot | Amazon | Search in Amazon products, not used for training | Allow |
+| ChatGPT-User | OpenAI | User-initiated fetch | Allow. OpenAI says robots.txt rules may not apply |
+| Claude-User | Anthropic | User-initiated fetch | Allow. Blocking it stops Claude reading the page for a user's question |
+| Perplexity-User | Perplexity | User-initiated fetch | Allow. Perplexity says it generally ignores robots.txt |
+| meta-externalfetcher | Meta | User-initiated fetch | Allow. May bypass robots.txt |
+| Amzn-User | Amazon | User-initiated fetch (e.g. Alexa) | Allow. May not follow all robots.txt directives |
+| MistralAI-User | Mistral | User-initiated fetch | Allow |
+| GPTBot | OpenAI | Training | Optional. Allow for brand knowledge in future models, or block to opt out of training. No effect on ChatGPT search |
+| ClaudeBot | Anthropic | Training | Optional. No effect on Claude-SearchBot or Claude-User |
+| Google-Extended | Google | Control token, not a crawler (Gemini training) | Optional block. Does NOT affect Google Search or AI Overviews |
+| Applebot-Extended | Apple | Control token, not a crawler (Apple foundation-model training) | Optional block. Pages still appear in Apple search features |
+| meta-externalagent | Meta | Training and product indexing | Optional block |
+| Amazonbot | Amazon | Product improvement; may train Amazon AI models | Optional block |
+| MistralAI-Training | Mistral | Training | Optional block |
+| Bytespider | ByteDance | Training | Optional block |
 | CCBot | Common Crawl | Open training dataset | Optional block |
-| anthropic-ai | Anthropic | Claude training | Optional |
 | cohere-ai | Cohere | Cohere models | Optional |
+
+Roles follow each vendor's own crawler documentation (checked September 2026), and `scripts/robots_checker.py` carries the same roles:
+
+- **Search** crawlers build the index that AI answers cite. Blocking one is a visibility defect.
+- **User** fetchers read a page when someone asks. Several vendors say these may ignore robots.txt.
+- **Training** crawlers and control tokens govern model training. Blocking them is a licensing choice, not a visibility defect.
+
+**Legacy tokens**: `anthropic-ai` and `Claude-Web` (Anthropic) and `FacebookBot` (Meta) no longer appear in their vendors' crawler documentation. Do not rely on rules that name only these tokens; name the current tokens above instead.
 
 **Key distinction**: Blocking `Google-Extended` prevents Gemini training but does NOT affect Googlebot, Google Search rankings, or AI Overviews. Blocking `GPTBot` blocks training but does NOT block `OAI-SearchBot` (search) or `ChatGPT-User` (browsing).
 
 ### robots.txt — Recommended Configuration for AI Visibility
 ```
-# Allow all AI search crawlers
-User-agent: GPTBot
-Allow: /
-
+# AI search crawlers: blocking these removes the site from AI answers
 User-agent: OAI-SearchBot
-Allow: /
-
+User-agent: Claude-SearchBot
 User-agent: PerplexityBot
 Allow: /
 
+# User-initiated fetchers
+User-agent: ChatGPT-User
+User-agent: Claude-User
+Allow: /
+
+# Training crawlers: allow or block; blocking does not remove the site from AI search
+User-agent: GPTBot
 User-agent: ClaudeBot
 Allow: /
 
-# Block AI training-only crawlers (optional)
+# Block an open training dataset (optional)
 User-agent: CCBot
 Disallow: /
 

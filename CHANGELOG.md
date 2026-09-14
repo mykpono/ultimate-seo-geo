@@ -2,7 +2,29 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **Blocking an AI search crawler no longer raises the robots score.** `generate_report.py` gave
+  +2 to every AI crawler with any robots.txt rule, a full block included, so disallowing
+  OAI-SearchBot scored higher than allowing it, and `User-agent: *` / `Disallow: /` scored 100.
+  Crawlers now carry a role: search, user fetch or training. Each search crawler that cannot fetch
+  the site, named or through `*`, costs 15 points and raises a warning finding. Blocking a
+  training crawler such as GPTBot or ClaudeBot costs nothing and still counts as deliberate
+  management. A missing robots.txt scores 60, like an empty file, instead of 20, because under
+  RFC 9309 it allows every crawler. The report's AI crawler table gains a Role column, and a
+  blocked training crawler is no longer flagged.
+- **A missing llms.txt no longer lowers the overall score.** The references have said since 1.12.0
+  that llms.txt must not be scored, because Google Search ignores it, but it kept weight 5 and
+  scored 0 when absent. It is still shown in the report, unweighted.
+- **The AI crawler list matches what the vendors document.** `robots_checker.py` did not know
+  Claude-SearchBot, so a site blocking Claude's search crawler got no finding. It now also covers
+  Claude-User, Perplexity-User, meta-webindexer, meta-externalagent, meta-externalfetcher,
+  DuckAssistBot, Amzn-SearchBot, Amzn-User, MistralAI-User and MistralAI-Training.
+  `anthropic-ai` and `FacebookBot` are no longer scored, because their vendors no longer document
+  them. A robots.txt that names them, or `Claude-Web`, gets an Info note naming the current tokens.
+  JSON output gains `ai_crawler_roles`. The crawler tables in `references/ai-search-geo.md` and
+  `references/technical-checklist.md` now carry roles, and the docs that named ClaudeBot (a
+  training crawler) where Claude's search crawler was meant now name Claude-SearchBot.
 
 ## [1.12.9] - 2026-09-14
 

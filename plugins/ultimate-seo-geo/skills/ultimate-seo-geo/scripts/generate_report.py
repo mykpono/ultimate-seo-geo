@@ -37,6 +37,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 from fetch_page import fetch_page as fetch_url
+from robots_checker import AI_CRAWLER_ROLES, BLOCKING_STATUSES
 
 # Maximum number of analysis scripts to run in parallel.
 # Bounded to avoid overwhelming the target server with simultaneous crawls.
@@ -291,6 +292,25 @@ def build_environment_fixes(data: dict) -> list:
             "indexation, citability, or entity signals.",
             _platform_hint(platform, "llms"),
             leading_indicator="Not applicable — llms.txt has no measurable Google Search effect. Track AI visibility through crawler access, indexation, entities, and citations instead.",
+        )
+
+    rob = data["sections"].get("robots", {})
+    blocked_search = [
+        crawler for crawler, state in (rob.get("ai_crawler_status") or {}).items()
+        if state in BLOCKING_STATUSES and AI_CRAWLER_ROLES.get(crawler) == "search"
+    ]
+    if blocked_search:
+        add(
+            "warning",
+            f"robots.txt blocks {len(blocked_search)} AI search crawler(s)",
+            f"{', '.join(blocked_search)} cannot fetch the site. These crawlers build the indexes that "
+            "ChatGPT search, Claude, Perplexity and other AI answer engines cite, so the site cannot be "
+            "cited there. Blocking training crawlers such as GPTBot or ClaudeBot is a separate "
+            "licensing choice and is not flagged.",
+            "Remove the Disallow rules, or the `User-agent: *` block, that cover these crawlers. "
+            "Training-crawler blocks can stay.",
+            dependency="Confirm with the site owner that AI search visibility is wanted; some sites block these crawlers on purpose.",
+            leading_indicator="robots_checker.py reports these crawlers as allowed, and citations from those engines can appear.",
         )
 
     # Preferred sources is a news/publisher lever (see references/ai-search-geo.md).
@@ -641,9 +661,43 @@ def collect_data(
     return data
 
 
+# Robots score lost for each AI search crawler that cannot fetch the site root.
+ROBOTS_BLOCKED_SEARCH_PENALTY = 15
+
+
+def _robots_score(rob: dict) -> int:
+    """Score robots.txt on crawl hygiene and on whether AI search can reach the site.
+
+    A missing robots.txt allows every crawler (RFC 9309 sec 2.3.1.3), so it
+    scores like an empty file, not a failure. Explicit AI crawler rules earn up
+    to 20 points, except a rule that shuts out a search or user crawler, which
+    is not management. Each blocked search crawler, named or through `*`, costs
+    ROBOTS_BLOCKED_SEARCH_PENALTY. Blocking a training crawler costs nothing:
+    it is a licensing choice.
+    """
+    if rob.get("status") not in (200, 404):
+        return 0
+    score = 60
+    if rob.get("sitemaps"):
+        score += 20
+    managed = blocked_search = 0
+    for crawler, state in (rob.get("ai_crawler_status") or {}).items():
+        role = AI_CRAWLER_ROLES.get(crawler)
+        blocked = state in BLOCKING_STATUSES
+        if blocked and role == "search":
+            blocked_search += 1
+        explicit = not any(marker in state for marker in ("not managed", "wildcard", "no robots.txt"))
+        if explicit and not (blocked and role in ("search", "user")):
+            managed += 1
+    score += min(20, managed * 2) - blocked_search * ROBOTS_BLOCKED_SEARCH_PENALTY
+    return max(0, min(100, score))
+
+
 def calculate_overall_score(data: dict) -> dict:
     """Calculate overall SEO score from all analyses."""
     scores = {}
+    # llms.txt is deliberately absent: Google Search ignores it (June 2026), so
+    # it is shown in the report but never weighted.
     weights = {
         "security": 8,
         "social": 5,
@@ -651,7 +705,6 @@ def calculate_overall_score(data: dict) -> dict:
         "broken_links": 10,
         "internal_links": 8,
         "redirects": 3,
-        "llms_txt": 5,
         "pagespeed": 13,
         "onpage": 10,
         "readability": 8,
@@ -678,19 +731,7 @@ def calculate_overall_score(data: dict) -> dict:
     scores["social"] = soc.get("score", 0)
 
     # Robots score
-    rob = data["sections"].get("robots", {})
-    if rob.get("status") == 200:
-        base = 60
-        if rob.get("sitemaps"):
-            base += 20
-        ai_managed = sum(1 for s in rob.get("ai_crawler_status", {}).values()
-                         if "not managed" not in s)
-        base += min(20, ai_managed * 2)
-        scores["robots"] = min(100, base)
-    elif rob.get("status") == 404:
-        scores["robots"] = 20
-    else:
-        scores["robots"] = 0
+    scores["robots"] = _robots_score(data["sections"].get("robots", {}))
 
     # Article score (informational, not weighted heavily)
     art = data["sections"].get("article", {})
@@ -725,7 +766,7 @@ def calculate_overall_score(data: dict) -> dict:
     red_issues = len(red.get("issues", []))
     scores["redirects"] = max(0, 100 - red_issues * 25)
 
-    # llms.txt score
+    # llms.txt score: displayed only, not in `weights`
     llm = data["sections"].get("llms_txt", {})
     if llm.get("exists"):
         scores["llms_txt"] = llm.get("quality", {}).get("score", 0)
@@ -1289,20 +1330,26 @@ def _check_panels(data: dict) -> dict:
     crawler_rows = []
     for crawler, status in (rob.get("ai_crawler_status") or {}).items():
         status_text = str(status)
+        role = AI_CRAWLER_ROLES.get(crawler, "")
         if "not managed" in status_text:
             chip = _chip("chip-na", "Unmanaged")
         elif "partially" in status_text:
             chip = _chip("chip-info", "Partial")
         elif "blocked" in status_text:
-            chip = _chip("chip-flag", "Blocked")
+            # Blocking a training crawler is a licensing choice; blocking a
+            # search or user crawler takes the site out of AI answers.
+            chip = _chip("chip-info" if role == "training" else "chip-flag", "Blocked")
         else:
             chip = _chip("chip-ok", "Allowed")
-        crawler_rows.append(f"<tr><td>{_esc(crawler)}</td><td>{chip}</td><td>{_esc(status_text)}</td></tr>")
+        crawler_rows.append(
+            f"<tr><td>{_esc(crawler)}</td><td>{_esc(role or '—')}</td>"
+            f"<td>{chip}</td><td>{_esc(status_text)}</td></tr>"
+        )
     panels["robots"] = (
         _kv([("robots.txt", _esc(rob.get("status", "—"))),
              ("Sitemaps", _esc(len(rob.get("sitemaps") or []))),
              ("User-agents", _esc(len(rob.get("user_agents") or {})))])
-        + (_subhead("AI crawler access") + _table(["Crawler", "Status", "Detail"], crawler_rows) if crawler_rows else "")
+        + (_subhead("AI crawler access") + _table(["Crawler", "Role", "Status", "Detail"], crawler_rows) if crawler_rows else "")
     )
 
     sm = get("sitemap")
