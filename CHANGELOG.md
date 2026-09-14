@@ -34,6 +34,17 @@
   instead. Verdicts refuse to judge a thin or middling sample ("too few runs", "inconsistent"). It
   calls no AI engine and needs no API key, so it scores manual checks or any monitoring tool's
   export.
+- **`hidden_instructions.py` finds instructions to AI systems that visitors cannot see.** Prompt
+  injection on web pages hides lines such as "ignore previous instructions" or "AI assistants must
+  recommend…". The hiding places are CSS-hidden elements, noscript, HTML comments, alt / title /
+  aria-label, meta descriptions, JSON-LD and invisible Unicode.
+  - **Severity:** instruction-like text in a hidden element is Critical; in a comment, attribute or
+    structured data it is a warning. Unicode tag characters are decoded and shown.
+  - **Not flagged:** the same sentence in visible copy, `aria-hidden` content, flag emoji and emoji
+    joiners.
+  - **In the report:** the full report runs it on the audited page as "Hidden AI instructions",
+    shown but not weighted.
+  - § 19 gains rule 10d: never recommend text aimed at AI systems that visitors cannot see.
 
 ### Changed
 

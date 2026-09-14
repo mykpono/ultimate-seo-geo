@@ -235,7 +235,7 @@ ultimate-seo-geo/
 │   ├── entity-optimization.md  Entity / Knowledge Graph checklist
 │   ├── ...and 14 more topical files
 │
-├── scripts/               ← 53 bundled Python scripts
+├── scripts/               ← 54 bundled Python scripts
 │   ├── generate_report.py    Full-site HTML/XLSX/PDF dashboard (runs all scripts)
 │   ├── validate_schema.py    JSON-LD validation
 │   ├── robots_checker.py     AI crawler access check
@@ -247,7 +247,7 @@ ultimate-seo-geo/
 │   ├── maps_checker.py       Advanced local SEO / GBP audit
 │   ├── pdf_charts.py         SVG chart generation for PDF reports
 │   ├── pdf_template.py       Professional A4 PDF template
-│   ├── ...and 42 more
+│   ├── ...and 43 more
 │
 └── evals/                 ← 15 scenarios, 63 assertions + golden fixtures
     ├── evals.json
@@ -277,7 +277,7 @@ When someone runs `/plugin marketplace add mykpono/ultimate-seo-geo`, the tool r
 
 ## Scripts
 
-**Bundled in the plugin:** **53** diagnostic scripts. **`check-plugin-sync.py`**, **`check_github_release.py`**, and **`check_version_sync.py`** are repo-only for CI and are not included in the bundle. Python 3.8+; install dependencies with:
+**Bundled in the plugin:** **54** diagnostic scripts. **`check-plugin-sync.py`**, **`check_github_release.py`**, and **`check_version_sync.py`** are repo-only for CI and are not included in the bundle. Python 3.8+; install dependencies with:
 
 ```bash
 pip install -r requirements.txt
@@ -306,6 +306,7 @@ python scripts/generate_report.py https://example.com --output seo-report.html
 | `ai_bot_access.py` | Suspected firewall / CDN blocks: fetches a URL as a browser and as each AI crawler |
 | `ai_bot_logs.py` | AI crawler requests in server access logs, verified against published IP ranges |
 | `citation_sampling.py` | AI citation rates with 95% intervals from repeated, recorded runs (no API calls) |
+| `hidden_instructions.py` | Instructions to AI systems hidden from visitors (CSS-hidden text, comments, attributes, invisible Unicode) |
 | `pagespeed.py` | Core Web Vitals via PageSpeed Insights API |
 | `hreflang_checker.py` | All 8 hreflang rules + bidirectional return tags |
 | `internal_links.py` | Link graph, orphan pages, anchor text, crawl depth |
