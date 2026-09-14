@@ -16,10 +16,10 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |
 | Broken links (single page) | §9 | `broken_links.py` | `python scripts/broken_links.py URL --json` |
 | Broken links (site-wide) | §9, §11 | `broken_links.py` | `python scripts/broken_links.py URL --crawl --depth 2 --json` |
-| Internal links / orphans / redirects | §9, §11 | `internal_links.py` | `python scripts/internal_links.py URL --depth 1 --json` |
+| Internal links / redirects | §9, §11 | `internal_links.py` | `python scripts/internal_links.py URL --depth 1 --json` |
 | Core Web Vitals (PSI) | §4 | `pagespeed.py` | `python scripts/pagespeed.py URL --strategy mobile --json` |
 | Entity / Wikidata | §3 | `entity_checker.py` | `python scripts/entity_checker.py URL --json` |
-| Link equity / graph | §9 | `link_profile.py` | `python scripts/link_profile.py URL --json` |
+| Link equity / graph / orphans (complete crawls only; otherwise `inconclusive`) | §9, §11 | `link_profile.py` | `python scripts/link_profile.py URL --json` |
 | Hreflang | §14 | `hreflang_checker.py` | `python scripts/hreflang_checker.py URL --json` |
 | Near-duplicate / thin + canonical | §6, §11 | `duplicate_content.py` | `python scripts/duplicate_content.py URL --json` |
 | Canonical validation + alternate detection | §4, §11 | `canonical_checker.py` | `python scripts/canonical_checker.py URL --json` (single) / `--crawl --json` (site-wide, detects alternate pages) |

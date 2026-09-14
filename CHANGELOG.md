@@ -2,7 +2,27 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **A page is no longer called an orphan because the crawl never reached the page linking to it.**
+  A live audit of a 3,008-URL site reported "14 orphan pages" at **high** severity and "1,637
+  potential orphans" beside it. Every one was produced by the crawl, not the site.
+
+  `link_profile.py` fetched the first 20 sitemap URLs and flagged any of them that the other 19 did
+  not link to, blind to inbound links from the 2,988 pages it never fetched. It now reports orphans
+  only from a crawl that is provably complete: the sitemap fit inside `--max-pages`, every fetch
+  succeeded, and every page a crawled page links to was itself crawled. Anything less returns
+  `orphan_pages.status: "inconclusive"` with its `reasons` and an **Info** issue, and the HTML report
+  shows `—` instead of a reassuring `0`. On a complete crawl it still finds real orphans, and
+  finds more of them than before, because three smaller defects are gone: the entry page was chosen
+  with `min(crawled)` (the alphabetically first URL, so `/about` was exempted and `/start` flagged),
+  `/guide/` in the sitemap never matched `/guide` in the navigation, and a page's link to itself
+  counted as an inbound link.
+
+  `internal_links.py` no longer emits `orphan_candidates`. It discovers pages only by following
+  links, so every page it knows about has an inbound link by construction; its "potential orphans"
+  were pages linked from at most one of the 16 pages it happened to crawl. The key, its issue, its
+  recommendation, the report table and the XLSX rows are removed; the report tile now shows pages found.
 
 ## [1.12.8] - 2026-08-25
 

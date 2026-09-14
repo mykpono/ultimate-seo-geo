@@ -2,8 +2,12 @@
 """
 Analyze internal link structure of a website.
 
-Checks link count, anchor text distribution, orphan page detection,
-and link depth from homepage.
+Checks link count, anchor text distribution, broken and redirected internal
+pages, and link depth from homepage.
+
+It finds pages only by following links, so every page it knows about has at
+least one inbound link. It cannot detect orphan pages; link_profile.py compares
+the crawl against the sitemap for that.
 
 Usage:
     python internal_links.py https://example.com
@@ -115,7 +119,6 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
         "pages": {},
         "anchor_texts": {},
         "link_distribution": {},
-        "orphan_candidates": [],
         "nofollow_links": [],
         "broken_internal_pages": [],
         "soft_404_pages": [],
@@ -274,14 +277,6 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
             "incoming_links": incoming,
         }
 
-    start_normalized = start_url.rstrip("/")
-    for url, sources in pages_linking_to.items():
-        if url.rstrip("/") != start_normalized and len(sources) <= 1:
-            result["orphan_candidates"].append({
-                "url": url,
-                "incoming_links": len(sources),
-            })
-
     # Issues — broken/error pages first (highest severity)
     if result["broken_internal_pages"]:
         bp = result["broken_internal_pages"]
@@ -310,12 +305,6 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
         urls_preview = ", ".join(f"{p['url']} → {p['final_url']}" for p in rp[:2])
         result["issues"].append(
             f"⚠️ {len(rp)} internal link(s) point to redirect URLs: {urls_preview}"
-        )
-
-    if result["orphan_candidates"]:
-        result["issues"].append(
-            f"⚠️ {len(result['orphan_candidates'])} potential orphan page(s) "
-            f"(≤1 internal link pointing to them)"
         )
 
     low_link_pages = [url for url, count in page_link_counts.items() if count < 3]
@@ -359,10 +348,6 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
             "Update internal links that point to redirect URLs. Link directly "
             "to the final destination URL. GSC reports these as 'Page with "
             "redirect' — stale links waste crawl budget and dilute link equity."
-        )
-    if result["orphan_candidates"]:
-        result["recommendations"].append(
-            "Add internal links pointing to orphan pages from related content"
         )
     if result["link_distribution"]["avg"] < 5:
         result["recommendations"].append(
@@ -431,11 +416,6 @@ def main():
             print(f"  • {rp['url']} → {rp['final_url']}")
             for src in rp["linked_from"][:3]:
                 print(f"        ← linked from {src}")
-
-    if result["orphan_candidates"]:
-        print(f"\n⚠️ Potential Orphan Pages ({len(result['orphan_candidates'])}):")
-        for orphan in result["orphan_candidates"][:10]:
-            print(f"  • {orphan['url']} ({orphan['incoming_links']} incoming)")
 
     if result["anchor_texts"]:
         print(f"\nTop Anchor Texts:")

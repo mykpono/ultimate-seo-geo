@@ -36,6 +36,30 @@ from url_safety import validate_url
 
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-LinkProfile/1.8)"
 
+# Link targets that are files, not pages. None of them can be an orphan page,
+# and a crawl is not incomplete for having skipped them.
+NON_PAGE_EXTENSIONS = (
+    ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".avif", ".ico",
+    ".zip", ".gz", ".mp3", ".mp4", ".webm", ".css", ".js", ".json", ".xml",
+    ".txt", ".csv", ".xlsx", ".docx", ".pptx",
+)
+
+
+def page_key(url: str) -> str:
+    """Identity of a page for inbound-link counting.
+
+    A sitemap <loc> of /guide/ and an href of /guide are the same page, and so
+    are EX.com and ex.com. Comparing raw strings reported pages as orphans
+    purely because the sitemap and the navigation spelled them differently.
+    """
+    parsed = urlparse(url)
+    path = parsed.path.rstrip("/") or "/"
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{path}"
+
+
+def is_page_url(url: str) -> bool:
+    return not urlparse(url).path.lower().endswith(NON_PAGE_EXTENSIONS)
+
 
 # ---------------------------------------------------------------------------
 # Fetch helpers
@@ -126,10 +150,12 @@ def crawl_site(site_url: str, max_pages: int = 50) -> dict:
     parsed = urlparse(site_url)
     base_domain = parsed.netloc
 
-    # Seed URLs from sitemap + homepage
-    seed_urls = get_sitemap_urls(site_url, limit=max_pages)
-    if site_url not in seed_urls:
+    # Seed URLs from sitemap + homepage. Ask for one more URL than we will
+    # fetch, so a sitemap that does not fit is known to have been cut short.
+    seed_urls = get_sitemap_urls(site_url, limit=max_pages + 1)
+    if page_key(site_url) not in {page_key(u) for u in seed_urls}:
         seed_urls.insert(0, site_url)
+    seed_truncated = len(seed_urls) > max_pages
     seed_urls = seed_urls[:max_pages]
 
     # Link graph
@@ -138,20 +164,45 @@ def crawl_site(site_url: str, max_pages: int = 50) -> dict:
         "all_internal_targets": Counter(),  # url -> inbound link count
         "all_external_targets": Counter(),
         "anchor_texts": defaultdict(list),   # url -> [anchor_texts pointing to it]
+        # Orphan detection (see analyze_link_profile) works on page_key()s.
+        "entry_keys": {page_key(site_url)},  # the audited entry page, never an orphan
+        "page_keys": {},                     # fetched url -> keys of its url and final url
+        "inbound_keys": Counter(),           # key -> links from OTHER fetched pages
+        "link_target_keys": set(),           # key of every page an internal link points to
+        "failed_urls": [],
+        "seed_truncated": seed_truncated,
     }
 
     crawled = set()
+    crawled_keys = set()
     for url in seed_urls:
-        if url in crawled:
+        key = page_key(url)
+        if key in crawled_keys:
             continue
         crawled.add(url)
+        crawled_keys.add(key)
 
         time.sleep(0.3)
         final_url, html = fetch_page(url)
         if not html:
+            graph["failed_urls"].append(url)
             continue
 
+        own_keys = {key, page_key(final_url)}
+        graph["page_keys"][url] = own_keys
+        if key in graph["entry_keys"]:
+            graph["entry_keys"] |= own_keys
+
         links = extract_links(html, final_url, base_domain)
+
+        for link in links["internal"]:
+            if not is_page_url(link["url"]):
+                continue
+            target = page_key(link["url"])
+            graph["link_target_keys"].add(target)
+            # A page's link to itself (nav, logo, breadcrumb) is not inbound.
+            if target not in own_keys:
+                graph["inbound_keys"][target] += 1
 
         graph["pages"][url] = {
             "internal_out": len(links["internal"]),
@@ -179,11 +230,29 @@ def analyze_link_profile(graph: dict, crawled: set, base_domain: str) -> dict:
     pages = graph["pages"]
     internal_targets = graph["all_internal_targets"]
 
-    # Orphan pages (in sitemap/crawled but zero inbound internal links)
+    # Orphan pages: fetched pages no other fetched page links to. Zero inbound
+    # links is only evidence when the crawl saw every page that could hold the
+    # link. A 20-URL sample of a 3,000-URL sitemap cannot see the hub that
+    # links to a case study, so on a partial crawl the check reports that it
+    # was not assessed instead of calling the case study an orphan.
+    fetched_keys = set().union(*graph["page_keys"].values())
+    unfetched_targets = graph["link_target_keys"] - fetched_keys
+    incomplete_reasons = []
+    if graph["seed_truncated"]:
+        incomplete_reasons.append("the sitemap lists more URLs than --max-pages")
+    if graph["failed_urls"]:
+        incomplete_reasons.append(f"{len(graph['failed_urls'])} page(s) could not be fetched")
+    if unfetched_targets:
+        incomplete_reasons.append(f"{len(unfetched_targets)} linked page(s) were never fetched")
+
     orphan_pages = []
-    for url in crawled:
-        if internal_targets.get(url, 0) == 0 and url != min(crawled):
-            orphan_pages.append(url)
+    if not incomplete_reasons:
+        for url, keys in graph["page_keys"].items():
+            if keys & graph["entry_keys"]:
+                continue
+            if not any(graph["inbound_keys"].get(k, 0) for k in keys):
+                orphan_pages.append(url)
+        orphan_pages.sort()
 
     # Top linked pages (highest inbound internal links)
     top_linked = internal_targets.most_common(20)
@@ -225,6 +294,16 @@ def analyze_link_profile(graph: dict, crawled: set, base_domain: str) -> dict:
             "pages": orphan_pages[:10],
             "fix": "Add internal links from relevant content pages to these orphan pages.",
         })
+    elif incomplete_reasons:
+        issues.append({
+            "type": "orphan_check_inconclusive",
+            "severity": "Info",
+            "finding": (
+                f"Orphan pages not assessed: {len(pages)} page(s) fetched, and inbound links "
+                f"from pages outside this crawl cannot be ruled out ({'; '.join(incomplete_reasons)})."
+            ),
+            "fix": "Compare a full-site crawl against the sitemap before reporting any page as an orphan.",
+        })
 
     if dead_ends:
         issues.append({
@@ -252,8 +331,10 @@ def analyze_link_profile(graph: dict, crawled: set, base_domain: str) -> dict:
         "unique_external_domains": len(external_domains),
         "avg_internal_links_per_page": round(avg_internal_links, 1),
         "orphan_pages": {
+            "status": "inconclusive" if incomplete_reasons else "complete",
             "count": len(orphan_pages),
             "urls": orphan_pages[:15],
+            "reasons": incomplete_reasons,
         },
         "dead_end_pages": {
             "count": len(dead_ends),
@@ -341,7 +422,9 @@ def main():
     print(f"Avg internal links/page  : {report['avg_internal_links_per_page']}")
 
     orph = report["orphan_pages"]
-    if orph["count"]:
+    if orph["status"] == "inconclusive":
+        print(f"\nOrphan pages: not assessed ({'; '.join(orph['reasons'])})")
+    elif orph["count"]:
         print(f"\n🔴 Orphan Pages ({orph['count']}):")
         for u in orph["urls"][:5]:
             print(f"  - {u}")

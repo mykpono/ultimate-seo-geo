@@ -1133,6 +1133,9 @@ def generate_html(data: dict, scores: dict) -> str:
     art = data["sections"].get("article", {})
     ent = data["sections"].get("entity", {})
     lp = data["sections"].get("link_profile", {})
+    lp_orphans = lp.get("orphan_pages", {})
+    # A partial crawl cannot count orphans; "0" would read as a clean result.
+    lp_orphan_val = "—" if lp_orphans.get("status") == "inconclusive" else lp_orphans.get("count", 0)
     hf = data["sections"].get("hreflang", {})
     dc = data["sections"].get("duplicate_content", {})
     cq = data["sections"].get("content_quality", {})
@@ -1261,10 +1264,6 @@ def generate_html(data: dict, scores: dict) -> str:
     bl_broken = bl_summary.get("broken", 0)
 
     # Internal links details
-    orphan_rows = ""
-    for orphan in il.get("orphan_candidates", [])[:15]:
-        orphan_rows += f'<tr><td class="link-url">{orphan["url"][:80]}</td><td>{orphan["incoming_links"]}</td></tr>'
-
     il_pages = il.get("pages_crawled", 0)
     il_total = il.get("total_internal_links", 0)
     il_dist = il.get("link_distribution", {})
@@ -1657,11 +1656,9 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
                 <div class="summary-item"><div class="val">{il_pages}</div><div class="lbl">Pages Crawled</div></div>
                 <div class="summary-item"><div class="val">{il_total}</div><div class="lbl">Internal Links</div></div>
                 <div class="summary-item"><div class="val">{il_dist.get("avg", 0)}</div><div class="lbl">Avg Links/Page</div></div>
-                <div class="summary-item"><div class="val">{len(il.get("orphan_candidates", []))}</div><div class="lbl">Orphan Pages</div></div>
+                <div class="summary-item"><div class="val">{il.get("unique_pages_found", 0)}</div><div class="lbl">Pages Found</div></div>
             </div>
-            {f'<h3 style="margin:16px 0 8px;font-size:0.95rem;">Top Anchor Texts</h3>' + anchor_bars if anchor_bars else ''}
-            {f'<h3 style="margin:16px 0 8px;font-size:0.95rem;">Potential Orphan Pages</h3><table><thead><tr><th>URL</th><th>Incoming Links</th></tr></thead><tbody>{orphan_rows}</tbody></table>' if orphan_rows else ''}
-        </div>
+            {f'<h3 style="margin:16px 0 8px;font-size:0.95rem;">Top Anchor Texts</h3>' + anchor_bars if anchor_bars else ''}        </div>
     </div>
 
     <!-- Redirects -->
@@ -1807,7 +1804,7 @@ tr:hover td {{ background: rgba(99,102,241,0.03); }}
             <div class="summary-row">
                 <div class="summary-item"><div class="val">{lp.get('pages_crawled', '?')}</div><div class="lbl">Pages Crawled</div></div>
                 <div class="summary-item"><div class="val">{lp.get('avg_internal_links_per_page', '?')}</div><div class="lbl">Avg Links/Page</div></div>
-                <div class="summary-item"><div class="val">{lp.get('orphan_pages', {}).get('count', 0)}</div><div class="lbl">Orphan Pages</div></div>
+                <div class="summary-item"><div class="val">{lp_orphan_val}</div><div class="lbl">Orphan Pages</div></div>
                 <div class="summary-item"><div class="val">{lp.get('dead_end_pages', {}).get('count', 0)}</div><div class="lbl">Dead Ends</div></div>
             </div>
             {render_recommendations(lp)}
@@ -2133,14 +2130,6 @@ def export_xlsx(data: dict, scores: dict, output_path: str) -> str:
         ws3.cell(row=row, column=3, value=link.get("url", "")).border = thin_border
         ws3.cell(row=row, column=4, value=link.get("anchor_text", "")).border = thin_border
         ws3.cell(row=row, column=5, value="Yes" if link.get("is_internal") else "No").border = thin_border
-        row += 1
-    il = data["sections"].get("internal_links", {})
-    for orphan in il.get("orphan_candidates", []):
-        ws3.cell(row=row, column=1, value="Orphan").border = thin_border
-        ws3.cell(row=row, column=2, value="—").border = thin_border
-        ws3.cell(row=row, column=3, value=orphan.get("url", "")).border = thin_border
-        ws3.cell(row=row, column=4, value="—").border = thin_border
-        ws3.cell(row=row, column=5, value=str(orphan.get("incoming_links", 0))).border = thin_border
         row += 1
     _auto_width(ws3)
 
