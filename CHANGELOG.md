@@ -2,8 +2,35 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **The HTML report uses the Tobto design system in a Ledger layout.** `generate_report.py`'s
+  dashboard (gradient header, score rings, 23 collapsible emoji sections) is replaced by three parts:
+  a soft brand-blue band with the domain, overall score and grade, severity counts, and a "Start here" link to
+  the first critical or warning finding; a **findings ledger** filterable by severity, where each row
+  opens a card with the finding, fix, dependency, failure check and leading indicator; and a
+  **checks ledger** sorted weakest first, where each check's card holds that check's own tables.
+  Label/value grids replace big-number tiles, status reads as Strong, Needs work or Gap chips, and
+  the report carries no emoji. Light by default, dark with the OS or the theme button. Finding and
+  check cards have their own links (`#F03`, `#check-canonical`). The overall score calculation, XLSX
+  export and every function signature are unchanged.
+- **AI crawler rows name what robots.txt does.** Crawler statuses now read Allowed, Partial, Blocked
+  or Unmanaged. A fully blocked AI crawler used to carry a green "pass" badge; it is now amber,
+  because blocking a crawler removes the site from that engine's AI answers.
+
 ### Fixed
 
+- **The report no longer renders the audited site's content as markup.** Page titles, meta
+  descriptions, H1s, broken-link URLs and anchor text, and social tag values went into the HTML
+  unescaped, so a page title containing `<script>` ran inside the report. Everything the audited
+  site controls is now escaped.
+- **A check that failed or never ran is no longer shown as a failing score.** A rate-limited
+  PageSpeed run showed as a red 0/100. It now reads "Not measured"; a check that never ran reads
+  "Not run"; and hreflang, local signals and programmatic SEO read "Not applicable" when they do
+  not apply to the site.
+- **Print and PDF export show every section.** Section bodies opened only through JavaScript, which
+  WeasyPrint does not run, so an exported PDF showed headings over empty bodies. Every card is now
+  in the markup, and the script only hides unselected cards on screen.
 - **A page is no longer called an orphan because the crawl never reached the page linking to it.**
   A live audit of a 3,008-URL site reported "14 orphan pages" at **high** severity and "1,637
   potential orphans" beside it. Every one was produced by the crawl, not the site.

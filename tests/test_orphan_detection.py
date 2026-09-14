@@ -216,4 +216,4 @@ def test_report_shows_inconclusive_orphan_check_as_unchecked():
     html = generate_report.generate_html(data, generate_report.calculate_overall_score(data))
 
     assert "Potential Orphan Pages" not in html
-    assert '<div class="val">—</div><div class="lbl">Orphan Pages</div>' in html
+    assert "<dt>Orphan pages</dt><dd>—</dd>" in html
