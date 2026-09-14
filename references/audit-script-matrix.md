@@ -17,6 +17,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Open Graph / Twitter | §4 | `social_meta.py` | `python scripts/social_meta.py URL --json` |
 | Redirect chains | §4, §20 | `redirect_checker.py` | `python scripts/redirect_checker.py URL --json` |
 | llms.txt (non-Google engines; Google ignores it) | §3 | `llms_txt_checker.py` | `python scripts/llms_txt_checker.py URL --json` |
+| llms.txt links vs sitemap (stale / dead links; informational) | §3 | `llms_txt_checker.py` | `python scripts/llms_txt_checker.py URL --check-sitemap --json` |
 | Preferred sources opt-in (publishers) | §3 | `preferred_sources_checker.py` | `python scripts/preferred_sources_checker.py URL --json` |
 | GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |
 | Broken links (single page) | §9 | `broken_links.py` | `python scripts/broken_links.py URL --json` |

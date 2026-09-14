@@ -148,6 +148,9 @@ python scripts/ga4_report.py --property 123456789 --ai-referrals --json
 # Check llms.txt (non-Google engines only — Google Search ignores it)
 python scripts/llms_txt_checker.py https://example.com
 
+# llms.txt links the sitemap no longer lists, and which of them are dead (informational)
+python scripts/llms_txt_checker.py https://example.com --check-sitemap --json
+
 # Check the preferred sources opt-in (news/publisher sites)
 python scripts/preferred_sources_checker.py https://example.com
 
