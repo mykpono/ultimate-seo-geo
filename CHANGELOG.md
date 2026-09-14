@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.13.0] - 2026-09-14
+
+Every change here comes from reviewing the skill against another GEO auditor,
+[Auriti-Labs/geo-optimizer-skill](https://github.com/Auriti-Labs/geo-optimizer-skill), and keeping
+only what held up against vendor documentation and live sites.
+
+**Fixes.** The comparison first exposed defects in this skill's own scoring:
+- Blocking OAI-SearchBot raised the robots score.
+- A missing llms.txt lowered the overall score.
+- A check that never ran counted as 0, or as 100.
+
+**Additions.** The new checks follow AI visibility end to end:
+- whether AI crawlers are allowed (robots.txt roles), let through (a firewall test), and actually
+  visiting (server logs)
+- whether the site is cited (sampling with confidence intervals) and sends traffic (GA4 AI referrals)
+- whether a page hides instructions for AI systems
+- a CI gate on the full report
+
 ### Added
 
 - **`ai_bot_access.py` checks whether a firewall or CDN refuses AI crawlers that robots.txt allows.**
