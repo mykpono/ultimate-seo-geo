@@ -13,7 +13,7 @@
 |---|---|---|---|
 | **Google AI Overviews** | 2.5B+ users/month (I/O 2026) | 48% of queries (projected 70-80% by end 2026) | Citations from top-10 pages dropped from 76% to 38% in 2025 — ranking matters less |
 | **Google AI Mode** | 1B+ monthly users, 180+ countries | Separate search tab, powered by custom Gemini 2.5 | Zero organic blue links — AI citation is the ONLY visibility. Only 13.7% URL overlap with AI Overviews (Ahrefs, 540K query pairs) — treat as a **distinct citation engine**. |
-| **ChatGPT Search** | 900M weekly active users | All queries | 85% of retrieved pages are never cited; no referral traffic header |
+| **ChatGPT Search** | 900M weekly active users | All queries | 85% of retrieved pages are never cited; many outbound links carry `utm_source=chatgpt.com`, the rest read as Direct |
 | **Perplexity** | 500M+ queries/month | All queries | Sends trackable referral traffic in GA; cites Reddit (46.7%) and Wikipedia heavily |
 | **Bing Copilot** | Integrated in Bing | All queries | Bing index authority; supports IndexNow for faster indexing |
 
@@ -254,6 +254,8 @@ Roles follow each vendor's own crawler documentation (checked September 2026), a
 - **Training** crawlers and control tokens govern model training. Blocking them is a licensing choice, not a visibility defect.
 
 **Legacy tokens**: `anthropic-ai` and `Claude-Web` (Anthropic) and `FacebookBot` (Meta) no longer appear in their vendors' crawler documentation. Do not rely on rules that name only these tokens; name the current tokens above instead.
+
+**Firewalls and CDNs can refuse what robots.txt allows.** robots.txt is advice; a WAF or CDN bot rule is enforcement. A site can allow OAI-SearchBot in robots.txt and still answer it with a 403 or a JavaScript challenge, which a crawler that does not run JavaScript cannot pass. `scripts/ai_bot_access.py` fetches a URL as a browser and as each search and user-fetch crawler, then compares the responses. It sends the crawler's user agent from the audit machine, not from the vendor's published IP ranges, and a firewall that verifies bots by IP can treat the real crawler differently. Report a refusal as a **suspected** block and confirm it in the firewall or CDN logs before recommending a rule change. 429 and 5xx responses are inconclusive.
 
 **Key distinction**: Blocking `Google-Extended` prevents Gemini training but does NOT affect Googlebot, Google Search rankings, or AI Overviews. Blocking `GPTBot` blocks training but does NOT block `OAI-SearchBot` (search) or `ChatGPT-User` (browsing).
 

@@ -8,6 +8,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 |------------|---------|--------|-------------|
 | Full bundled report | §2, §21 | `generate_report.py` | `python scripts/generate_report.py https://example.com -o report.html` |
 | Robots.txt + AI crawlers | §4, §3 | `robots_checker.py` | `python scripts/robots_checker.py URL --json` |
+| AI crawler access through firewalls / CDNs (suspected blocks) | §3, §4 | `ai_bot_access.py` | `python scripts/ai_bot_access.py URL --json` |
 | Security headers | §4 | `security_headers.py` | `python scripts/security_headers.py URL --json` |
 | Open Graph / Twitter | §4 | `social_meta.py` | `python scripts/social_meta.py URL --json` |
 | Redirect chains | §4, §20 | `redirect_checker.py` | `python scripts/redirect_checker.py URL --json` |
@@ -44,7 +45,8 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | GSC performance query (Tier 1) | §10 | `gsc_query.py` | `python scripts/gsc_query.py sc-domain:example.com --dimension page --json` (site URL is positional, not a flag) |
 | GSC URL inspection export (Tier 1) | §10 | `gsc_export.py` | `python scripts/gsc_export.py --property SITE --sitemap-url URL` |
 | GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |
-| GA4 organic reporting (Tier 1) | §10 | `ga4_report.py` | `python scripts/ga4_report.py --property 123456789 --organic-only --json` |
+| GA4 organic reporting (Tier 2) | §10 | `ga4_report.py` | `python scripts/ga4_report.py --property 123456789 --organic-only --json` |
+| GA4 AI assistant referrals (a floor; untagged clicks read as Direct) | §10, §3 | `ga4_report.py` | `python scripts/ga4_report.py --property 123456789 --ai-referrals --json` |
 | Finding deduplication | §2 | `finding_verifier.py` | `python scripts/finding_verifier.py --findings-json references/finding-verifier-example.json --json` (see `references/finding-verifier-context-example.json` for optional `--context-json`) |
 
 ## Utilities (supporting tools)

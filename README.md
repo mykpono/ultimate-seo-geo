@@ -235,7 +235,7 @@ ultimate-seo-geo/
 │   ├── entity-optimization.md  Entity / Knowledge Graph checklist
 │   ├── ...and 14 more topical files
 │
-├── scripts/               ← 46 bundled Python scripts
+├── scripts/               ← 51 bundled Python scripts
 │   ├── generate_report.py    Full-site HTML/XLSX/PDF dashboard (runs all scripts)
 │   ├── validate_schema.py    JSON-LD validation
 │   ├── robots_checker.py     AI crawler access check
@@ -247,7 +247,7 @@ ultimate-seo-geo/
 │   ├── maps_checker.py       Advanced local SEO / GBP audit
 │   ├── pdf_charts.py         SVG chart generation for PDF reports
 │   ├── pdf_template.py       Professional A4 PDF template
-│   ├── ...and 35 more
+│   ├── ...and 40 more
 │
 └── evals/                 ← 15 scenarios, 63 assertions + golden fixtures
     ├── evals.json
@@ -277,7 +277,7 @@ When someone runs `/plugin marketplace add mykpono/ultimate-seo-geo`, the tool r
 
 ## Scripts
 
-**Bundled in the plugin:** **46** diagnostic scripts. **`check-plugin-sync.py`**, **`check_github_release.py`**, and **`check_version_sync.py`** are repo-only for CI and are not included in the bundle. Python 3.8+; install dependencies with:
+**Bundled in the plugin:** **51** diagnostic scripts. **`check-plugin-sync.py`**, **`check_github_release.py`**, and **`check_version_sync.py`** are repo-only for CI and are not included in the bundle. Python 3.8+; install dependencies with:
 
 ```bash
 pip install -r requirements.txt
@@ -303,6 +303,7 @@ python scripts/generate_report.py https://example.com --output seo-report.html
 | `meta_lengths_checker.py` | Title / meta description / H1 lengths (`--url` or local HTML) |
 | `validate_schema.py` | Validates JSON-LD blocks (pure stdlib) |
 | `robots_checker.py` | robots.txt rules + AI crawler allow/block status |
+| `ai_bot_access.py` | Suspected firewall / CDN blocks: fetches a URL as a browser and as each AI crawler |
 | `pagespeed.py` | Core Web Vitals via PageSpeed Insights API |
 | `hreflang_checker.py` | All 8 hreflang rules + bidirectional return tags |
 | `internal_links.py` | Link graph, orphan pages, anchor text, crawl depth |
@@ -334,7 +335,7 @@ python scripts/generate_report.py https://example.com --output seo-report.html
 | `crux_history.py` | CrUX History API — historical CWV data (Tier 0) |
 | `gsc_query.py` | Google Search Console queries (Tier 1, OAuth) |
 | `gsc_export.py` | GSC data export (Tier 1, OAuth) |
-| `ga4_report.py` | GA4 organic traffic data (Tier 2, OAuth) |
+| `ga4_report.py` | GA4 organic and AI-assistant referral traffic (Tier 2, OAuth) |
 | `pdf_charts.py` | SVG chart generation for PDF reports (module) |
 | `pdf_template.py` | Professional A4 PDF template with cover + TOC (module) |
 | `render_page.py` | SPA-aware rendering (Playwright optional) |

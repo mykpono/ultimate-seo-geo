@@ -12,6 +12,7 @@ Credentials (any one):
 Usage:
     python scripts/ga4_report.py --property 123456789 --days 28 --json
     python scripts/ga4_report.py --property 123456789 --organic-only --json
+    python scripts/ga4_report.py --property 123456789 --ai-referrals --json
     python scripts/ga4_report.py --property 123456789 --top-landing 20 --json
     python scripts/ga4_report.py --property 123456789 --metrics sessions,users --json
 """
@@ -21,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import date, timedelta
 
@@ -48,6 +50,60 @@ VALID_METRICS = [
 ]
 
 DEFAULT_METRICS = ["sessions", "totalUsers", "engagementRate", "bounceRate", "screenPageViews"]
+
+# AI assistant hostnames as GA4 records them in sessionSource. ChatGPT also tags
+# many outbound links with utm_source=chatgpt.com, which lands in the same
+# dimension. Clicks with neither a referrer nor a UTM (app clicks, copied links)
+# read as Direct and cannot be recovered here, so these totals are a floor.
+AI_REFERRAL_SOURCES = {
+    "chatgpt.com": "ChatGPT",
+    "chat.openai.com": "ChatGPT",
+    "perplexity.ai": "Perplexity",
+    "claude.ai": "Claude",
+    "gemini.google.com": "Gemini",
+    "copilot.microsoft.com": "Microsoft Copilot",
+    "chat.mistral.ai": "Mistral Le Chat",
+    "chat.deepseek.com": "DeepSeek",
+    "meta.ai": "Meta AI",
+}
+
+# A host or any subdomain of it (www.perplexity.ai), never a lookalike
+# (notchatgpt.com, chatgpt.com.example.net). GA4 evaluates it as RE2.
+AI_REFERRAL_PATTERN = r"^(.+\.)?(" + "|".join(re.escape(h) for h in AI_REFERRAL_SOURCES) + r")$"
+
+AI_REFERRAL_LIMIT = (
+    "Counts only AI clicks that carried a referrer or utm_source. App clicks and copied links "
+    "arrive without either and read as Direct, so treat these numbers as a floor."
+)
+
+
+def ai_engine_for(source: str | None) -> str | None:
+    """Name the AI assistant a GA4 sessionSource belongs to, or None."""
+    host = (source or "").strip().lower()
+    for domain, engine in AI_REFERRAL_SOURCES.items():
+        if host == domain or host.endswith("." + domain):
+            return engine
+    return None
+
+
+def ai_referral_filter_spec() -> dict:
+    """The GA4 dimension filter for AI referrals, as plain values.
+
+    match_type names the Data API StringFilter.MatchType member; the API spells
+    it FULL_REGEXP (not FULL_REGEX).
+    """
+    return {"field_name": "sessionSource", "match_type": "FULL_REGEXP", "value": AI_REFERRAL_PATTERN}
+
+
+def summarize_ai_rows(rows: list[dict]) -> dict:
+    """Tag each row with its AI engine and total sessions per engine."""
+    by_engine = {}
+    for row in rows:
+        engine = ai_engine_for(row.get("sessionSource"))
+        row["ai_engine"] = engine
+        if engine and isinstance(row.get("sessions"), int):
+            by_engine[engine] = by_engine.get(engine, 0) + row["sessions"]
+    return dict(sorted(by_engine.items(), key=lambda kv: -kv[1]))
 
 
 def _load_ga4_client(property_id: str):
@@ -109,6 +165,7 @@ def run_ga4_report(
     dimensions: list[str],
     organic_only: bool = False,
     row_limit: int = 100,
+    ai_referrals: bool = False,
 ) -> dict:
     """
     Run a GA4 Data API report and return structured results.
@@ -139,6 +196,17 @@ def run_ga4_report(
                 string_filter=Filter.StringFilter(
                     value="Organic Search",
                     match_type=Filter.StringFilter.MatchType.EXACT,
+                ),
+            )
+        )
+    elif ai_referrals:
+        spec = ai_referral_filter_spec()
+        dimension_filter = FilterExpression(
+            filter=Filter(
+                field_name=spec["field_name"],
+                string_filter=Filter.StringFilter(
+                    value=spec["value"],
+                    match_type=getattr(Filter.StringFilter.MatchType, spec["match_type"]),
                 ),
             )
         )
@@ -187,17 +255,22 @@ def run_ga4_report(
             except (ValueError, TypeError):
                 totals[metric_name] = val
 
-    return {
+    result = {
         "property_id": property_id,
         "start_date": start_date,
         "end_date": end_date,
         "dimensions": dimensions,
         "metrics": metrics,
         "organic_only": organic_only,
+        "ai_referrals": ai_referrals,
         "row_count": len(rows),
         "rows": rows,
         "totals": totals,
     }
+    if ai_referrals:
+        result["sessions_by_ai_engine"] = summarize_ai_rows(rows)
+        result["limits"] = [AI_REFERRAL_LIMIT]
+    return result
 
 
 def print_human(result: dict) -> None:
@@ -210,6 +283,11 @@ def print_human(result: dict) -> None:
     print(f"Date range: {result['start_date']} to {result['end_date']}")
     if result.get("organic_only"):
         print("Filter: Organic Search only")
+    if result.get("ai_referrals"):
+        print("Filter: AI assistant referrals")
+        for engine, sessions in (result.get("sessions_by_ai_engine") or {}).items():
+            print(f"  {engine}: {sessions:,} sessions")
+        print(f"Note: {AI_REFERRAL_LIMIT}")
     print("=" * 70)
 
     rows = result.get("rows", [])
@@ -278,6 +356,11 @@ def main():
         help="Filter to Organic Search traffic only",
     )
     parser.add_argument(
+        "--ai-referrals", action="store_true",
+        help="Sessions referred by AI assistants (ChatGPT, Perplexity, Claude, Gemini, Copilot and others), "
+             "grouped by source and landing page. A floor: clicks without a referrer or UTM read as Direct.",
+    )
+    parser.add_argument(
         "--top-landing", type=int,
         help="Top N landing pages by sessions",
     )
@@ -301,6 +384,8 @@ def main():
         help="Output as JSON",
     )
     args = parser.parse_args()
+    if args.ai_referrals and (args.organic_only or args.top_landing):
+        parser.error("--ai-referrals cannot be combined with --organic-only or --top-landing")
 
     end = date.today() - timedelta(days=1)
     if args.end_date:
@@ -318,21 +403,26 @@ def main():
             print(f"Valid metrics: {', '.join(VALID_METRICS)}")
             sys.exit(1)
 
-    dimension = args.dimension
+    dimensions = [args.dimension]
     row_limit = args.limit
 
     if args.top_landing:
-        dimension = "landingPage"
+        dimensions = ["landingPage"]
         row_limit = args.top_landing
+    if args.ai_referrals:
+        dimensions = ["sessionSource", "landingPage"]
+        if "sessions" not in metrics:
+            metrics = ["sessions"] + metrics
 
     result = run_ga4_report(
         property_id=args.property,
         start_date=start.isoformat(),
         end_date=end.isoformat(),
         metrics=metrics,
-        dimensions=[dimension],
+        dimensions=dimensions,
         organic_only=args.organic_only,
         row_limit=row_limit,
+        ai_referrals=args.ai_referrals,
     )
 
     if args.json:
