@@ -7,6 +7,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Audit area | SKILL § | Script | CLI example |
 |------------|---------|--------|-------------|
 | Full bundled report | §2, §21 | `generate_report.py` | `python scripts/generate_report.py https://example.com -o report.html` |
+| CI gate on the full report (JSON summary, exit codes) | §21, §22 | `generate_report.py` | `python scripts/generate_report.py URL --format none --json summary.json --fail-under 70 --fail-on critical` |
 | Robots.txt + AI crawlers | §4, §3 | `robots_checker.py` | `python scripts/robots_checker.py URL --json` |
 | AI crawler access through firewalls / CDNs (suspected blocks) | §3, §4 | `ai_bot_access.py` | `python scripts/ai_bot_access.py URL --json` |
 | AI crawler visits in server logs (verified against published IP ranges) | §3, §11 | `ai_bot_logs.py` | `python scripts/ai_bot_logs.py access.log --verify-ips --json` |
