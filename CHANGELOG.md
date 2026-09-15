@@ -2,7 +2,20 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **`check_github_release.py` no longer passes a release whose tag or notes are wrong.** v1.13.0
+  was published as Latest with its tag on the commit before the version bump (the tagged tree
+  declared 1.12.9) and with empty notes, and the checker said "published ✓": it only asked whether
+  a non-draft release existed. It now checks through the GitHub API, not local tags:
+  - the notes are not empty
+  - the tag's commit on GitHub declares the version in every file `check_tag_matches_version.py`
+    reads, following annotated tags, and `CHANGELOG.md` has the version's section
+
+  Notes that lack the CHANGELOG section's first line are a warning. A check that cannot complete
+  (API error, rate limit) exits 1 instead of passing; `GITHUB_TOKEN` / `GH_TOKEN` are used when
+  set. RELEASE.md step 6a gains a guard that stops tagging until the release PR is merged and
+  pulled.
 
 ## [1.13.0] - 2026-09-14
 

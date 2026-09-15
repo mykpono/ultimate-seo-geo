@@ -20,8 +20,8 @@ gh release create vX.Y.Z \
 
 **Verify immediately after:**
 ```bash
-python3 scripts/check_github_release.py   # must exit 0
-gh release list --limit 3                 # v1.8.0 must appear as Latest
+python3 scripts/check_github_release.py   # must exit 0: published, notes not empty, tag on GitHub declares the version
+gh release list --limit 3                 # vX.Y.Z must appear as Latest
 ```
 
 ---
@@ -340,6 +340,15 @@ git push origin main
 
 The Claude.ai web app Marketplace reads from GitHub Releases, not commits or tags alone. **Without a published Release, the Marketplace will NOT serve the new version.**
 
+**Only after the release PR is merged and pulled.** Tagging before that put v1.12.2, v1.12.3, v1.12.7 and v1.13.0 on the commit before the version bump; v1.13.0 also shipped with empty notes, because the CHANGELOG had no `[X.Y.Z]` section yet. This guard fails until the bump is in your checkout:
+
+```bash
+git checkout main && git pull --ff-only
+grep -q '^## \[X.Y.Z\]' CHANGELOG.md && grep -q '^version: X.Y.Z' SKILL.md || { echo "release PR not merged and pulled — stop"; exit 1; }
+git tag vX.Y.Z && git push origin vX.Y.Z
+python3 scripts/check_tag_matches_version.py vX.Y.Z
+```
+
 ```bash
 gh release create vX.Y.Z \
   --title "vX.Y.Z — summary" \
@@ -395,8 +404,10 @@ print(f'Marketplace cache version: {p[\"version\"]}')
 python3 scripts/check_github_release.py
 ```
 
-- **Exit 0** = GitHub Release is published → Marketplace is live.
-- **Exit 1** = Release missing → go back to step 6a.
+It checks through the GitHub API, not your local tags: the release exists and is not a draft, its notes are not empty, and the tag's commit on GitHub declares the version in every file `check_tag_matches_version.py` reads, with a CHANGELOG section. Notes that do not contain the CHANGELOG section's first line are a warning only. Set `GITHUB_TOKEN` or `GH_TOKEN` if the API rate limit is hit.
+
+- **Exit 0** = GitHub Release is published, has notes, and its tag points at the version bump → Marketplace is live.
+- **Exit 1** = a problem, printed with its fix: missing or draft release → step 6a; empty notes → `gh release edit`; tag on the wrong commit → `git tag -f vX.Y.Z <release-merge-sha> && git push origin -f vX.Y.Z`. A check that could not complete also exits 1.
 
 ---
 
