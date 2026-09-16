@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`report_lint.py` checks a written audit report against the § 2 contract.** The report is the one
+  thing the agent writes by hand, and nothing checked it.
+  - **Structure:** title and metadata line, the Health Score section, the required sections.
+  - **Findings:** every documented field, severity and confidence on their scales, and each finding
+    under the section its severity belongs to (a High under Critical is an error).
+  - **Score:** a /100 needs a `generate_report.py` source and never the retired deduction formula;
+    "not scored" needs a reason.
+  - **With `--summary`:** the headline score, category table and measured-check count must match the
+    summary, and Core Web Vitals or backlink numbers are errors when `pagespeed` or `link_profile`
+    was not measured.
+  - Recognises full audits, GEO audits and Competitive Mode reports. Tolerates bold or bulleted
+    labels, blank lines between fields, multi-line fixes and a reason after the confidence label.
+    Exit 1 on errors (or warnings with `--strict`); `--json`; `--excerpt` for partial reports.
+  - § 2, § 19, SKILL.md and AGENTS.md run it before delivering an audit; the § 2 command now also
+    writes `--json summary.json`.
+- **The GEO worked example in `audit-output-example.md` has every mandatory finding field.** Its
+  Critical and High findings lacked Falsifiability, Leading Indicator, First-Principle Observation
+  and Dependency; the linter found it on its first run.
+
 ### Changed
 
 - **The `generate_report.py --json` summary is `schema_version` 2, the first step toward one report

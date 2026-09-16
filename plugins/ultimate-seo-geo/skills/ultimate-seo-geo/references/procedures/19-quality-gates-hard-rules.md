@@ -6,7 +6,7 @@ Global rules — apply across all sections.
 
 ### Audit Self-Evaluation Pass (Evaluator-Optimizer)
 
-After generating any Mode 1 audit output — before delivering it — run this internal evaluation pass. The purpose is to catch quality failures before the user sees them. If any criterion fails, revise before responding.
+After generating any Mode 1 audit output — before delivering it — run this internal evaluation pass. In a bash-capable environment, start with `python scripts/report_lint.py report.md --summary summary.json`: it checks criteria 1, 3, 4 and 12 mechanically, and criterion 2 for Core Web Vitals and backlink numbers (§ 2, Lint before delivering). A clean lint does not replace the judgment calls below. The purpose is to catch quality failures before the user sees them. If any criterion fails, revise before responding.
 
 | # | Criterion | Pass Signal | Fail Action |
 |---|---|---|---|

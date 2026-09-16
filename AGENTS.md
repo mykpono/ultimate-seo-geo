@@ -149,7 +149,7 @@ Edge cases and ambiguous requests: `references/procedures/01-request-detection-r
 
 ## 2. Full Site Audit
 
-**In a bash-capable environment:** Run `python scripts/generate_report.py https://example.com --output report.html` first. It runs the bundled analysis pipeline (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap, local signals, IndexNow, on-page parse, readability, article SEO, schema validation, image coverage). Then use `finding_verifier.py` to deduplicate.
+**In a bash-capable environment:** Run `python scripts/generate_report.py https://example.com --output report.html --json summary.json` first. It runs the bundled analysis pipeline (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap, local signals, IndexNow, on-page parse, readability, article SEO, schema validation, image coverage). Then use `finding_verifier.py` to deduplicate.
 
 ### Evidence Integrity
 
@@ -429,6 +429,8 @@ Detail: `references/procedures/17-monthly-maintenance.md`, `references/procedure
 Condensed below; full rule text and rationale in `references/procedures/19-quality-gates-hard-rules.md`.
 
 ### Audit Self-Evaluation (run before delivering any audit)
+
+With a shell, first run `python scripts/report_lint.py report.md --summary summary.json` and fix every error.
 
 | # | Check | Fail Action |
 |---|---|---|

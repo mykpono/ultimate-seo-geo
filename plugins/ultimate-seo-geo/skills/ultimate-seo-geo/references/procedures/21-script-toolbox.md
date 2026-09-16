@@ -30,7 +30,7 @@ Orchestrator (this skill)
 ├── Worker A: python scripts/robots_checker.py   → JSON findings
 ├── Worker B: python scripts/sitemap_checker.py  → JSON findings
 ├── Worker C: python scripts/security_headers.py → JSON findings
-└── Synthesize: merge all JSON → run finding_verifier.py → score
+└── Synthesize: merge all JSON → run finding_verifier.py → write report (not scored unless generate_report.py ran) → report_lint.py
 ```
 
 **Hard constraints:** Never delegate `generate_report.py` and individual script workers for the same URL simultaneously — they overlap and produce duplicate findings. Use one or the other. This pattern follows Anthropic's [Orchestrator-Workers pattern](https://github.com/anthropics/claude-cookbooks/blob/main/patterns/agents/orchestrator_workers.ipynb).
