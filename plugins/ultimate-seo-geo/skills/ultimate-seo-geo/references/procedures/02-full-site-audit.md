@@ -13,7 +13,7 @@
 | LCP / INP / CLS / performance score | `pagespeed.py` ran successfully, or user pasted PageSpeed Insights / CrUX output |
 | Backlink count or referring domains | `link_profile.py` ran and returned data |
 | Organic traffic or impression numbers | GSC / GA4 access confirmed and data retrieved |
-| Health Score /100 | Internal Mode + minimum 5 scripts ran with data |
+| Health Score /100 | Internal Mode + `generate_report.py` measured at least 5 weighted checks |
 | Thin content finding | `readability.py` + `duplicate_content.py` both ran |
 | Schema errors or validation status | `validate_schema.py` ran against the page |
 | Schema "not found" on a CMS site | Confirmed via Rich Results Test or browser JS console — `web_fetch`/`curl`/raw HTML cannot detect JS-injected schema (Yoast, RankMath, AIOSEO inject via client-side JS) |
@@ -40,24 +40,28 @@
 | **Agency / portfolio** | § 8 competitors, § 9 authority | `link_profile.py` + full report |
 
 3. **Run all audit modules** in sequence: On-Page SEO · Content/E-E-A-T (§ 6) · Technical (§ 4) · Schema (§ 5) · Core Web Vitals (§ 4) · GEO/AI Search (§ 3) · Links (§ 9) · Images (§ 13) · Crawl & Indexation (§ 11) · Keyword Gaps (§ 7) · Local SEO if applicable (§ 12) · Analytics setup (§ 10).
-4. **Score** — SEO Health Score using weights below.
+4. **Score** — the SEO Health Score is `overall` from the `generate_report.py --json` summary, reported unchanged; category rows come from its `group_scores` (see Health Score below). Never compute a score by hand.
 5. **Assign confidence level**: High (8+ pages fetched + analytics access) / Medium (4–7 pages, no analytics) / Low (1–3 pages).
 6. **Audit assumptions** — Before assembling recommendations, explicitly list the assumptions underpinning the audit (e.g., "homepage is representative of site quality", "low traffic pages = low value", "CMS renders server-side", "no recent algorithm penalty"). Surface these in the report's **Assumptions Audit** section so the user can reject or correct them. Revise any findings that depend on a shaky assumption.
 7. **Prioritize findings** — Critical → High → Medium → Low (see Severity Scale), then tag quick wins. Apply the PERCEIVE → ANALYZE → VALIDATE → ACT framework (`references/thinking-framework.md`) to ensure each finding is grounded, falsifiable, and dependency-mapped.
 
 ### SEO Health Score Weights
 
-| Category | Weight |
-|---|---|
-| Content Quality / E-E-A-T | 22% |
-| Technical SEO | 18% |
-| On-Page SEO (titles, meta, URLs) | 15% |
-| Link Authority | 12% |
-| Schema / Structured Data | 10% |
-| Core Web Vitals | 8% |
-| AI Search Readiness (GEO) | 8% |
-| Images | 4% |
-| Local SEO (if applicable) | 3% |
+There is one Health Score: the one `generate_report.py` computes. It is the weighted mean of its check scores; each check belongs to one category. The table is each category's share when every check is measured:
+
+| Category | Weight | Checks |
+|---|---|---|
+| Technical SEO | 36% | security, robots, broken_links, canonical, hreflang, redirects, sitemap, indexnow_probe |
+| Content quality / E-E-A-T | 18% | readability, content_quality, duplicate_content, programmatic_seo |
+| On-page SEO | 12% | onpage, social |
+| Link authority | 12% | internal_links, link_profile |
+| Core Web Vitals | 10% | pagespeed |
+| Schema / structured data | 4% | schema_validation |
+| AI search readiness (GEO) | 4% | entity (llms.txt, AI crawler firewall and hidden-instruction checks are shown but not weighted) |
+| Images | 2% | image_seo |
+| Local SEO | 2% | local_signals (only for local businesses) |
+
+A check that errors, is rate-limited, or does not apply drops out, and the other categories' shares grow. Report the actual shares from `group_scores[].share`, not this table. The weights live in `CHECK_WEIGHTS` in `scripts/generate_report.py`; `tests/test_health_score_contract.py` fails if this table drifts from them.
 
 For the on-page element checklist (title tags, meta descriptions, H1, URLs, canonicals), see `references/technical-checklist.md`.
 
@@ -108,7 +112,10 @@ Dependency: [what other findings this blocks, enables, or depends on — use fin
 - **Likely**: Strong inference from partial data (2–3 signals)
 - **Hypothesis**: Pattern-based assumption; limited page access
 
-**Scoring formula:** `base_score = (positive_signals / (positive_signals + deficit_signals)) × 100`. Deduct by finding severity: **Critical −15, High −8, Medium −3, Low −1** (matches § 19 rule 3, which validates the score against this schedule).
+### Health Score
+
+- **Scored:** `generate_report.py` ran and measured at least 5 weighted checks (`measured_categories` ≥ 5). Report `overall` as the score, list what was not measured, and fill the category table from `group_scores` (score, share, status). Do not adjust the number for findings: the checks already scored them.
+- **Not scored:** it did not run (no shell, network blocked, parallel workers only), or measured fewer than 5 weighted checks. Write `SEO Health Score: not scored`, give the reason, and fill the category table with status only (Strong / Needs work / Gap / Not measured), each backed by findings. Never estimate a number.
 
 ### Audit Output Format
 
@@ -119,12 +126,17 @@ Use this exact template:
 Date: [date] | Business Type: [type] | Audited Pages: [N] | Confidence: High/Medium/Low
 
 ## SEO Health Score: XX/100
-[chain-of-thought: positive_signals=N, deficit_signals=N, base=XX, Critical −15×N, High −8×N, Medium −3×N, Low −1×N = final]
+Source: generate_report.py — N weighted checks measured; not measured: [checks, or "none"]
 
-| Category | Score | Status |
-|---|---|---|
-| Content Quality / E-E-A-T | XX/100 | ✅/⚠️/❌ |
+| Category | Score | Share | Status |
+|---|---|---|---|
+| Technical SEO | XX/100 | XX% | Strong / Needs work / Gap / Not measured |
 ...
+
+[When not scored, replace the two lines above with:
+ ## SEO Health Score: not scored
+ Reason: [generate_report.py did not run / only N weighted checks measured]
+ and drop the Score and Share columns.]
 
 ## Executive Summary
 [2–3 sentences: biggest strength, biggest gap, single highest-impact action]

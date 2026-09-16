@@ -17,9 +17,25 @@
   - **Groups:** every check maps to one of the nine § 2 report categories (`group` on checks and
     findings, `groups` at the top).
   - **Migrating from v1:** read `level` where you read `severity`; `counts.warning` is `counts.medium`.
+- **One Health Score: the one `generate_report.py` computes.** The § 2 template, AGENTS.md and the
+  ChatGPT instructions taught a second formula (signal ratio minus Critical −15 / High −8 / Medium −3
+  / Low −1) with category weights the script never used (Content 22%, Technical 18%, …), so an agent
+  that ran the script and followed the template could report two scores for one site.
+  - **Weights:** the docs now print the script's actual category shares, derived from the new
+    `CHECK_WEIGHTS` constant: Technical 36%, Content 18%, On-page 12%, Links 12%, Core Web Vitals 10%,
+    Schema 4%, GEO 4%, Images 2%, Local 2%. No site's score changes.
+  - **Summary:** a new `group_scores` rolls measured checks up into the nine categories (score, share
+    of measured weight, status, checks, unmeasured), so the template's category table comes straight
+    from the script and `overall` is their share-weighted mean.
+  - **No script, no number:** when `generate_report.py` did not run or measured fewer than 5 weighted
+    checks, the report says "SEO Health Score: not scored" with the reason and gives category status
+    only. The deduction formula is removed everywhere; § 19 rule 3 now checks the score against the
+    summary.
+  - `tests/test_health_score_contract.py` fails if the documented weights drift from `CHECK_WEIGHTS`,
+    if the worked example's table does not roll up to its headline, or if the deduction formula
+    reappears in either tree.
 - **§ 2 audit template:** a Severity Scale table matching the summary, a Low Priority section, and
-  Quick Wins / Opportunity Signals as tags rather than severities. The Health Score formula is
-  unchanged.
+  Quick Wins / Opportunity Signals as tags rather than severities.
 
 ### Fixed
 

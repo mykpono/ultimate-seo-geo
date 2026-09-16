@@ -100,6 +100,7 @@ python scripts/generate_report.py https://staging.example.com --format none --js
   - `severity_scale`: `["critical", "high", "medium", "low", "info"]`, strongest first
   - `groups`: the nine report categories of § 2 (`content`, `technical`, `on_page`, `links`, `schema`, `performance`, `geo`, `images`, `local`)
   - `categories`: per check, `label`, `group`, `score` (`null` when unmeasured or not applicable), `weight` and `status`
+  - `group_scores`: per report category, `score` (weighted mean of its measured checks, `null` if none), `share` (percent of the measured weight, so `overall` is the share-weighted mean of the group scores, to within a point of rounding), `status` (Strong / Needs work / Gap / Not measured / Not applicable), `checks` and `unmeasured`. This is the category table of the § 2 audit template
   - `counts`: findings per severity on the full scale
   - `findings`, strongest first. Each has the same fields the § 2 Finding Format uses, so agent-written findings can share the shape:
 

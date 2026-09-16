@@ -160,7 +160,7 @@ Do not state metrics unless the corresponding script ran:
 | LCP / INP / CLS | `pagespeed.py` ran or user provided PSI output |
 | Backlink count | `link_profile.py` ran |
 | Organic traffic numbers | GSC / GA4 access confirmed |
-| Health Score /100 | Internal Mode + minimum 5 scripts ran |
+| Health Score /100 | Internal Mode + `generate_report.py` measured ≥5 weighted checks |
 | Schema errors | `validate_schema.py` ran |
 | Schema "not found" on CMS site | Confirmed via Rich Results Test — raw HTML cannot detect JS-injected schema |
 
@@ -168,17 +168,19 @@ Do not state metrics unless the corresponding script ran:
 
 ### SEO Health Score Weights
 
+Category shares of the `generate_report.py` score when every check is measured (§ 2 lists the checks):
+
 | Category | Weight |
 |---|---|
-| Content Quality / E-E-A-T | 22% |
-| Technical SEO | 18% |
-| On-Page SEO | 15% |
-| Link Authority | 12% |
-| Schema / Structured Data | 10% |
-| Core Web Vitals | 8% |
-| AI Search Readiness (GEO) | 8% |
-| Images | 4% |
-| Local SEO (if applicable) | 3% |
+| Technical SEO | 36% |
+| Content quality / E-E-A-T | 18% |
+| On-page SEO | 12% |
+| Link authority | 12% |
+| Core Web Vitals | 10% |
+| Schema / structured data | 4% |
+| AI search readiness (GEO) | 4% |
+| Images | 2% |
+| Local SEO | 2% |
 
 ### Finding Format
 
@@ -200,7 +202,7 @@ First-Principle Observation: [the raw observable fact that triggered this findin
 Dependency: [what other findings this blocks, enables, or depends on]
 ```
 
-**Scoring:** `base_score = (positive_signals / (positive_signals + deficit_signals)) × 100`. Deduct by finding severity: **Critical −15, High −8, Medium −3, Low −1** (matches § 19 rule 3, which validates the score against this schedule).
+**Scoring:** the Health Score is `overall` from `generate_report.py --json`, unchanged; category rows come from `group_scores`. If it did not run or measured <5 weighted checks, write "not scored" with the reason and give category status only. Never estimate a score.
 
 ### Audit Output Template
 
@@ -208,11 +210,12 @@ Dependency: [what other findings this blocks, enables, or depends on]
 # SEO Audit Report — [site.com]
 Date: [date] | Business Type: [type] | Audited Pages: [N] | Confidence: High/Medium/Low
 
-## SEO Health Score: XX/100
+## SEO Health Score: XX/100  (or: not scored — [reason])
+Source: generate_report.py — N weighted checks measured; not measured: [list]
 
-| Category | Score | Status |
-|---|---|---|
-| Content Quality / E-E-A-T | XX/100 | ✅/⚠️/❌ |
+| Category | Score | Share | Status |
+|---|---|---|---|
+| Technical SEO | XX/100 | XX% | Strong / Needs work / Gap / Not measured |
 ...
 
 ## Executive Summary
@@ -431,7 +434,7 @@ Condensed below; full rule text and rationale in `references/procedures/19-quali
 |---|---|---|
 | 1 | Every Critical/High finding has Evidence from actual data | Add evidence or downgrade severity |
 | 2 | No fabricated metrics (PSI/CrUX numbers only if script ran) | Strip numbers; say "not measured" |
-| 3 | Health Score supported by findings distribution | Recalculate |
+| 3 | Health Score is `generate_report.py`'s `overall`, unmodified | Use its numbers or "not scored" |
 | 4 | Finding/Evidence/Impact/Fix/Confidence/Falsifiability/Leading Indicator all present | Add missing fields |
 | 5 | No duplicate findings | Merge duplicates |
 | 6 | Scope respected (Internal vs. Competitive) | Re-label |

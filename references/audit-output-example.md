@@ -12,8 +12,20 @@
 # SEO Audit Report — greenleaf.io
 Date: 2026-03-15 | Business Type: SaaS | Audited Pages: 8 | Confidence: Medium
 
-## SEO Health Score: 44/100
-positive_signals=14, deficit_signals=9, base=61; deductions: Critical −15×0, High −8×2, Medium −3×0, Low −1×1 = 44
+## SEO Health Score: 60/100
+Source: generate_report.py — 20 weighted checks measured; not measured: none. Local SEO not applicable.
+
+| Category | Score | Share | Status |
+|---|---|---|---|
+| Technical SEO | 72/100 | 36.8% | Needs work |
+| Content quality / E-E-A-T | 58/100 | 18.4% | Needs work |
+| On-page SEO | 61/100 | 12.0% | Needs work |
+| Link authority | 70/100 | 12.0% | Needs work |
+| Core Web Vitals | 38/100 | 10.4% | Gap |
+| AI search readiness (GEO) | 40/100 | 4.0% | Gap |
+| Schema / structured data | 0/100 | 4.0% | Gap |
+| Images | 85/100 | 2.4% | Strong |
+| Local SEO | — | 0% | Not applicable |
 
 ## 🟠 High Priority
 
