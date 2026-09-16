@@ -83,15 +83,117 @@ def test_summary_contract():
     d = data(pagespeed={"error": "HTTP 429"})
     summary = gr.build_summary(d, gr.calculate_overall_score(d))
 
-    assert summary["schema_version"] == 1
+    assert summary["schema_version"] == 2
     assert (summary["overall"], summary["grade"]) == (90, "A+")
+    assert summary["severity_scale"] == ["critical", "high", "medium", "low", "info"]
     assert summary["categories"]["pagespeed"] == {
-        "label": "Performance (Core Web Vitals)", "score": None, "weight": 13, "status": "Not measured"}
+        "label": "Performance (Core Web Vitals)", "group": "performance", "score": None, "weight": 13,
+        "status": "Not measured"}
     assert summary["categories"]["security"]["status"] == "Strong"
-    assert summary["counts"] == {"critical": 1, "warning": 1, "info": 0}
-    assert summary["findings"][0] == {"id": "F01", "severity": "critical", "section": "security",
-                                      "finding": "Strict-Transport-Security header missing", "fix": ""}
+    assert summary["counts"] == {"critical": 1, "high": 0, "medium": 1, "low": 0, "info": 0}
+    assert summary["findings"][0] == {
+        "id": "F01", "severity": "critical", "level": "critical", "section": "security", "group": "technical",
+        "finding": "Strict-Transport-Security header missing", "evidence": None, "impact": None, "fix": "",
+        "confidence": None, "falsifiability": None, "leading_indicator": None, "dependency": None,
+        "source": "script:security", "tags": []}
+    assert summary["findings"][1]["severity"] == "medium" and summary["findings"][1]["level"] == "warning"
     json.dumps(summary)  # serialisable as-is
+
+
+# --- v2 severity scale and finding fields --------------------------------------------
+
+# The v1 summary collapsed script severities into three levels. v2 keeps the
+# script's own severity, but "level" must stay exactly what v1 called severity,
+# or --fail-on and the annotations would silently change for existing pipelines.
+V1_LEVELS = {"critical": "critical", "high": "critical", "warning": "warning", "medium": "warning",
+             "info": "info", "low": "info", "": "info", "bogus": "info"}
+
+
+def summary_with_issues(*issues):
+    return summary_of(data(security={"score": 90, "issues": list(issues)}, content_quality={"score": 70}))
+
+
+@pytest.mark.parametrize("raw,level", sorted(V1_LEVELS.items()))
+def test_level_is_what_v1_called_severity(raw, level):
+    [finding] = summary_with_issues({"severity": raw, "finding": "x"})["findings"]
+
+    assert finding["level"] == level
+
+
+@pytest.mark.parametrize("raw,severity", [("critical", "critical"), ("HIGH", "high"), ("warning", "medium"),
+                                          ("medium", "medium"), ("low", "low"), ("info", "info"),
+                                          ("bogus", "info")])
+def test_severity_keeps_the_scripts_own_scale(raw, severity):
+    [finding] = summary_with_issues({"severity": raw, "finding": "x"})["findings"]
+
+    assert finding["severity"] == severity
+
+
+def test_findings_are_ordered_on_the_full_scale():
+    summary = summary_with_issues({"severity": "low", "finding": "l"}, {"severity": "high", "finding": "h"},
+                                  {"severity": "critical", "finding": "c"}, {"severity": "medium", "finding": "m"})
+
+    assert [(f["id"], f["severity"]) for f in summary["findings"]] == [
+        ("F01", "critical"), ("F02", "high"), ("F03", "medium"), ("F04", "low")]
+
+
+def test_script_supplied_fields_pass_through():
+    [finding] = summary_with_issues({
+        "severity": "high", "finding": "hreflang return tag missing", "fix": "add it",
+        "evidence": "/fr/ lacks a link back to /en/", "impact": "Google may ignore the pair",
+        "confidence": "confirmed", "failure_check": "hreflang_checker reports no missing returns",
+        "leading_indicator": "GSC International Targeting errors drop", "depends_on": "F02",
+        "tags": ["quick_win"],
+    })["findings"]
+
+    assert finding["evidence"] == "/fr/ lacks a link back to /en/"
+    assert finding["impact"] == "Google may ignore the pair"
+    assert finding["confidence"] == "Confirmed"
+    assert finding["falsifiability"] == "hreflang_checker reports no missing returns"
+    assert finding["leading_indicator"] == "GSC International Targeting errors drop"
+    assert finding["dependency"] == "F02"
+    assert finding["tags"] == ["quick_win"]
+
+
+def test_missing_fields_are_null_not_the_html_placeholder_text():
+    """The HTML fills gaps with generic guidance; the summary must not pass that off as the script's."""
+    d = data(security={"score": 90, "issues": [{"severity": "high", "finding": "x"}]}, content_quality={"score": 70})
+    [issue] = gr._collect_issues(d)
+    [finding] = summary_of(d)["findings"]
+
+    assert issue["leading_indicator"]  # the view still gets its default
+    assert (finding["falsifiability"], finding["leading_indicator"], finding["dependency"]) == (None, None, None)
+
+
+@pytest.mark.parametrize("raw", ["High", "Medium", 0.9, ""])
+def test_confidence_outside_the_documented_labels_is_null(raw):
+    [finding] = summary_with_issues({"severity": "info", "finding": "x", "confidence": raw})["findings"]
+
+    assert finding["confidence"] is None
+
+
+def test_every_check_belongs_to_one_report_group():
+    assert set(gr.CHECK_GROUP) == set(gr.CHECK_LABELS)
+    assert set(gr.CHECK_GROUP.values()) == set(gr.CHECK_GROUPS)
+
+
+def test_a_high_finding_still_fails_fail_on_critical():
+    gate = gr.evaluate_gate(summary_with_issues({"severity": "high", "finding": "x"}), fail_on="critical")
+
+    assert gate["result"] == "fail"
+
+
+def test_a_low_finding_does_not_fail_fail_on_warning():
+    gate = gr.evaluate_gate(summary_with_issues({"severity": "low", "finding": "x"}), fail_on="warning")
+
+    assert gate["result"] == "pass"
+
+
+def test_gates_still_read_v1_shaped_findings():
+    v1 = {"findings": [{"id": "F01", "severity": "warning", "section": "x", "finding": "y", "fix": ""}]}
+
+    assert gr.evaluate_gate(v1, fail_on="warning")["result"] == "fail"
+    assert gr.evaluate_gate(v1, fail_on="critical")["result"] == "pass"
 
 
 # --- gates -------------------------------------------------------------------------

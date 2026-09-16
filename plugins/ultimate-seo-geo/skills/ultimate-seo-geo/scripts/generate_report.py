@@ -971,19 +971,87 @@ def calculate_overall_score(data: dict) -> dict:
 # CI mode: a stable JSON summary and exit-code gates.
 # ---------------------------------------------------------------------------
 
-SUMMARY_SCHEMA_VERSION = 1
+SUMMARY_SCHEMA_VERSION = 2
 # A score built from fewer weighted checks than this is no basis for failing a build.
 MIN_MEASURED_FOR_GATE = 5
 EXIT_GATE_FAILED = 1
 EXIT_GATE_INCONCLUSIVE = 3
 _GATE_SEVERITIES = {"critical": ("critical",), "warning": ("critical", "warning")}
 
+# The one severity scale every report uses, strongest first. Scripts speak two
+# dialects: critical/high/medium/low/info and the older critical/warning/info.
+# "warning" is read as medium, which keeps every finding in the same level
+# (critical / warning / info) it has always had in the HTML view and CI gate.
+SEVERITY_SCALE = ("critical", "high", "medium", "low", "info")
+_CANONICAL_SEVERITY = {
+    "critical": "critical", "high": "high",
+    "warning": "medium", "medium": "medium",
+    "low": "low", "info": "info",
+}
+_SEVERITY_LEVEL = {"critical": "critical", "high": "critical", "medium": "warning", "low": "info", "info": "info"}
+
+# The nine report categories of references/procedures/02-full-site-audit.md.
+# Every check belongs to exactly one; tests pin that no check is left out.
+CHECK_GROUPS = {
+    "content": "Content quality / E-E-A-T",
+    "technical": "Technical SEO",
+    "on_page": "On-page SEO",
+    "links": "Link authority",
+    "schema": "Schema / structured data",
+    "performance": "Core Web Vitals",
+    "geo": "AI search readiness (GEO)",
+    "images": "Images",
+    "local": "Local SEO",
+}
+CHECK_GROUP = {
+    "onpage": "on_page", "social": "on_page",
+    "schema_validation": "schema",
+    "canonical": "technical", "robots": "technical", "sitemap": "technical", "security": "technical",
+    "redirects": "technical", "broken_links": "technical", "hreflang": "technical",
+    "indexnow_probe": "technical",
+    "internal_links": "links", "link_profile": "links",
+    "pagespeed": "performance",
+    "image_seo": "images",
+    "content_quality": "content", "readability": "content", "duplicate_content": "content",
+    "article": "content", "programmatic_seo": "content",
+    "entity": "geo", "llms_txt": "geo", "ai_bot_access": "geo", "hidden_instructions": "geo",
+    "local_signals": "local",
+}
+CONFIDENCE_LABELS = ("Confirmed", "Likely", "Hypothesis")
+
+
+def _canonical_severity(value) -> str:
+    return _CANONICAL_SEVERITY.get(str(value or "info").strip().lower(), "info")
+
+
+def _supplied(issue: dict, *keys):
+    """The first non-empty value a script supplied for any of keys, else None.
+
+    The HTML view fills gaps with generic guidance; the summary does not, so a
+    null tells a consumer the script had nothing to say.
+    """
+    for key in keys:
+        value = issue.get(key)
+        if isinstance(value, str):
+            value = value.strip()
+        if value:
+            return value
+    return None
+
+
+def _confidence(issue: dict):
+    value = _supplied(issue, "confidence")
+    if not isinstance(value, str):
+        return None
+    return next((label for label in CONFIDENCE_LABELS if label.lower() == value.lower()), None)
+
 
 def build_summary(data: dict, scores: dict) -> dict:
-    """The machine-readable result of one report run (schema_version 1).
+    """The machine-readable result of one report run (schema_version 2).
 
     Category scores are None when a check was unmeasured or does not apply;
-    the HTML view shows those as a dash, never as 0.
+    the HTML view shows those as a dash, never as 0. The contract is documented
+    in references/procedures/21-script-toolbox.md.
     """
     issues = _collect_issues(data)
     raw = scores.get("raw_categories") or scores.get("categories", {})
@@ -993,29 +1061,62 @@ def build_summary(data: dict, scores: dict) -> dict:
         section = section if isinstance(section, dict) else {}
         categories[key] = {
             "label": CHECK_LABELS.get(key, key),
+            "group": CHECK_GROUP.get(key),
             "score": value,
             "weight": scores.get("weights", {}).get(key) or None,
             "status": _check_status(key, section, value)[1],
         }
-    counts = {"critical": 0, "warning": 0, "info": 0}
+    counts = dict.fromkeys(SEVERITY_SCALE, 0)
     for issue in issues:
-        counts[issue["severity"]] = counts.get(issue["severity"], 0) + 1
+        counts[issue["canonical_severity"]] += 1
     return {
         "schema_version": SUMMARY_SCHEMA_VERSION,
         "url": data.get("url"),
         "timestamp": data.get("timestamp"),
         "overall": scores.get("overall"),
         "grade": _grade(scores.get("overall") or 0),
+        "severity_scale": list(SEVERITY_SCALE),
+        "groups": dict(CHECK_GROUPS),
         "measured_categories": scores.get("measured_categories"),
         "unmeasured": scores.get("unmeasured", []),
         "categories": categories,
         "counts": counts,
-        "findings": [
-            {"id": i["id"], "severity": i["severity"], "section": i["section"],
-             "finding": i["finding"], "fix": i.get("fix", "")}
-            for i in issues
-        ],
+        "findings": [_summary_finding(i) for i in issues],
     }
+
+
+def _summary_finding(issue: dict) -> dict:
+    source = issue.get("source_issue") or {}
+    tags = source.get("tags")
+    return {
+        "id": issue["id"],
+        "severity": issue["canonical_severity"],
+        "level": issue["severity"],
+        "section": issue["section"],
+        "group": CHECK_GROUP.get(issue["section"]),
+        "finding": issue["finding"],
+        "evidence": _supplied(source, "evidence"),
+        "impact": _supplied(source, "impact"),
+        "fix": issue.get("fix", ""),
+        "confidence": _confidence(source),
+        "falsifiability": _supplied(source, "falsifiability", "failure_check", "how_to_know_failed", "validation"),
+        "leading_indicator": _supplied(source, "leading_indicator", "metric"),
+        "dependency": _supplied(source, "dependency", "depends_on"),
+        "source": f"script:{issue['section']}",
+        "tags": [str(t) for t in tags] if isinstance(tags, list) else [],
+    }
+
+
+def _finding_level(finding: dict) -> str:
+    """The critical / warning / info level gates and annotations act on.
+
+    Read from "level" when present, else derived from "severity", so a v1-shaped
+    finding is judged exactly as before.
+    """
+    level = finding.get("level")
+    if level in ("critical", "warning", "info"):
+        return level
+    return _SEVERITY_LEVEL[_canonical_severity(finding.get("severity"))]
 
 
 def evaluate_gate(summary: dict, fail_under=None, fail_on=None) -> dict:
@@ -1030,7 +1131,7 @@ def evaluate_gate(summary: dict, fail_under=None, fail_on=None) -> dict:
         return {"result": "not set", "reasons": [], "exit_code": 0}
     reasons, inconclusive = [], None
     if fail_on:
-        hits = [f for f in summary["findings"] if f["severity"] in _GATE_SEVERITIES[fail_on]]
+        hits = [f for f in summary["findings"] if _finding_level(f) in _GATE_SEVERITIES[fail_on]]
         if hits:
             listed = ", ".join(f"{f['id']} {f['finding'][:80]}" for f in hits[:5])
             reasons.append(f"{len(hits)} finding(s) at or above {fail_on}: {listed}")
@@ -1066,7 +1167,7 @@ def github_annotations(summary: dict) -> list:
     """
     lines = []
     for finding in summary["findings"]:
-        level = {"critical": "error", "warning": "warning"}.get(finding["severity"])
+        level = {"critical": "error", "warning": "warning"}.get(_finding_level(finding))
         if not level:
             continue
         title = _escape_command_property(f"SEO {finding['id']} ({finding['section']})")
@@ -1115,11 +1216,6 @@ CHECK_LABELS = {
 _SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2, "pass": 3}
 _SEVERITY_LABEL = {"critical": "Critical", "warning": "Warning", "info": "Info", "pass": "Pass"}
 _SEVERITY_CHIP = {"critical": "sev-critical", "warning": "sev-warning", "info": "sev-info", "pass": "chip-ok"}
-_ISSUE_SEVERITY_MAP = {
-    "critical": "critical", "high": "critical",
-    "warning": "warning", "medium": "warning",
-    "info": "info", "low": "info",
-}
 _STATUS_RANK = {"gap": 0, "flag": 1, "ok": 2, "deferred": 3, "na": 4}
 
 # Scripts prefix string issues with status emoji. Severity is read from them
@@ -1306,7 +1402,7 @@ def render_recommendations(section_data: dict) -> str:
     if isinstance(issues, list):
         for issue in issues[:15]:
             if isinstance(issue, dict):
-                severity = _ISSUE_SEVERITY_MAP.get(str(issue.get("severity", "info")).lower(), "info")
+                severity = _SEVERITY_LEVEL[_canonical_severity(issue.get("severity"))]
                 fix = issue.get("fix", "")
                 fix_html = f'<p class="issue-fix"><span class="lbl">Fix</span> {_esc(fix)}</p>' if fix else ""
                 meta = _render_issue_metadata(_recommendation_metadata(issue, "section"))
@@ -1383,23 +1479,25 @@ def _collect_issues(data: dict) -> list:
             continue
         for issue in section_data.get("issues", []) or []:
             if isinstance(issue, dict):
-                severity = _ISSUE_SEVERITY_MAP.get(str(issue.get("severity", "info")).lower(), "info")
+                canonical = _canonical_severity(issue.get("severity"))
                 finding = _plain(issue.get("finding", "")) or _plain(str(issue))
                 fix = str(issue.get("fix", "") or "")
                 issues.append({
                     "text": f"{finding} — Fix: {fix}" if fix else finding,
                     "finding": finding,
                     "fix": fix,
-                    "severity": severity,
+                    "severity": _SEVERITY_LEVEL[canonical],
+                    "canonical_severity": canonical,
                     "section": section_name,
+                    "source_issue": issue,
                     **_recommendation_metadata(issue, section_name),
                 })
             elif isinstance(issue, str):
-                severity = "critical" if "🔴" in issue else "warning" if "⚠" in issue else "info"
+                canonical = "critical" if "🔴" in issue else "medium" if "⚠" in issue else "info"
                 text = _plain(issue)
-                issues.append({"text": text, "finding": text, "fix": "", "severity": severity,
-                               "section": section_name})
-    issues.sort(key=lambda x: _SEVERITY_ORDER[x["severity"]])
+                issues.append({"text": text, "finding": text, "fix": "", "severity": _SEVERITY_LEVEL[canonical],
+                               "canonical_severity": canonical, "section": section_name})
+    issues.sort(key=lambda x: SEVERITY_SCALE.index(x["canonical_severity"]))
     for number, issue in enumerate(issues, 1):
         issue["id"] = f"F{number:02d}"
     return issues
@@ -2653,7 +2751,7 @@ def main():
     parser.add_argument(
         "--json",
         metavar="PATH",
-        help="Write a machine-readable summary (schema_version 1) to PATH; - writes it to stdout "
+        help="Write a machine-readable summary (schema_version 2) to PATH; - writes it to stdout "
              "and sends progress to stderr",
     )
     parser.add_argument(

@@ -95,14 +95,27 @@ python scripts/generate_report.py https://staging.example.com --format none --js
 | 2 | Usage error |
 | 3 | Inconclusive: fewer than 5 weighted checks were measured, so the score is not judged. A critical finding still fails with `--fail-on`. |
 
-- **Summary file:** `--json` writes a stable summary (`schema_version` 1). It holds:
-  - the overall score and grade
-  - each check's score (`null` when unmeasured or not applicable), weight and status
-  - the findings, with ids and severities
-  - the unmeasured checks
-  - the gate result
+- **Summary file:** `--json` writes a stable summary (`schema_version` 2). `--json -` writes it to stdout and sends progress to stderr. It holds:
+  - `overall`, `grade`, `measured_categories`, `unmeasured` (checks left out of the score) and `gate`
+  - `severity_scale`: `["critical", "high", "medium", "low", "info"]`, strongest first
+  - `groups`: the nine report categories of § 2 (`content`, `technical`, `on_page`, `links`, `schema`, `performance`, `geo`, `images`, `local`)
+  - `categories`: per check, `label`, `group`, `score` (`null` when unmeasured or not applicable), `weight` and `status`
+  - `counts`: findings per severity on the full scale
+  - `findings`, strongest first. Each has the same fields the § 2 Finding Format uses, so agent-written findings can share the shape:
 
-  `--json -` writes it to stdout and sends progress to stderr.
+    | Field | Meaning |
+    |---|---|
+    | `id` | `F01`, `F02`, … in severity order; matches the HTML report |
+    | `severity` | On `severity_scale`. A script's older `warning` is read as `medium` |
+    | `level` | `critical` / `warning` / `info`: the bucket `--fail-on`, annotations and the HTML use. `high` → `critical`, `medium` → `warning`, `low` → `info` |
+    | `section`, `group` | The check that raised it, and its report category |
+    | `finding`, `fix` | What is wrong and what to do (`fix` may be empty) |
+    | `evidence`, `impact`, `falsifiability`, `leading_indicator`, `dependency` | As supplied by the script, else `null`. Never filled with generic text |
+    | `confidence` | `Confirmed` / `Likely` / `Hypothesis`, or `null` when the script gave none of these |
+    | `source` | `script:<section>` |
+    | `tags` | e.g. `quick_win`; `[]` when none |
+
+  **Migrating from `schema_version` 1:** v1 `severity` is v2 `level`. Counts are keyed by the full scale, so `counts.warning` is now `counts.medium`. Gate behaviour and exit codes are unchanged.
 - **Unmeasured checks don't count.** A check that errors or never runs (a rate-limited PageSpeed call, a timeout) is left out of the overall score and listed as unmeasured, so it cannot fail the gate on its own.
 - **Target a URL the job controls,** such as a staging or preview URL. The run fetches the target from the CI runner, so rate limits and bot protection on the target can leave checks unmeasured. Treat exit 3 as "rerun", not as a pass.
 - **Annotations:** `--github-annotations` prints `::error` / `::warning` lines for critical and warning findings. Site text is escaped so it cannot inject workflow commands.

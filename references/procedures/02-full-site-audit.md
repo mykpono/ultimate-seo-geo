@@ -43,7 +43,7 @@
 4. **Score** — SEO Health Score using weights below.
 5. **Assign confidence level**: High (8+ pages fetched + analytics access) / Medium (4–7 pages, no analytics) / Low (1–3 pages).
 6. **Audit assumptions** — Before assembling recommendations, explicitly list the assumptions underpinning the audit (e.g., "homepage is representative of site quality", "low traffic pages = low value", "CMS renders server-side", "no recent algorithm penalty"). Surface these in the report's **Assumptions Audit** section so the user can reject or correct them. Revise any findings that depend on a shaky assumption.
-7. **Prioritize findings** — Critical → High → Medium → Quick Wins. Apply the PERCEIVE → ANALYZE → VALIDATE → ACT framework (`references/thinking-framework.md`) to ensure each finding is grounded, falsifiable, and dependency-mapped.
+7. **Prioritize findings** — Critical → High → Medium → Low (see Severity Scale), then tag quick wins. Apply the PERCEIVE → ANALYZE → VALIDATE → ACT framework (`references/thinking-framework.md`) to ensure each finding is grounded, falsifiable, and dependency-mapped.
 
 ### SEO Health Score Weights
 
@@ -67,16 +67,32 @@ For the on-page element checklist (title tags, meta descriptions, H1, URLs, cano
 
 Before assembling recommendations, apply the **PERCEIVE → ANALYZE → VALIDATE → ACT** framework from `references/thinking-framework.md`. This ensures every finding traces to a first-principle observation, maps its dependencies, includes a falsifiability check, and names a leading indicator. For Critical and High findings, all four framework fields are required. For Medium findings, Falsifiability and Leading Indicator are sufficient.
 
+### Severity Scale
+
+One scale for every report, strongest first. It is the `severity_scale` of the `generate_report.py --json` summary (§ 21), so script findings and your own use the same words.
+
+| Severity | Meaning | Section |
+|---|---|---|
+| Critical | Blocks indexing, ranking or citation now | 🔴 Critical Issues (fix immediately) |
+| High | Measurable loss; fix this week | 🟠 High Priority |
+| Medium | Real but contained; fix this month | 🟡 Medium Priority |
+| Low | Minor polish | 🔵 Low Priority |
+| Info | Context, no action required | Full Findings only |
+
+When `generate_report.py` ran, take each script finding's severity from its summary `severity` field; do not re-grade it. Scripts that still say "warning" are reported as Medium.
+
+**Quick win** and **opportunity** are tags, not severities: a finding keeps its severity and is also listed under ⚡ Quick Wins (under 2 hours of work) or 💡 Opportunity Signals. In JSON, use `"tags": ["quick_win"]` or `["opportunity"]`.
+
 ### Finding Format
 
-Every audit finding must use this structure:
+Every audit finding must use this structure. The field names match the summary JSON (`evidence`, `impact`, `confidence`, `falsifiability`, `leading_indicator`, `dependency`), so findings from scripts, subagents and your own analysis merge through `finding_verifier.py`.
 
 ```
 Finding: [what the issue is]
 Evidence: [what was observed / what data shows this]
 Impact: [how this hurts rankings, traffic, or citations]
 Fix: [specific, actionable step]
-Confidence: Confirmed / Likely / Hypothesis
+Confidence: Confirmed / Likely / Hypothesis | Severity: Critical / High / Medium / Low / Info
 Falsifiability: [what evidence would prove this recommendation wrong or unnecessary]
 Leading Indicator: [what metric to monitor post-fix, and over what timeframe]
 ```
@@ -116,8 +132,9 @@ Date: [date] | Business Type: [type] | Audited Pages: [N] | Confidence: High/Med
 ## 🔴 Critical Issues (fix immediately)
 ## 🟠 High Priority (fix this week)
 ## 🟡 Medium Priority (fix this month)
-## ⚡ Quick Wins (under 2 hours each)
-## 💡 Opportunity Signals
+## 🔵 Low Priority
+## ⚡ Quick Wins (findings tagged quick_win, any severity)
+## 💡 Opportunity Signals (findings tagged opportunity)
 ## Assumptions Audit
 [List assumptions made during this audit and flag any that may not hold.
  e.g., "Homepage represents overall site quality", "Low traffic = low value page",

@@ -14,11 +14,14 @@ import re
 import sys
 
 
-SEVERITY_RANK = {"Critical": 0, "Warning": 1, "Info": 2, "Pass": 3}
+# The report severity scale (critical/high/medium/low/info, see generate_report.SEVERITY_SCALE),
+# plus the older "warning", read as medium, and "pass". Case-insensitive: the audit template
+# writes "High", scripts write "high".
+SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "warning": 2, "low": 3, "info": 4, "pass": 5}
 
 
 def _sev_rank(severity: str) -> int:
-    return SEVERITY_RANK.get(severity or "Info", 9)
+    return SEVERITY_RANK.get(str(severity or "info").strip().lower(), 9)
 
 
 def _normalize_text(text: str) -> str:
