@@ -4,7 +4,7 @@
 
 ### Process
 
-**In a bash-capable environment**: Run `python scripts/generate_report.py https://example.com --output report.html` first — it runs the **bundled analysis pipeline** in `generate_report.py` (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap discovery, local signals, IndexNow probe, on-page parse, readability, article SEO, JSON-LD validation, image alt coverage, etc.). Then use `finding_verifier.py` to deduplicate at the end. For any single dimension, run the matching script from **`references/audit-script-matrix.md`** or **§21**.
+**In a bash-capable environment**: Run `python scripts/generate_report.py https://example.com --output report.html --json summary.json` first (the summary is the score source for the written report) — it runs the **bundled analysis pipeline** in `generate_report.py` (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap discovery, local signals, IndexNow probe, on-page parse, readability, article SEO, JSON-LD validation, image alt coverage, etc.). Then use `finding_verifier.py` to deduplicate at the end. For any single dimension, run the matching script from **`references/audit-script-matrix.md`** or **§21**.
 
 **Evidence Integrity — do not state the following unless the corresponding data source ran or was provided:**
 
@@ -156,6 +156,8 @@ Source: generate_report.py — N weighted checks measured; not measured: [checks
 ```
 
 For a 3-finding excerpt showing the output format, see `references/audit-output-example.md`.
+
+**Lint before delivering.** Save the report and run `python scripts/report_lint.py report.md --summary summary.json` (drop `--summary` when `generate_report.py` did not run). It checks the title and metadata, the Health Score against the summary, the required sections, every finding's fields, severity and section, and that no Core Web Vitals or backlink numbers appear for checks that never ran. Fix every error; each warning names what it could not verify.
 
 ### Mode 2 Plan Entry Format
 

@@ -52,6 +52,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |
 | GA4 organic reporting (Tier 2) | §10 | `ga4_report.py` | `python scripts/ga4_report.py --property 123456789 --organic-only --json` |
 | GA4 AI assistant referrals (a floor; untagged clicks read as Direct) | §10, §3 | `ga4_report.py` | `python scripts/ga4_report.py --property 123456789 --ai-referrals --json` |
+| Written report vs § 2 contract (fields, severities, score vs summary, unmeasured metrics) | §2, §19 | `report_lint.py` | `python scripts/report_lint.py report.md --summary summary.json --json` (`--excerpt` for partial reports) |
 | Finding deduplication | §2 | `finding_verifier.py` | `python scripts/finding_verifier.py --findings-json references/finding-verifier-example.json --json` (see `references/finding-verifier-context-example.json` for optional `--context-json`) |
 
 ## Utilities (supporting tools)

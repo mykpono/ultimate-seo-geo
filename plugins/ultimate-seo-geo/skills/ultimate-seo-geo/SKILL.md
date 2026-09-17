@@ -208,7 +208,7 @@ Every finding: **Finding** / **Evidence** / **Impact** / **Fix** / **Confidence*
 
 ### Before delivering any Mode 1 audit
 
-Run the internal self-evaluation pass in `references/procedures/19-quality-gates-hard-rules.md` (Evaluator-Optimizer checklist).
+Run `python scripts/report_lint.py report.md --summary summary.json` when a shell is available, then the internal self-evaluation pass in `references/procedures/19-quality-gates-hard-rules.md` (Evaluator-Optimizer checklist).
 
 ---
 

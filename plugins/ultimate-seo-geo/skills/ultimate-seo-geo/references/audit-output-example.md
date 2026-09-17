@@ -139,6 +139,10 @@ Fix: 1) Create YouTube demo/tutorial (target "TaskForge vs [competitor]" queries
      2) Post in r/projectmanagement and r/SaaS with genuine value.
      3) Create Wikidata entity with sameAs links.
 Confidence: Confirmed | Severity: 🔴 Critical
+First-Principle Observation: Searches on YouTube, Reddit and Wikipedia for the brand name return no results.
+Dependency: Independent. Unblocks entity recognition (sameAs on Organization schema needs profiles to point at).
+Falsifiability: If AI engines already cite TaskForge for its core queries without these profiles, platform presence is not the constraint in this niche.
+Leading Indicator: Brand mentions in the citation sample (§ 3) within 8–12 weeks; Wikidata entity resolvable within 2 weeks.
 
 ## 🟠 High Priority
 
@@ -149,6 +153,10 @@ Impact: Low citation rate for core product query in AI Overviews and Perplexity.
 Fix: Move the direct answer to opening paragraph: "TaskForge is a [one-sentence
      definition with key differentiator]." Keep feature details below.
 Confidence: Confirmed | Severity: 🟠 High
+First-Principle Observation: The first sentence that defines the product is in paragraph 4 of /features, about 320 words into the page.
+Dependency: Independent of the platform-presence finding; can ship this week.
+Falsifiability: If citation rate for "what is TaskForge" does not rise within 6 weeks of moving the answer up, answer position is not the bottleneck.
+Leading Indicator: /features cited for the product-definition query in the next two citation samples.
 
 ## Citation Demonstration
 
