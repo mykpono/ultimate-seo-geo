@@ -1,16 +1,86 @@
-SEO Health Score: 72/100
+Here is the full audit for psybear.co.
 
-Finding: Time to first byte is elevated on key landing pages
-Evidence: Server response headers show slow origin
-Impact: May hurt Core Web Vitals and crawl efficiency
-Fix: Enable CDN caching and compress HTML
-Confidence: Likely
+# SEO Audit Report — psybear.co
+Date: 2026-09-16 | Business Type: Publisher / Blog (YMYL health) | Audited Pages: 12 | Confidence: Medium
 
-E-E-A-T / YMYL: This vertical requires clear authorship and medical-adjacent disclaimers where applicable.
+## SEO Health Score: 65/100
+Source: generate_report.py — 18 weighted checks measured; not measured: pagespeed
 
-Schema: Add JSON-LD Article or appropriate structured data; validate with Rich Results Test.
+| Category | Score | Share | Status |
+|---|---|---|---|
+| Technical SEO | 74/100 | 41.1% | Needs work |
+| Content quality / E-E-A-T | 52/100 | 20.5% | Needs work |
+| On-page SEO | 70/100 | 13.4% | Needs work |
+| Link authority | 61/100 | 13.4% | Needs work |
+| Schema / structured data | 45/100 | 4.5% | Gap |
+| AI search readiness (GEO) | 35/100 | 4.5% | Gap |
+| Images | 88/100 | 2.7% | Strong |
+| Core Web Vitals | — | 0% | Not measured |
+| Local SEO | — | 0% | Not applicable |
 
-Action Plan
-| Priority | Phase 1 | Effort | Quick Win |
-|----------|---------|--------|-----------|
-| P0 | Fix TTFB | Medium | Cache headers |
+## Executive Summary
+Crawlability is sound. Flat traffic traces to E-E-A-T: health content on a YMYL topic carries no named, credentialed author. Adding reviewed-by attribution to the strain and conditions pages is the highest-impact action. Performance was not measured (PageSpeed rate-limited); rerun pagespeed.py before judging Core Web Vitals.
+
+## 🔴 Critical Issues (fix immediately)
+
+Finding: Health and dosing pages have no named author or medical reviewer
+Evidence: article_seo.py found no author byline on 12 of 12 audited pages; /conditions/depression attributes content to "Chief Bear"
+Impact: YMYL content without identifiable expertise is ranked conservatively and rarely cited by AI engines
+Fix: Add a named author bio with credentials and a "medically reviewed by" line to /conditions/* and /dosing/*
+Confidence: Confirmed | Severity: 🔴 Critical
+First-Principle Observation: No page contains a Person author with a name, credentials or profile link
+Dependency: Independent; unblocks F03 (Person schema)
+Falsifiability: If comparable harm-reduction sites without named authors rank in the top 3 for the same queries, authorship is not the constraint
+Leading Indicator: GSC impressions for /conditions/* queries within 6–10 weeks
+
+## 🟠 High Priority (fix this week)
+
+Finding: MedicalWebPage schema is used without verified medical credentials
+Evidence: validate_schema.py reports MedicalWebPage on /conditions/depression with no reviewedBy or credentialed author
+Impact: Authority-claiming schema without credentials risks a manual action for misleading structured data (§ 19 rule 8)
+Fix: Replace MedicalWebPage with Article until a credentialed reviewer is named, then add reviewedBy
+Confidence: Confirmed | Severity: 🟠 High
+First-Principle Observation: The JSON-LD @type is MedicalWebPage and no reviewedBy property exists
+Dependency: Blocked by the authorship finding for the reviewedBy step
+Falsifiability: If Search Console shows no structured data issues and no manual action after 8 weeks, the risk is lower than assessed
+Leading Indicator: Rich Results Test and GSC Enhancements report after deployment
+
+## 🟡 Medium Priority (fix this month)
+
+Finding: 123 strain pages receive a single internal link each
+Evidence: internal_links.py found 123 URLs with exactly one inbound internal link
+Impact: Link equity pools in hub pages; leaf pages are crawled less often
+Fix: Add a "Related strains" block linking 3–5 sibling pages on each strain page
+Confidence: Confirmed | Severity: 🟡 Medium
+Falsifiability: If leaf pages already rank for their strain names, internal linking is not limiting them
+Leading Indicator: internal_links.py shows 3+ inbound links per strain page on the next run
+
+## 🔵 Low Priority
+
+Finding: Twelve images use generic file names
+Evidence: image_checker.py lists IMG_4402.jpg-style names on /strains
+Impact: Minor loss of image search context
+Fix: Rename to descriptive slugs when images are next updated
+Confidence: Confirmed | Severity: 🔵 Low
+Falsifiability: If image search traffic is already negligible for this niche, the rename has no measurable effect
+Leading Indicator: GSC image search impressions over 8 weeks
+
+## ⚡ Quick Wins (findings tagged quick_win, any severity)
+- Replace MedicalWebPage with Article (High) — under an hour.
+
+## 💡 Opportunity Signals (findings tagged opportunity)
+- A glossary page on harm-reduction terms would give AI engines a citable definition source.
+
+## Assumptions Audit
+- The 12 audited pages represent the strain, conditions and blog templates.
+- The flat traffic is not caused by a manual action (not confirmed without GSC access).
+
+## Action Plan
+| Action | Owner | Effort | Expected Outcome | Phase | Blocked By | Unblocks |
+|---|---|---|---|---|---|---|
+| Add named, credentialed authors | Editorial | 1 week | E-E-A-T signals on YMYL pages | Phase 1 | — | Person schema |
+| Swap MedicalWebPage for Article | Dev | 1 hr | Removes misleading-schema risk | Phase 1 | — | reviewedBy |
+| Related-strains internal links | Dev | 1 day | Crawl depth and equity to leaf pages | Phase 2 | — | — |
+
+## Full Findings
+All findings are listed in their priority sections above.

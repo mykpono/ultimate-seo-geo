@@ -4,6 +4,16 @@
 
 ### Added
 
+- **The eval suite enforces the report contract.** `score_eval_transcript.py` has a `report_lint`
+  assertion type: the written report in a reply must pass `report_lint.py` with no errors
+  (`"strict": true` also fails on warnings, `"excerpt": true` skips required sections). Text before
+  the report title is ignored, and reported line numbers point into the transcript. `--summary`
+  checks the score against a real `generate_report.py` run.
+  - Eval 1 (full audit) carries it. Its keyword assertions passed the old bundled fixture, which had
+    no report title, sections or severities; the fixture is now a complete § 2 report. The three saved
+    real eval-1 replies in the workspace fail it with 28–41 contract errors each.
+  - Eval 1's score assertion also accepts `SEO Health Score: not scored`, the correct output when
+    `generate_report.py` did not run.
 - **`report_lint.py` checks a written audit report against the § 2 contract.** The report is the one
   thing the agent writes by hand, and nothing checked it.
   - **Structure:** title and metadata line, the Health Score section, the required sections.
