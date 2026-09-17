@@ -40,6 +40,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Article / CMS patterns | §6 | `article_seo.py` | `python scripts/article_seo.py URL --json` |
 | JSON-LD validation | §5 | `validate_schema.py` | `python scripts/validate_schema.py file.html --json` |
 | Image alt coverage | §13 | `image_checker.py` | `python scripts/image_checker.py page.html --base-url URL --json` |
+| Global navigation, footer and breadcrumbs (money pages reachable from nav, broken/redirected nav links, footer link dump, breadcrumb vs BreadcrumbList; display-only) | §2, §9, §11 | `navigation_checker.py` | `python scripts/navigation_checker.py URL --graph site_graph.json --json` (or without `--graph` to crawl a 40-page sample) |
 | Page-type coverage (content-type matrix, missing comparison / alternatives / use-case pages; display-only) | §2, §3, §7 | `page_type_classifier.py` | `python scripts/page_type_classifier.py URL --graph site_graph.json --json` (or without `--graph` to crawl 80 pages) |
 | Programmatic SEO audit | §15 | `programmatic_seo_auditor.py` | `python scripts/programmatic_seo_auditor.py URL --depth 2 --max-pages 100 --json` |
 | Content quality signals | §6 | `content_quality.py` | `python scripts/content_quality.py URL --json` |
