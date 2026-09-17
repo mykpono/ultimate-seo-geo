@@ -576,7 +576,7 @@ def classify_site(graph: dict, site_type: str = "auto", extra_rules: list[dict] 
         "families": families[:60],
         "pages": {k: {kk: vv for kk, vv in v.items() if kk != "signals"} for k, v in classified.items()},
         "expected": EXPECTED_BY_SITE_TYPE.get(chosen, []),
-        "findings": findings,
+        "issues": findings,
     }
 
 
@@ -722,9 +722,9 @@ def _print_summary(result: dict) -> None:
     if result["expected"]:
         missing = [l for l in result["expected"] if result["matrix"][l]["count"] == 0]
         print(f"   Expected for {result['site_type']}: {len(result['expected'])} types, missing: {', '.join(missing) or 'none'}")
-    if result["findings"]:
+    if result["issues"]:
         print("\n   Findings:")
-        for f in result["findings"]:
+        for f in result["issues"]:
             print(f"     [{f['severity']}] {f['finding']}")
             print(f"        fix: {f['fix']}")
 

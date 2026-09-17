@@ -1,0 +1,35 @@
+Good question — and it is answerable with data rather than a guess. This is the site-structure / content-type coverage check (§ 26): every URL in your sitemap and crawl gets labelled with a content type, and the matrix is compared with what a SaaS site is expected to have.
+
+## How we know what is missing
+
+Run the classifier on the site inventory:
+
+```bash
+python scripts/site_graph.py https://example-analytics.com --max-pages 200 --depth 3 --out site_graph.json
+python scripts/page_type_classifier.py https://example-analytics.com --graph site_graph.json --json
+```
+
+`page_type_classifier.py` reads the sitemap URLs plus the crawled pages, so it can be complete for thousands of URLs without fetching them all. Two things to read in its output:
+
+- **`source.status`** — a `missing_page_type` finding is only made from a **complete sitemap** or a **complete crawl**. If neither is complete, the check reports `coverage_inconclusive` instead and lists what it did not see. Do not treat "not seen" as "absent" until the inventory is complete.
+- **`site_type`** — it should say `saas` (pricing page plus product/feature, integration or docs pages). Override with `--site-type saas` if the detection is wrong.
+
+The matrix (from `references/page-types.md`) rolls up by funnel stage: TOFU, MOFU, BOFU, support, trust. A big blog and docs usually means TOFU and support are well covered and **BOFU is thin**.
+
+## What to add first (typical SaaS gaps, in order)
+
+| Priority | Page type | Why | What to create |
+|---|---|---|---|
+| 1 | **Comparison pages** (`/vs/[competitor]/`) | Comparison articles receive about **33% of all AI citations** — the single most-cited content type — and "X vs Y" queries carry the highest purchase intent | One page per top-3 competitor: balanced feature table, pricing row, an honest "choose X if" section |
+| 2 | **Alternatives pages** (`/[competitor]-alternatives/`) | The most-searched BOFU pattern in SaaS; today those searchers land on third-party lists | 5–8 options with a comparison table and your own entry described honestly |
+| 3 | **Solution / use-case pages** (`/solutions/[use-case]/`) | "analytics for [job to be done]" queries have no landing page | Top 3–5 jobs-to-be-done with a workflow walkthrough |
+| 4 | **Integration pages** (`/integrations/[tool]/`) | Long-tail, low competition, high intent | One per supported tool: setup steps and what data flows |
+| 5 | **Glossary / "what is X"** | The definitional content AI systems cite for "what is [metric]" queries | Self-contained definitions, one concept per page |
+
+Each of these is reported by the classifier as an **Opportunity Signal** (tagged `opportunity`), with the fix directive naming the URL pattern to create. They are shown in the audit but **not weighted** in the Health Score — the coverage check is a map of what exists, not a score.
+
+## Then verify the pages are reachable
+
+Once the pages exist, `navigation_checker.py` will tell you whether the comparison and solutions hubs are linked from the global navigation or footer in raw HTML (what AI crawlers see), and `site_architecture.py` whether the new sections get any link equity from the blog that currently holds most of it.
+
+**Evidence:** the classifier output for your site (not yet run here) — the finding will read "0 of N URLs match comparison patterns" with `Confidence: Likely` once the inventory is complete.

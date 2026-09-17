@@ -534,6 +534,31 @@ def _recommendation_metadata(issue: dict, section_name: str) -> dict:
     }
 
 
+SITE_GRAPH_MAX_PAGES = 80
+SITE_GRAPH_DEPTH = 2
+
+
+def build_site_graph(url: str) -> str | None:
+    """Run site_graph.py once and return the saved graph's path, or None.
+
+    A failed graph never fails the report: the structure checkers then crawl
+    for themselves (slower) and the sitemap check runs without --reconcile.
+    """
+    fd, path = tempfile.mkstemp(prefix="site_graph_", suffix=".json")
+    os.close(fd)
+    result = run_script(
+        "site_graph.py",
+        [url, "--max-pages", str(SITE_GRAPH_MAX_PAGES), "--depth", str(SITE_GRAPH_DEPTH), "--out", path],
+        timeout=_SCRIPT_TIMEOUT_CRAWL,
+    )
+    if result.get("error") or not os.path.exists(path) or os.path.getsize(path) == 0:
+        print(f"  ⚠️ site_graph.py: {result.get('error') or 'no graph written'} — structure checks will crawl individually")
+        if os.path.exists(path):
+            os.unlink(path)
+        return None
+    return path
+
+
 def collect_data(
     url: str,
     *,
@@ -584,6 +609,18 @@ def collect_data(
             ["--crawl", "--depth", str(crawl_depth), "--max-pages", str(crawl_max_pages)]
         )
 
+    # One shared crawl for the site-structure checks (page types, navigation,
+    # architecture, sitemap reconciliation). Built before the parallel batch,
+    # like html_path; if it fails the three checkers crawl for themselves.
+    print("  ⏳ Building site graph (one crawl, up to %d pages)..." % SITE_GRAPH_MAX_PAGES)
+    graph_path = build_site_graph(url)
+    sitemap_args = [url]
+    if graph_path:
+        sitemap_args += ["--lastmod", "--no-page-dates", "--structure", "--reconcile", graph_path]
+        structure_args = [url, "--graph", graph_path]
+    else:
+        structure_args = [url]
+
     analyses = [
         ("robots", "robots_checker.py", [url]),
         ("ai_bot_access", "ai_bot_access.py", [url]),
@@ -600,7 +637,11 @@ def collect_data(
         ("hreflang", "hreflang_checker.py", [url]),
         ("duplicate_content", "duplicate_content.py", [url]),
         ("content_quality", "content_quality.py", [url]),
-        ("sitemap", "sitemap_checker.py", [url]),
+        ("sitemap", "sitemap_checker.py", sitemap_args),
+        # Site structure (display-only, never in CHECK_WEIGHTS)
+        ("page_types", "page_type_classifier.py", structure_args),
+        ("navigation", "navigation_checker.py", structure_args),
+        ("architecture", "site_architecture.py", structure_args),
         ("canonical", "canonical_checker.py", canonical_args),
         ("programmatic_seo", "programmatic_seo_auditor.py", [url, "--max-pages", "80"]),
         ("local_signals", "local_signals_checker.py", [url]),
@@ -655,9 +696,11 @@ def collect_data(
             op["canonical_from_audit"] = True
             data["sections"]["onpage"] = op
 
-    # Cleanup temp file
+    # Cleanup temp files
     if html_path and os.path.exists(html_path):
         os.unlink(html_path)
+    if graph_path and os.path.exists(graph_path):
+        os.unlink(graph_path)
 
     data["environment_fixes"] = build_environment_fixes(data)
 
@@ -1044,7 +1087,10 @@ CHECK_GROUP = {
     "article": "content", "programmatic_seo": "content",
     "entity": "geo", "llms_txt": "geo", "ai_bot_access": "geo", "hidden_instructions": "geo", "citability": "geo",
     "local_signals": "local",
+    "page_types": "content", "navigation": "links", "architecture": "links",
 }
+# Structure checks report findings but carry no score: shown, never weighted.
+DISPLAY_ONLY_CHECKS = ("page_types", "navigation", "architecture")
 CONFIDENCE_LABELS = ("Confirmed", "Likely", "Hypothesis")
 
 
@@ -1300,6 +1346,9 @@ CHECK_LABELS = {
     "programmatic_seo": "Programmatic SEO",
     "local_signals": "Local signals",
     "indexnow_probe": "IndexNow",
+    "page_types": "Page-type coverage",
+    "navigation": "Navigation and breadcrumbs",
+    "architecture": "Site architecture",
 }
 
 _SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2, "pass": 3}
@@ -1429,6 +1478,15 @@ def _check_status(key: str, section: dict, score) -> tuple:
             return ("deferred", "Not measured")
         if section.get("refused_search"):
             return ("flag", "Suspected block")
+    if key in DISPLAY_ONLY_CHECKS:
+        if key == "navigation" and section.get("status") == "not_measured":
+            return ("deferred", "Not measured")
+        levels = {_canonical_severity(i.get("severity")) for i in section.get("issues") or [] if isinstance(i, dict)}
+        if levels & {"critical", "high"}:
+            return ("gap", "Gap")
+        if "medium" in levels:
+            return ("flag", "Needs work")
+        return ("ok", "Reviewed")
     value = score or 0
     if value >= 80:
         return ("ok", "Strong")
@@ -2012,6 +2070,65 @@ def _check_panels(data: dict) -> dict:
         else:
             prefix = ""
         panels[key] = prefix + panels.get(key, "")
+    pt = get("page_types")
+    if pt:
+        matrix = pt.get("matrix") or {}
+        rows = [
+            f"<tr><td>{_esc(label.replace('_', ' '))}</td><td class=\"num\">{_esc(m.get('count', 0))}</td>"
+            f"<td class=\"num\">{_esc(round(100 * (m.get('share') or 0)))}%</td><td>{_esc(m.get('intent', ''))}</td>"
+            f"<td class=\"url\">{_clip(', '.join('/' + (f or '') for f in (m.get('families') or [])[:3]), 80)}</td></tr>"
+            for label, m in matrix.items() if m.get("count")
+        ]
+        src = pt.get("source") or {}
+        expected = pt.get("expected") or []
+        missing = [l for l in expected if not (matrix.get(l) or {}).get("count")]
+        panels["page_types"] = (
+            _notice("Every sitemap and crawled URL labelled by content type; expected types come from the industry template. "
+                    "Shown, not weighted; absence findings are only made from a complete sitemap or crawl.", "info")
+            + _kv([("Site type", _esc(pt.get("site_type", "—"))), ("URLs classified", _esc(pt.get("urls_classified", "—"))),
+                   ("Inventory", _esc(src.get("status", "—"))),
+                   ("Expected types missing", _esc(", ".join(missing) if missing else ("none" if expected else "—")))])
+            + (_table(["Page type", "URLs", "Share", "Intent", "Sections"], rows) if rows else "")
+            + render_recommendations(pt)
+        )
+
+    nv = get("navigation")
+    if nv:
+        prim = (nv.get("primary_nav") or {}).get("links") or []
+        nav_rows = [f"<tr><td>{_esc(l.get('anchor') or '(empty)')}</td><td class=\"url\">{_clip(l.get('href', ''), 90)}</td></tr>" for l in prim[:25]]
+        bc = nv.get("breadcrumbs") or {}
+        panels["navigation"] = (
+            _notice("Global navigation, footer and breadcrumbs read from the page chrome (links repeating on 80% of sampled pages). "
+                    "A JavaScript-only navigation is reported as not measured, never as absent. Shown, not weighted.", "info")
+            + _kv([("Status", _esc(nv.get("status", "—"))), ("Pages sampled", _esc(nv.get("sampled_pages", "—"))),
+                   ("Primary nav links", _esc((nv.get("primary_nav") or {}).get("count", "—"))),
+                   ("Footer links", _esc((nv.get("footer_nav") or {}).get("count", "—"))),
+                   ("Breadcrumbs (visible / JSON-LD)", _esc(f"{bc.get('with_visible', 0)} / {bc.get('with_jsonld', 0)}"))])
+            + (_subhead("Primary navigation") + _table(["Anchor", "URL"], nav_rows) if nav_rows else "")
+            + render_recommendations(nv)
+        )
+
+    ar = get("architecture")
+    if ar:
+        sec_rows = [
+            f"<tr><td class=\"url\">{_esc(sct.get('path', ''))}</td><td class=\"num\">{_esc(sct.get('url_count', 0))}</td>"
+            f"<td>{_esc(sct.get('dominant_label', ''))}</td><td>{_yes_no(sct.get('in_nav'))}</td><td>{_yes_no((sct.get('hub') or {}).get('exists'))}</td>"
+            f"<td class=\"num\">{_esc(sct.get('avg_depth') if sct.get('avg_depth') is not None else '—')}</td>"
+            f"<td class=\"num\">{_esc(f"{sct['equity_share']:.0%}" if sct.get('equity_share') is not None else '—')}</td></tr>"
+            for sct in (ar.get("sections") or [])[:20] if not sct.get("parent")
+        ]
+        eq = ar.get("equity") or {}
+        inv = ar.get("inventory") or {}
+        panels["architecture"] = (
+            _notice("Sections by first directory: size, dominant page type, whether the navigation reaches them, hub page, click depth, "
+                    "and the share of internal link equity (PageRank, chrome links x0.25) — equity only on a complete crawl. Shown, not weighted.", "info")
+            + _kv([("URLs in inventory", _esc(inv.get("total", "—"))), ("Inventory", "complete" if inv.get("complete") else "incomplete"),
+                   ("Equity", _esc(eq.get("status", "—")))])
+            + (_table(["Section", "URLs", "Type", "In nav", "Hub", "Depth", "Equity"], sec_rows) if sec_rows else "")
+            + (f"<pre class=\"mono\">{_esc(ar.get('mermaid', ''))}</pre>" if ar.get("mermaid") else "")
+            + render_recommendations(ar)
+        )
+
     return panels
 
 
@@ -2109,14 +2226,15 @@ def _render_checks(data: dict, scores: dict, issues: list) -> str:
     rows, cards = [], []
     for key, label, status, status_label, score in entries:
         measured = status not in ("deferred", "na")
+        scored = measured and key not in DISPLAY_ONLY_CHECKS  # structure checks have findings, not a score
         pct = max(0, min(100, int(score)))
         score_html = (
             f'<span class="score"><span class="mono">{pct}</span>'
             f'<span class="meter {status}"><span style="width:{pct}%"></span></span></span>'
-            if measured else '<span class="mono muted">—</span>'
+            if scored else '<span class="mono muted">—</span>'
         )
         weight = weights.get(key)
-        weight_html = _esc(weight) if weight and measured else "—"
+        weight_html = _esc(weight) if weight and scored else "—"
         count = finding_counts.get(key, 0)
         chip = _status_chip(status, status_label)
         rows.append(
@@ -2125,7 +2243,7 @@ def _render_checks(data: dict, scores: dict, issues: list) -> str:
             f"<td>{score_html}</td><td>{chip}</td>"
             f'<td class="num">{count}</td><td class="num col-weight">{weight_html}</td></tr>'
         )
-        score_top = f'<span class="mono">{pct} / 100</span>' if measured else ""
+        score_top = f'<span class="mono">{pct} / 100</span>' if scored else ""
         noun = "finding" if count == 1 else "findings"
         cards.append(
             f'<article class="card detail" data-key="{key}" id="check-{key}" aria-labelledby="check-{key}-title">'

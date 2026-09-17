@@ -36,6 +36,7 @@ What to read, what to run, which procedure file has the detail. Full script inde
 | Keywords / clusters | `references/keyword-strategy.md` | `topic_cluster.py` | `07-keywords-clusters-aeo.md`, `23-semantic-clustering.md` |
 | Links | `references/link-building.md` | `internal_links.py`, `broken_links.py`, `link_profile.py` | `09-link-building-internal.md` |
 | Local SEO | `references/local-seo.md` | `local_signals_checker.py`, `maps_checker.py` | `12-local-seo.md`, `25-maps-intelligence.md` |
+| Site structure / page types / navigation | `references/page-types.md`, `references/industry-templates.md` | `site_graph.py`, `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py`, `sitemap_checker.py --reconcile` | `26-site-structure-content-types.md` |
 | Images | `references/image-seo.md` | `image_checker.py` | `13-image-seo.md` |
 | International / hreflang | `references/international-seo.md` | `hreflang_checker.py` | `14-international-hreflang.md` |
 | Programmatic SEO | `references/programmatic-seo.md` | `programmatic_seo_auditor.py` | `15-programmatic-seo.md` |
@@ -547,6 +548,12 @@ Extends §12 with geo-grid rank tracking, GBP completeness audit, review intelli
 Script: `maps_checker.py` → `references/procedures/25-maps-intelligence.md`
 
 ---
+
+## 26. Site Structure & Content-Type Coverage
+
+Which page types exist (comparison, alternatives, pricing, solutions, persona, industry, glossary, docs, …) and whether a site of this kind is missing any; what the global navigation and footer actually link to; how link equity spreads across sections; whether the sitemap agrees with the crawl. All display-only — never in the Health Score. Absence claims only from a complete sitemap or crawl; a JavaScript navigation is "not measured", never "missing".
+
+Scripts: `site_graph.py` (one crawl, reused) → `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py`, `sitemap_checker.py --lastmod --structure --reconcile` → `references/procedures/26-site-structure-content-types.md`, taxonomy in `references/page-types.md`.
 
 ## Google API Tier System
 

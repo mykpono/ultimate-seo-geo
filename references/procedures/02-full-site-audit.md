@@ -4,7 +4,7 @@
 
 ### Process
 
-**In a bash-capable environment**: Run `python scripts/generate_report.py https://example.com --output report.html --json summary.json` first (the summary is the score source for the written report) — it runs the **bundled analysis pipeline** in `generate_report.py` (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap discovery, local signals, IndexNow probe, on-page parse, readability, article SEO, JSON-LD validation, image alt coverage, etc.). Then use `finding_verifier.py` to deduplicate at the end. For any single dimension, run the matching script from **`references/audit-script-matrix.md`** or **§21**.
+**In a bash-capable environment**: Run `python scripts/generate_report.py https://example.com --output report.html --json summary.json` first (the summary is the score source for the written report) — it runs the **bundled analysis pipeline** in `generate_report.py` (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap discovery, local signals, IndexNow probe, on-page parse, readability, article SEO, JSON-LD validation, image alt coverage, and — from one shared 80-page crawl — page-type coverage, navigation and site architecture, shown but not weighted; § 26). Then use `finding_verifier.py` to deduplicate at the end. For any single dimension, run the matching script from **`references/audit-script-matrix.md`** or **§21**.
 
 **Evidence Integrity — do not state the following unless the corresponding data source ran or was provided:**
 

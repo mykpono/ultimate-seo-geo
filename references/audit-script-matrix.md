@@ -92,7 +92,7 @@ LLM + checklist work uses these references; there is **no separate script** by d
 
 ## Eval / QA
 
-- Spec: `evals/evals.json` (**15** scenarios, **64** assertions including negative PPC).  
+- Spec: `evals/evals.json` (**16** scenarios, **69** assertions including negative PPC).  
 - Golden transcripts: `evals/fixtures/eval*_pass.txt` — run `python scripts/score_eval_transcript.py --all-fixtures` (exit `0` if all pass).  
 - Report contract: a `report_lint` assertion (eval 1) runs the written report through `report_lint.py` and passes only with zero errors; `"strict": true` also fails on warnings, `"excerpt": true` skips required sections. Text before the report title is ignored. Pass `--summary summary.json` to check the score against a real `generate_report.py` run: `python scripts/score_eval_transcript.py --eval-id 1 --text-file transcript.txt --summary summary.json`.
 
