@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.13.0-green.svg)](../../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.14.0-green.svg)](../../CHANGELOG.md)
 
 > The definitive SEO + GEO skill for Claude. Full site audits, AI search optimization, schema generation, E-E-A-T assessment, and **54** bundled diagnostic Python scripts.
 
@@ -129,7 +129,7 @@ We're moving from Magento to Shopify — 3,000 product pages. What do we need fo
 - **RSL 1.0** — Machine-readable AI licensing (December 2025 standard)
 
 ### Bundled Python tools
-**54** audit `.py` scripts in `scripts/` (maintainer-only checkers are not bundled). Full step ↔ script map: **`references/audit-script-matrix.md`**. Eval regression: `evals/fixtures/` + `score_eval_transcript.py --all-fixtures`.
+**56** audit `.py` scripts in `scripts/` (maintainer-only checkers are not bundled). Full step ↔ script map: **`references/audit-script-matrix.md`**. Eval regression: `evals/fixtures/` + `score_eval_transcript.py --all-fixtures`.
 
 ---
 

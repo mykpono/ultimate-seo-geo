@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![AGENTS.md](https://img.shields.io/badge/AGENTS.md-compatible-blue)](https://agents.md)
-[![Version](https://img.shields.io/badge/version-1.13.0-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.14.0-green.svg)](CHANGELOG.md)
 [![LLM-Agnostic](https://img.shields.io/badge/LLM--Agnostic-7%2B%20platforms-purple.svg)](#platform-compatibility)
 
 The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML, Excel, and PDF reports.
@@ -235,7 +235,7 @@ ultimate-seo-geo/
 │   ├── entity-optimization.md  Entity / Knowledge Graph checklist
 │   ├── ...and 14 more topical files
 │
-├── scripts/               ← 54 bundled Python scripts
+├── scripts/               ← 56 bundled Python scripts
 │   ├── generate_report.py    Full-site HTML/XLSX/PDF dashboard (runs all scripts)
 │   ├── validate_schema.py    JSON-LD validation
 │   ├── robots_checker.py     AI crawler access check
@@ -249,7 +249,7 @@ ultimate-seo-geo/
 │   ├── pdf_template.py       Professional A4 PDF template
 │   ├── ...and 43 more
 │
-└── evals/                 ← 15 scenarios, 63 assertions + golden fixtures
+└── evals/                 ← 15 scenarios, 64 assertions + golden fixtures
     ├── evals.json
     └── fixtures/
 ```
@@ -287,7 +287,9 @@ On **PEP 668**–managed Python (e.g. Homebrew), use a venv first: `python3 -m v
 
 Preflight (optional): `python scripts/requirements-check.py` or `python scripts/requirements-check.py --json` — exits non-zero if `requests` / `beautifulsoup4` are missing.
 
-**Eval regression (optional):** save a model reply to `transcript.txt`, then `python scripts/score_eval_transcript.py --eval-id 1 --text-file transcript.txt`. Eval 1 also lints the written report against the § 2 contract with `report_lint.py`; add `--summary summary.json` to check its score against a `generate_report.py` run. CI runs `python scripts/score_eval_transcript.py --all-fixtures` against `evals/fixtures/`.
+**Eval regression (optional):** save a model reply to `transcript.txt`, then `python scripts/score_eval_transcript.py --eval-id 1 --text-file transcript.txt`. CI runs `python scripts/score_eval_transcript.py --all-fixtures` against `evals/fixtures/`.
+
+Eval 1 also lints the written report against the § 2 contract (`report_lint.py`). Add `--summary summary.json` to check its score against a `generate_report.py` run.
 
 Run the full-site report to start any audit:
 
@@ -354,7 +356,7 @@ In CI, `--format none --json seo-summary.json --fail-under 70 --fail-on critical
 
 ## Eval Results
 
-Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **15** prompts, **63** assertions):
+Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **15** prompts, **64** assertions):
 
 | Metric | With Skill | Without Skill | Delta |
 |---|---|---|---|
