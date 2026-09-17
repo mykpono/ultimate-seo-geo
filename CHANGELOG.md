@@ -28,6 +28,16 @@
   global links, a footer of 100+ internal links, generic or ambiguous nav anchors, visible
   breadcrumb vs BreadcrumbList JSON-LD mismatch, breadcrumbs missing on deep pages. A raw-HTML
   navigation with fewer than three landmark links is reported as *not measured*, never as absent.
+- **`scripts/site_architecture.py`** — the site as a tree of sections (first directory, split one
+  level down when a section holds most of the site; locale prefixes skipped): URL count and share,
+  dominant page type, hub page at the root, whether the navigation links into it, click depth and
+  word count of fetched pages, sitemap file. Link equity per section from a weighted PageRank
+  (d = 0.85, chrome links × 0.25) — measured only on a complete crawl of at least 10 pages covering
+  80% of the sitemap, otherwise "not measured". Findings, display-only: a money section starved of
+  equity while an informational one hoards it, a large section the navigation never links into, a
+  section of 5+ pages with no hub, money sections buried deep, and URL hygiene (deep paths, mixed
+  case, trailing-slash inconsistency, dated evergreen URLs, query strings in the sitemap). Emits a
+  Mermaid tree for the report.
 - `site_graph.py` now records each link's outermost container (a `<nav>` inside the footer is
   footer navigation), the page's visible breadcrumb trail and its BreadcrumbList item names
   (`schema_version` 2), and decodes responses without a declared charset as UTF-8 (nav anchors on
