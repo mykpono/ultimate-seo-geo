@@ -236,7 +236,7 @@ ultimate-seo-geo/
 │   ├── ...and 14 more topical files
 │
 ├── scripts/               ← 56 bundled Python scripts
-│   ├── generate_report.py    Full-site HTML/XLSX/PDF dashboard (runs all scripts)
+│   ├── generate_report.py    Full-site HTML/XLSX/PDF report (runs all scripts)
 │   ├── validate_schema.py    JSON-LD validation
 │   ├── robots_checker.py     AI crawler access check
 │   ├── drift_monitor.py      SEO drift baseline, compare, history, report
@@ -301,7 +301,7 @@ In CI, `--format none --json seo-summary.json --fail-under 70 --fail-on critical
 
 | Script | Purpose |
 |---|---|
-| `generate_report.py` | Full-site HTML report (findings and checks ledgers) — bundled analysis pipeline |
+| `generate_report.py` | Full-site HTML report in the report-set design (`--previous` for the delta since the last run; `--prepared-for`, `--prepared-by`, `--accent` for white-label) — bundled analysis pipeline |
 | `requirements-check.py` | Preflight: `requests` + `beautifulsoup4` installed (`--json`) |
 | `score_eval_transcript.py` | Score replies vs `evals/evals.json` (`--eval-id` or `--all-fixtures`) |
 | `meta_lengths_checker.py` | Title / meta description / H1 lengths (`--url` or local HTML) |

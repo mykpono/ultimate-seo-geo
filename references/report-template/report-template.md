@@ -125,6 +125,7 @@ Client documents show a `/100` only when it is the `overall` of a `generate_repo
 - **Print**: `print.css` sets A4, page numbers, no sticky nav, tables unbroken, links expanded.
 - **No CDN scripts.** Scroll-spy is the only JavaScript and the page reads fully without it.
 - **Length targets**: brief ≤ 700 words; audit ≤ 8,000 words of prose outside registers; strategy ≤ 6,000; plan is mostly table.
+- **One design system.** `generate_report.py` reads `report.css` and `print.css` from this folder at run time and inlines them, so the automated report, the client set and the agent's HTML share one visual language. Its page is the same spine (§ 2) with the sections a machine-only run can fill: masthead with a coverage bar, verdict and figures, the delta since a `--previous` run, Health Score by category, coverage, site shape, findings by kind, GEO readiness, recommendations, platform, and check details as the appendix.
 
 ## 9. Freshness and versioning
 
