@@ -31,6 +31,9 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Near-duplicate / thin + canonical | §6, §11 | `duplicate_content.py` | `python scripts/duplicate_content.py URL --json` |
 | Canonical validation + alternate detection | §4, §11 | `canonical_checker.py` | `python scripts/canonical_checker.py URL --json` (single) / `--crawl --json` (site-wide, detects alternate pages) |
 | Sitemap + URL health | §11 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --sample 50 --json` |
+| Sitemap lastmod plausibility (coverage, invalid / future / one-date-everywhere, 20-page comparison with the pages' own modified dates) | §11 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --lastmod --json` (`--no-page-dates` skips the page fetches) |
+| Sitemap structure (index layout, per-section children, file sizes, duplicates, foreign hosts, http entries) | §11 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --structure --json` |
+| Sitemap vs crawl reconciliation (unlisted indexable pages; listed noindex / redirect / canonicalised / 404 URLs; orphans after a complete crawl) | §11, §9 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --reconcile site_graph.json --json` |
 | Local surface signals | §12 | `local_signals_checker.py` | `python scripts/local_signals_checker.py URL --json` |
 | IndexNow (full key validation) | §4 | `indexnow_checker.py` | `python scripts/indexnow_checker.py URL --key KEY --json` |
 | IndexNow (probe, no key) | §4 | `indexnow_checker.py` | `python scripts/indexnow_checker.py URL --probe --json` |
