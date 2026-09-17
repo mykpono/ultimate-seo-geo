@@ -2,8 +2,57 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.14.0] - 2026-09-16
+
+One report format, end to end. The written audit and `generate_report.py` used to disagree on
+severities, on category weights and on the Health Score itself, and nothing checked the report the
+agent writes by hand. This release makes them one contract:
+
+- **One severity scale and finding shape** in the JSON summary and the § 2 template.
+- **One Health Score**, computed only by `generate_report.py`; without it the report says
+  "not scored".
+- **A linter for the written report** (`report_lint.py`), enforced by eval 1.
+- **GEO measured more fully:** AI search crawler access is its own check (GEO 4% → 10%), and a new
+  citability check reports article structure, shown but not weighted.
+
+**Upgrading:**
+- **`--json` is `schema_version` 2.** Read `level` where you read `severity`, and `counts.medium`
+  where you read `counts.warning`. `--fail-on` and exit codes are unchanged.
+- **Scores move a few points** with the robots / AI-access split (python.org 69 → 73 on the same
+  data). Re-check `--fail-under` thresholds.
+- **Eval 1 now fails full-audit replies that do not follow the § 2 report contract.**
+
+Minor, not patch, per D-020: two new scripts, a new eval assertion type and a new report contract.
+
 ### Added
 
+- **`report_lint.py` checks a written audit report against the § 2 contract.** The report is the one
+  thing the agent writes by hand, and nothing checked it.
+  - **Structure:** title and metadata line, the Health Score section, the required sections.
+  - **Findings:** every documented field, severity and confidence on their scales, and each finding
+    under the section its severity belongs to (a High under Critical is an error).
+  - **Score:** a /100 needs a `generate_report.py` source and never the retired deduction formula;
+    "not scored" needs a reason.
+  - **With `--summary`:** the headline score, category table and measured-check count must match the
+    summary, and Core Web Vitals or backlink numbers are errors when `pagespeed` or `link_profile`
+    was not measured.
+  - Recognises full audits, GEO audits and Competitive Mode reports. Tolerates bold or bulleted
+    labels, blank lines between fields, multi-line fixes and a reason after the confidence label.
+    Exit 1 on errors (or warnings with `--strict`); `--json`; `--excerpt` for partial reports.
+  - § 2, § 19, SKILL.md and AGENTS.md run it before delivering an audit; the § 2 command now also
+    writes `--json summary.json`.
+- **The eval suite enforces the report contract.** `score_eval_transcript.py` has a `report_lint`
+  assertion type: the written report in a reply must pass `report_lint.py` with no errors
+  (`"strict": true` also fails on warnings, `"excerpt": true` skips required sections). Text before
+  the report title is ignored, and reported line numbers point into the transcript. `--summary`
+  checks the score against a real `generate_report.py` run.
+  - Eval 1 (full audit) carries it. Its keyword assertions passed the old bundled fixture, which had
+    no report title, sections or severities; the fixture is now a complete § 2 report. The three saved
+    real eval-1 replies in the workspace fail it with 28–41 contract errors each.
+  - Eval 1's score assertion also accepts `SEO Health Score: not scored`, the correct output when
+    `generate_report.py` did not run.
 - **`citability_checker.py` measures the structure of an article page for GEO citability.** Citability
   is 25% of the skill's own GEO rubric, and no script measured it.
   - **Scored (0–100):** no section over 350 words of prose without a list, table or subheading (45);
@@ -30,55 +79,12 @@
     GitHub README are not applicable; Martin Fowler's *Microservices* scores 75 on eight
     378–657-word prose sections, which the check marks down by design.
 
-- **The eval suite enforces the report contract.** `score_eval_transcript.py` has a `report_lint`
-  assertion type: the written report in a reply must pass `report_lint.py` with no errors
-  (`"strict": true` also fails on warnings, `"excerpt": true` skips required sections). Text before
-  the report title is ignored, and reported line numbers point into the transcript. `--summary`
-  checks the score against a real `generate_report.py` run.
-  - Eval 1 (full audit) carries it. Its keyword assertions passed the old bundled fixture, which had
-    no report title, sections or severities; the fixture is now a complete § 2 report. The three saved
-    real eval-1 replies in the workspace fail it with 28–41 contract errors each.
-  - Eval 1's score assertion also accepts `SEO Health Score: not scored`, the correct output when
-    `generate_report.py` did not run.
-- **`report_lint.py` checks a written audit report against the § 2 contract.** The report is the one
-  thing the agent writes by hand, and nothing checked it.
-  - **Structure:** title and metadata line, the Health Score section, the required sections.
-  - **Findings:** every documented field, severity and confidence on their scales, and each finding
-    under the section its severity belongs to (a High under Critical is an error).
-  - **Score:** a /100 needs a `generate_report.py` source and never the retired deduction formula;
-    "not scored" needs a reason.
-  - **With `--summary`:** the headline score, category table and measured-check count must match the
-    summary, and Core Web Vitals or backlink numbers are errors when `pagespeed` or `link_profile`
-    was not measured.
-  - Recognises full audits, GEO audits and Competitive Mode reports. Tolerates bold or bulleted
-    labels, blank lines between fields, multi-line fixes and a reason after the confidence label.
-    Exit 1 on errors (or warnings with `--strict`); `--json`; `--excerpt` for partial reports.
-  - § 2, § 19, SKILL.md and AGENTS.md run it before delivering an audit; the § 2 command now also
-    writes `--json summary.json`.
 - **The GEO worked example in `audit-output-example.md` has every mandatory finding field.** Its
   Critical and High findings lacked Falsifiability, Leading Indicator, First-Principle Observation
   and Dependency; the linter found it on its first run.
 
 ### Changed
 
-- **AI search crawler access is its own GEO check; GEO rises from 4% to 10% of the Health Score.**
-  Whether AI search crawlers (OAI-SearchBot, Claude-SearchBot, PerplexityBot, …) can fetch the site
-  was measured, but folded into the `robots` score under Technical SEO, so the GEO category held
-  only the entity check.
-  - **`ai_search_access`** (GEO, weight 8): the share of AI search crawlers robots.txt lets fetch the
-    site root. Training crawlers are still not scored, and explicit AI rules no longer earn points on
-    their own (the old +2 per crawler).
-  - **`robots`** (Technical, weight 8 → 4) scores crawl hygiene only: a readable or missing file, a
-    declared sitemap, and Googlebot and Bingbot not blocked.
-  - **Category weights:** Technical 32%, Content 18%, On-page 11%, Links 11%, Core Web Vitals 10%,
-    GEO 10%, Schema 4%, Images 2%, Local 2%. The documented table now uses largest-remainder
-    rounding so it always sums to 100.
-  - **Scores move by a few points.** On the same live data, old → new: python.org 69 → 73,
-    developers.cloudflare.com 80 → 82, nytimes.com 64 → 65 (AI search access 17), theguardian.com
-    64 → 65 (33). Sites that block AI search crawlers now show a GEO "Gap" and trail open sites by
-    about 3 more points; their overall score does not fall, because the AI penalty moved out of
-    robots rather than being added. Re-check `--fail-under` thresholds.
-  - Citability is still not measured by any script (§ 2 says so); that is a separate check.
 - **The `generate_report.py --json` summary is `schema_version` 2, the first step toward one report
   format.** The written audit template and the script disagreed on severities, and v1 collapsed the
   scripts' own `high`/`medium`/`low` into three levels, losing them.
@@ -97,8 +103,8 @@
   / Low −1) with category weights the script never used (Content 22%, Technical 18%, …), so an agent
   that ran the script and followed the template could report two scores for one site.
   - **Weights:** the docs now print the script's actual category shares, derived from the new
-    `CHECK_WEIGHTS` constant: Technical 36%, Content 18%, On-page 12%, Links 12%, Core Web Vitals 10%,
-    Schema 4%, GEO 4%, Images 2%, Local 2%. No site's score changes.
+    `CHECK_WEIGHTS` constant, instead of weights the script never applied (Content 22%, Technical
+    18%, …). The shares this release ships with are in the GEO entry below.
   - **Summary:** a new `group_scores` rolls measured checks up into the nine categories (score, share
     of measured weight, status, checks, unmeasured), so the template's category table comes straight
     from the script and `overall` is their share-weighted mean.
@@ -111,6 +117,24 @@
     reappears in either tree.
 - **§ 2 audit template:** a Severity Scale table matching the summary, a Low Priority section, and
   Quick Wins / Opportunity Signals as tags rather than severities.
+- **AI search crawler access is its own GEO check; GEO rises from 4% to 10% of the Health Score.**
+  Whether AI search crawlers (OAI-SearchBot, Claude-SearchBot, PerplexityBot, …) can fetch the site
+  was measured, but folded into the `robots` score under Technical SEO, so the GEO category held
+  only the entity check.
+  - **`ai_search_access`** (GEO, weight 8): the share of AI search crawlers robots.txt lets fetch the
+    site root. Training crawlers are still not scored, and explicit AI rules no longer earn points on
+    their own (the old +2 per crawler).
+  - **`robots`** (Technical, weight 8 → 4) scores crawl hygiene only: a readable or missing file, a
+    declared sitemap, and Googlebot and Bingbot not blocked.
+  - **Category weights:** Technical 32%, Content 18%, On-page 11%, Links 11%, Core Web Vitals 10%,
+    GEO 10%, Schema 4%, Images 2%, Local 2%. The documented table now uses largest-remainder
+    rounding so it always sums to 100.
+  - **Scores move by a few points.** On the same live data, old → new: python.org 69 → 73,
+    developers.cloudflare.com 80 → 82, nytimes.com 64 → 65 (AI search access 17), theguardian.com
+    64 → 65 (33). Sites that block AI search crawlers now show a GEO "Gap" and trail open sites by
+    about 3 more points; their overall score does not fall, because the AI penalty moved out of
+    robots rather than being added. Re-check `--fail-under` thresholds.
+  - Citability is still not measured by any script (§ 2 says so); that is a separate check.
 
 ### Fixed
 
