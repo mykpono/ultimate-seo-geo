@@ -9,9 +9,9 @@
       "assertions": [
         {
           "id": "health-score-present",
-          "description": "Output includes a numeric SEO Health Score between 0 and 100",
+          "description": "Output includes an SEO Health Score: a 0-100 score from generate_report.py, or \"not scored\" with the reason when the script did not run (§ 2)",
           "type": "contains_pattern",
-          "pattern": "\\b([0-9]{1,2}|100)/100\\b"
+          "pattern": "\\b([0-9]{1,2}|100)/100\\b|SEO Health Score:\\s*not scored"
         },
         {
           "id": "eeat-ymyl-flagged",
@@ -36,6 +36,11 @@
           "description": "Output mentions structured data or schema markup",
           "type": "contains_any",
           "values": ["schema", "JSON-LD", "structured data", "Schema.org", "rich result"]
+        },
+        {
+          "id": "report-contract",
+          "description": "The written audit passes scripts/report_lint.py with no errors: § 2 title, metadata, Health Score section, required sections, and every finding's fields, severity and section",
+          "type": "report_lint"
         }
       ]
     },

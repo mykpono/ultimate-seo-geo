@@ -287,7 +287,7 @@ On **PEP 668**–managed Python (e.g. Homebrew), use a venv first: `python3 -m v
 
 Preflight (optional): `python scripts/requirements-check.py` or `python scripts/requirements-check.py --json` — exits non-zero if `requests` / `beautifulsoup4` are missing.
 
-**Eval regression (optional):** save a model reply to `transcript.txt`, then `python scripts/score_eval_transcript.py --eval-id 1 --text-file transcript.txt`. CI runs `python scripts/score_eval_transcript.py --all-fixtures` against `evals/fixtures/`.
+**Eval regression (optional):** save a model reply to `transcript.txt`, then `python scripts/score_eval_transcript.py --eval-id 1 --text-file transcript.txt`. Eval 1 also lints the written report against the § 2 contract with `report_lint.py`; add `--summary summary.json` to check its score against a `generate_report.py` run. CI runs `python scripts/score_eval_transcript.py --all-fixtures` against `evals/fixtures/`.
 
 Run the full-site report to start any audit:
 

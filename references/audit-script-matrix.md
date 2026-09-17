@@ -63,7 +63,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | `site_mapper.py` | URL discovery via sitemap + BFS crawl (`python scripts/site_mapper.py URL --max-pages 100 --json`) |
 | `crawl_adapter.py` | Pluggable fetch backend (urllib / Firecrawl / Playwright) — called internally by other scripts |
 | `backlink_analyzer.py` | 7-section backlink report from CSV exports (Ahrefs, Moz, Semrush) or built-in sample data (`python scripts/backlink_analyzer.py --source csv --input links.csv --json`) |
-| `score_eval_transcript.py` | Score a saved model reply vs `evals/evals.json` (`--eval-id N` or `--all-fixtures`) |
+| `score_eval_transcript.py` | Score a saved model reply vs `evals/evals.json` (`--eval-id N` or `--all-fixtures`; `report_lint` assertions check the § 2 report contract, `--summary` checks the score) |
 | `fetch_page.py` | Fetch HTML to disk for manual inspection |
 | `render_page.py` | Render a page with Playwright (JS-heavy sites) so client-rendered content is visible to the other checkers |
 | `google_api_tier.py` | Report which Google API tier is available from configured credentials (`python scripts/google_api_tier.py --check`) |
@@ -84,8 +84,9 @@ LLM + checklist work uses these references; there is **no separate script** by d
 
 ## Eval / QA
 
-- Spec: `evals/evals.json` (**10** scenarios, **39** assertions including negative PPC).  
-- Golden transcripts: `evals/fixtures/eval*_pass.txt` — run `python scripts/score_eval_transcript.py --all-fixtures` (exit `0` if all pass).
+- Spec: `evals/evals.json` (**15** scenarios, **64** assertions including negative PPC).  
+- Golden transcripts: `evals/fixtures/eval*_pass.txt` — run `python scripts/score_eval_transcript.py --all-fixtures` (exit `0` if all pass).  
+- Report contract: a `report_lint` assertion (eval 1) runs the written report through `report_lint.py` and passes only with zero errors; `"strict": true` also fails on warnings, `"excerpt": true` skips required sections. Text before the report title is ignored. Pass `--summary summary.json` to check the score against a real `generate_report.py` run: `python scripts/score_eval_transcript.py --eval-id 1 --text-file transcript.txt --summary summary.json`.
 
 ## Progressive checks
 
