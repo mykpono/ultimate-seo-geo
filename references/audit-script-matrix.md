@@ -62,6 +62,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 |--------|------|
 | `requirements-check.py` | Preflight: verify `requests` + `beautifulsoup4` (`python scripts/requirements-check.py --json`) |
 | `site_mapper.py` | URL discovery via sitemap + BFS crawl (`python scripts/site_mapper.py URL --max-pages 100 --json`) |
+| `site_graph.py` | One crawl, saved for reuse: sitemap with `lastmod`, BFS link graph, every link tagged with its page region (header / nav / footer / breadcrumb / aside / main), URL decomposition, and an explicit `crawl.complete` / `sitemap.complete` verdict (`python scripts/site_graph.py URL --max-pages 100 --depth 3 --out site_graph.json`) |
 | `crawl_adapter.py` | Pluggable fetch backend (urllib / Firecrawl / Playwright) — called internally by other scripts |
 | `backlink_analyzer.py` | 7-section backlink report from CSV exports (Ahrefs, Moz, Semrush) or built-in sample data (`python scripts/backlink_analyzer.py --source csv --input links.csv --json`) |
 | `score_eval_transcript.py` | Score a saved model reply vs `evals/evals.json` (`--eval-id N` or `--all-fixtures`; `report_lint` assertions check the § 2 report contract, `--summary` checks the score) |
