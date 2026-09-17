@@ -30,7 +30,7 @@
 | Citability | 25% | 134-167 word self-contained answer blocks, direct answer in first 40-60 words of section |
 | Structural Readability | 20% | Clean H1→H2→H3, question-based headings, 2-4 sentence paragraphs, tables, lists |
 | Authority & Brand Signals | 20% | Author bio + credentials, publication dates, citations, entity presence across platforms |
-| Technical Accessibility | 20% | AI crawlers allowed in robots.txt, server-side rendering, key content present in raw HTML |
+| Technical Accessibility | 20% | AI search crawlers allowed in robots.txt (`generate_report.py` scores this as `ai_search_access`), server-side rendering, key content present in raw HTML |
 | Multi-Modal Content | 15% | Text + images + video + structured data (78% of cited sources combine these) |
 
 **Scoring formula**: score each dimension **0–100**, then `Σ(dimension weight × dimension score)`. Weights sum to 100%, so the result is already on the 0–100 scale — no further division. (Worked example: `references/audit-output-example.md` § Example 3.)

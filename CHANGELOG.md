@@ -35,6 +35,24 @@
 
 ### Changed
 
+- **AI search crawler access is its own GEO check; GEO rises from 4% to 10% of the Health Score.**
+  Whether AI search crawlers (OAI-SearchBot, Claude-SearchBot, PerplexityBot, …) can fetch the site
+  was measured, but folded into the `robots` score under Technical SEO, so the GEO category held
+  only the entity check.
+  - **`ai_search_access`** (GEO, weight 8): the share of AI search crawlers robots.txt lets fetch the
+    site root. Training crawlers are still not scored, and explicit AI rules no longer earn points on
+    their own (the old +2 per crawler).
+  - **`robots`** (Technical, weight 8 → 4) scores crawl hygiene only: a readable or missing file, a
+    declared sitemap, and Googlebot and Bingbot not blocked.
+  - **Category weights:** Technical 32%, Content 18%, On-page 11%, Links 11%, Core Web Vitals 10%,
+    GEO 10%, Schema 4%, Images 2%, Local 2%. The documented table now uses largest-remainder
+    rounding so it always sums to 100.
+  - **Scores move by a few points.** On the same live data, old → new: python.org 69 → 73,
+    developers.cloudflare.com 80 → 82, nytimes.com 64 → 65 (AI search access 17), theguardian.com
+    64 → 65 (33). Sites that block AI search crawlers now show a GEO "Gap" and trail open sites by
+    about 3 more points; their overall score does not fall, because the AI penalty moved out of
+    robots rather than being added. Re-check `--fail-under` thresholds.
+  - Citability is still not measured by any script (§ 2 says so); that is a separate check.
 - **The `generate_report.py --json` summary is `schema_version` 2, the first step toward one report
   format.** The written audit template and the script disagreed on severities, and v1 collapsed the
   scripts' own `high`/`medium`/`low` into three levels, losing them.
@@ -70,6 +88,11 @@
 
 ### Fixed
 
+- **`robots_checker.py` reports a robots.txt that blocks Googlebot or Bingbot.** It tracked only AI
+  crawlers, so `User-agent: Googlebot` / `Disallow: /` raised no issue, and `User-agent: *` /
+  `Disallow: /` scored 0 only because six AI search crawlers were penalised along the way. It now
+  records `search_engine_status` and adds a critical issue; the robots score loses 50 per blocked
+  engine.
 - **`finding_verifier.py` ranks High, Medium and Low.** Its table knew only Critical/Warning/Info/Pass,
   so a "High" finding ranked below Info: merged with an Info duplicate it was downgraded to Info, and
   it sorted last. Ranking now uses the full scale, case-insensitively.

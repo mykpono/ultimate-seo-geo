@@ -37,7 +37,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 from fetch_page import fetch_page as fetch_url
-from robots_checker import AI_CRAWLER_ROLES, BLOCKING_STATUSES
+from robots_checker import AI_CRAWLER_ROLES, BLOCKING_STATUSES, SEARCH_ENGINE_CRAWLERS, crawler_status
 
 # Maximum number of analysis scripts to run in parallel.
 # Bounded to avoid overwhelming the target server with simultaneous crawls.
@@ -663,36 +663,48 @@ def collect_data(
     return data
 
 
-# Robots score lost for each AI search crawler that cannot fetch the site root.
-ROBOTS_BLOCKED_SEARCH_PENALTY = 15
+# Robots score lost for each web search engine (Googlebot, Bingbot) shut out of the site root.
+ROBOTS_BLOCKED_ENGINE_PENALTY = 50
 
 
 def _robots_score(rob: dict) -> int:
-    """Score robots.txt on crawl hygiene and on whether AI search can reach the site.
+    """Score robots.txt crawl hygiene: a readable file, a declared sitemap, search engines let in.
 
     A missing robots.txt allows every crawler (RFC 9309 sec 2.3.1.3), so it
-    scores like an empty file, not a failure. Explicit AI crawler rules earn up
-    to 20 points, except a rule that shuts out a search or user crawler, which
-    is not management. Each blocked search crawler, named or through `*`, costs
-    ROBOTS_BLOCKED_SEARCH_PENALTY. Blocking a training crawler costs nothing:
-    it is a licensing choice.
+    scores like an empty file, not a failure. Whether AI search crawlers can
+    reach the site is scored separately, as ai_search_access.
     """
     if rob.get("status") not in (200, 404):
         return 0
-    score = 60
-    if rob.get("sitemaps"):
-        score += 20
-    managed = blocked_search = 0
-    for crawler, state in (rob.get("ai_crawler_status") or {}).items():
-        role = AI_CRAWLER_ROLES.get(crawler)
-        blocked = state in BLOCKING_STATUSES
-        if blocked and role == "search":
-            blocked_search += 1
-        explicit = not any(marker in state for marker in ("not managed", "wildcard", "no robots.txt"))
-        if explicit and not (blocked and role in ("search", "user")):
-            managed += 1
-    score += min(20, managed * 2) - blocked_search * ROBOTS_BLOCKED_SEARCH_PENALTY
-    return max(0, min(100, score))
+    score = 80 + (20 if rob.get("sitemaps") else 0)
+    agents = rob.get("user_agents") or {}
+    blocked = sum(1 for engine in SEARCH_ENGINE_CRAWLERS if crawler_status(agents, engine) in BLOCKING_STATUSES)
+    return max(0, score - blocked * ROBOTS_BLOCKED_ENGINE_PENALTY)
+
+
+def _ai_search_access_score(rob: dict) -> int:
+    """Share of AI search crawlers robots.txt lets fetch the site root, 0-100.
+
+    Search crawlers build the indexes AI answers cite (OAI-SearchBot for ChatGPT
+    search, Claude-SearchBot, PerplexityBot, ...), so each one blocked takes the
+    site out of that engine. Training crawlers are not counted: opting out of
+    model training is a licensing choice. Explicit rules earn nothing on their
+    own; only access counts.
+    """
+    if rob.get("status") not in (200, 404):
+        return 0
+    statuses = rob.get("ai_crawler_status") or {}
+    search = [c for c, role in AI_CRAWLER_ROLES.items() if role == "search"]
+    allowed = sum(1 for c in search if statuses.get(c, "not managed") not in BLOCKING_STATUSES)
+    return round(100 * allowed / len(search))
+
+
+# Checks scored from another check's data: they have no section of their own.
+SCORE_SOURCE = {"ai_search_access": "robots"}
+
+
+def _source_section(sections: dict, key: str):
+    return sections.get(SCORE_SOURCE.get(key, key))
 
 
 # The Health Score weights. They are the single source for the category weights
@@ -703,7 +715,8 @@ def _robots_score(rob: dict) -> int:
 CHECK_WEIGHTS = {
     "security": 8,
     "social": 5,
-    "robots": 8,
+    "robots": 4,
+    "ai_search_access": 8,
     "broken_links": 10,
     "internal_links": 8,
     "redirects": 3,
@@ -740,6 +753,7 @@ def calculate_overall_score(data: dict) -> dict:
 
     # Robots score
     scores["robots"] = _robots_score(data["sections"].get("robots", {}))
+    scores["ai_search_access"] = _ai_search_access_score(data["sections"].get("robots", {}))
 
     # Article score (informational, not weighted heavily)
     art = data["sections"].get("article", {})
@@ -938,7 +952,7 @@ def calculate_overall_score(data: dict) -> dict:
     # PageSpeed call cannot move the overall score or trip a CI gate.
     unmeasured = []
     for key in weights:
-        section = data["sections"].get(key)
+        section = _source_section(data["sections"], key)
         if (not isinstance(section, dict) or not section or section.get("error")
                 or (key == "pagespeed" and section.get("performance_score") is None)):
             scores[key] = None
@@ -1012,6 +1026,7 @@ CHECK_GROUPS = {
 CHECK_GROUP = {
     "onpage": "on_page", "social": "on_page",
     "schema_validation": "schema",
+    "ai_search_access": "geo",
     "canonical": "technical", "robots": "technical", "sitemap": "technical", "security": "technical",
     "redirects": "technical", "broken_links": "technical", "hreflang": "technical",
     "indexnow_probe": "technical",
@@ -1063,7 +1078,7 @@ def build_summary(data: dict, scores: dict) -> dict:
     raw = scores.get("raw_categories") or scores.get("categories", {})
     categories = {}
     for key, value in raw.items():
-        section = data["sections"].get(key)
+        section = _source_section(data["sections"], key)
         section = section if isinstance(section, dict) else {}
         categories[key] = {
             "label": CHECK_LABELS.get(key, key),
@@ -1101,10 +1116,13 @@ def nominal_group_weights() -> dict:
     This is the category weights table the docs print.
     """
     total = sum(CHECK_WEIGHTS.values())
-    return {
-        group: round(100 * sum(w for k, w in CHECK_WEIGHTS.items() if CHECK_GROUP[k] == group) / total)
-        for group in CHECK_GROUPS
-    }
+    exact = {group: 100 * sum(w for k, w in CHECK_WEIGHTS.items() if CHECK_GROUP[k] == group) / total
+             for group in CHECK_GROUPS}
+    # Largest remainder, so the printed table sums to exactly 100.
+    shares = {group: int(value) for group, value in exact.items()}
+    for group in sorted(exact, key=lambda g: exact[g] - shares[g], reverse=True)[:100 - sum(shares.values())]:
+        shares[group] += 1
+    return shares
 
 
 def group_scores(scores: dict) -> dict:
@@ -1251,7 +1269,8 @@ CHECK_LABELS = {
     "onpage": "On-page SEO",
     "schema_validation": "JSON-LD schema",
     "canonical": "Canonical tags",
-    "robots": "Robots and AI crawlers",
+    "robots": "Robots.txt crawl rules",
+    "ai_search_access": "AI search crawler access (robots.txt)",
     "ai_bot_access": "AI crawler access (firewall)",
     "hidden_instructions": "Hidden AI instructions",
     "sitemap": "Sitemaps",
@@ -1648,11 +1667,22 @@ def _check_panels(data: dict) -> dict:
             f"<tr><td>{_esc(crawler)}</td><td>{_esc(role or '—')}</td>"
             f"<td>{chip}</td><td>{_esc(status_text)}</td></tr>"
         )
+    engine_rows = [
+        f"<tr><td>{_esc(engine)}</td><td>{_esc(state)}</td></tr>"
+        for engine, state in (
+            (e, crawler_status(rob.get("user_agents") or {}, e)) for e in SEARCH_ENGINE_CRAWLERS)
+    ] if rob else []
     panels["robots"] = (
         _kv([("robots.txt", _esc(rob.get("status", "—"))),
              ("Sitemaps", _esc(len(rob.get("sitemaps") or []))),
              ("User-agents", _esc(len(rob.get("user_agents") or {})))])
-        + (_subhead("AI crawler access") + _table(["Crawler", "Role", "Status", "Detail"], crawler_rows) if crawler_rows else "")
+        + (_subhead("Search engines") + _table(["Crawler", "Status"], engine_rows) if engine_rows else "")
+    )
+    panels["ai_search_access"] = (
+        _notice("Scored from robots.txt: the share of AI search crawlers that can fetch the site root. "
+                "Training crawlers are listed but not scored.")
+        + (_subhead("AI crawler access") + _table(["Crawler", "Role", "Status", "Detail"], crawler_rows)
+           if crawler_rows else "")
     )
 
     aba = get("ai_bot_access")
@@ -1944,7 +1974,7 @@ def _check_panels(data: dict) -> dict:
     )
 
     for key in CHECK_LABELS:
-        section = sections.get(key)
+        section = _source_section(sections, key)
         if not isinstance(section, dict) or not section:
             prefix = _notice("This check did not run, usually because the page could not be fetched.")
         elif section.get("error") and key != "pagespeed":
@@ -2040,7 +2070,7 @@ def _render_checks(data: dict, scores: dict, issues: list) -> str:
 
     entries = []
     for key, label in CHECK_LABELS.items():
-        section = data["sections"].get(key)
+        section = _source_section(data["sections"], key)
         section = section if isinstance(section, dict) else {}
         status, status_label = _check_status(key, section, categories.get(key))
         entries.append((key, label, status, status_label, categories.get(key) or 0))
@@ -2129,7 +2159,7 @@ def generate_html(data: dict, scores: dict) -> str:
 
     statuses = {}
     for key in CHECK_LABELS:
-        section = sections.get(key)
+        section = _source_section(sections, key)
         statuses[key] = _check_status(key, section if isinstance(section, dict) else {}, categories.get(key))
     not_measured = sum(1 for status, _ in statuses.values() if status == "deferred")
     gaps = sorted((k for k, (status, _) in statuses.items() if status == "gap"),
@@ -2644,7 +2674,8 @@ def export_xlsx(data: dict, scores: dict, output_path: str) -> str:
     ]
     category_labels = {
         "security": "Security Headers", "social": "Social Meta",
-        "robots": "Robots & Crawlers", "broken_links": "Broken Links",
+        "robots": "Robots.txt crawl rules", "ai_search_access": "AI Search Crawler Access",
+        "broken_links": "Broken Links",
         "internal_links": "Internal Links", "redirects": "Redirects",
         "llms_txt": "AI Search (llms.txt)", "pagespeed": "Performance (CWV)",
         "onpage": "On-Page SEO", "readability": "Readability",

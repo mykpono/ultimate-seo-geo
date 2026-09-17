@@ -51,13 +51,13 @@ There is one Health Score: the one `generate_report.py` computes. It is the weig
 
 | Category | Weight | Checks |
 |---|---|---|
-| Technical SEO | 36% | security, robots, broken_links, canonical, hreflang, redirects, sitemap, indexnow_probe |
+| Technical SEO | 32% | security, robots, broken_links, canonical, hreflang, redirects, sitemap, indexnow_probe (robots scores crawl rules only: a readable file, a declared sitemap, Googlebot and Bingbot not blocked) |
 | Content quality / E-E-A-T | 18% | readability, content_quality, duplicate_content, programmatic_seo |
-| On-page SEO | 12% | onpage, social |
-| Link authority | 12% | internal_links, link_profile |
+| On-page SEO | 11% | onpage, social |
+| Link authority | 11% | internal_links, link_profile |
 | Core Web Vitals | 10% | pagespeed |
+| AI search readiness (GEO) | 10% | ai_search_access, entity (ai_search_access is the share of AI search crawlers robots.txt lets fetch the site; llms.txt, AI crawler firewall and hidden-instruction checks are shown but not weighted; citability is not yet measured by a script) |
 | Schema / structured data | 4% | schema_validation |
-| AI search readiness (GEO) | 4% | entity (llms.txt, AI crawler firewall and hidden-instruction checks are shown but not weighted) |
 | Images | 2% | image_seo |
 | Local SEO | 2% | local_signals (only for local businesses) |
 

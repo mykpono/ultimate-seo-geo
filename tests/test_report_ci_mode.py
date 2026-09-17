@@ -51,11 +51,12 @@ def overall(d):
 
 
 def test_the_score_uses_only_measured_checks():
-    """8 measured checks: (90*8 + 80*5 + 80*8 + 100*10 + 100*8 + 70*6 + 100*5 + 100*3) / 53 = 90.2."""
+    """9 measured checks, robots split into crawl rules (w4) and AI search access (w8):
+    (90*8 + 80*5 + 100*4 + 100*8 + 100*10 + 100*8 + 70*6 + 100*5 + 100*3) / 57 = 93.7."""
     scores = gr.calculate_overall_score(data())
 
-    assert scores["overall"] == 90
-    assert scores["measured_categories"] == 8
+    assert scores["overall"] == 94
+    assert scores["measured_categories"] == 9
     assert {"pagespeed", "broken_links", "internal_links", "redirects"} <= set(scores["unmeasured"])
 
 
@@ -84,7 +85,7 @@ def test_summary_contract():
     summary = gr.build_summary(d, gr.calculate_overall_score(d))
 
     assert summary["schema_version"] == 2
-    assert (summary["overall"], summary["grade"]) == (90, "A+")
+    assert (summary["overall"], summary["grade"]) == (94, "A+")
     assert summary["severity_scale"] == ["critical", "high", "medium", "low", "info"]
     assert summary["categories"]["pagespeed"] == {
         "label": "Performance (Core Web Vitals)", "group": "performance", "score": None, "weight": 13,
@@ -205,8 +206,8 @@ def summary_of(d):
 
 @pytest.mark.parametrize("kwargs,result,code", [
     ({}, "not set", 0),
-    ({"fail_under": 90}, "pass", 0),
-    ({"fail_under": 91}, "fail", 1),
+    ({"fail_under": 94}, "pass", 0),
+    ({"fail_under": 95}, "fail", 1),
     ({"fail_on": "critical"}, "fail", 1),
     ({"fail_on": "warning"}, "fail", 1),
 ])
@@ -288,7 +289,7 @@ def test_json_to_stdout_is_clean_and_progress_goes_to_stderr(monkeypatch, tmp_pa
     run_main(["--format", "none", "--json", "-"], data(), monkeypatch, tmp_path)
 
     captured = capsys.readouterr()
-    assert json.loads(captured.out)["overall"] == 90
+    assert json.loads(captured.out)["overall"] == 94
     assert "Overall Score" in captured.err
     assert sys.stdout is not sys.stderr
 

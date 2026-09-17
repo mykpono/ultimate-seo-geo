@@ -64,6 +64,9 @@ LEGACY_AI_TOKENS = {
     "FacebookBot": "meta-externalagent, meta-webindexer and meta-externalfetcher",
 }
 
+# Search engine crawlers whose full block takes the site out of web search.
+SEARCH_ENGINE_CRAWLERS = ("Googlebot", "Bingbot")
+
 # Standard crawlers for reference
 STANDARD_CRAWLERS = [
     "Googlebot",
@@ -92,6 +95,7 @@ def fetch_robots_txt(url: str, timeout: int = 15) -> dict:
         "crawl_delays": {},
         "ai_crawler_status": {},
         "ai_crawler_roles": dict(AI_CRAWLER_ROLES),
+        "search_engine_status": {},
         "issues": [],
         "error": None,
     }
@@ -110,6 +114,8 @@ def fetch_robots_txt(url: str, timeout: int = 15) -> dict:
             )
             for crawler in AI_CRAWLERS:
                 result["ai_crawler_status"][crawler] = "allowed (no robots.txt)"
+            for crawler in SEARCH_ENGINE_CRAWLERS:
+                result["search_engine_status"][crawler] = "allowed (no robots.txt)"
             return result
 
         if resp.status_code != 200:
@@ -123,6 +129,31 @@ def fetch_robots_txt(url: str, timeout: int = 15) -> dict:
         result["error"] = str(e)
 
     return result
+
+
+def crawler_status(user_agents: dict, crawler: str) -> str:
+    """How robots.txt treats one crawler at the site root.
+
+    User-agent tokens are case-insensitive (RFC 9309 sec 2.2.1), so match on a
+    folded index while keeping the file's original casing for display.
+    """
+    agents_by_lower = {name.lower(): name for name in user_agents}
+    declared = agents_by_lower.get(crawler.lower())
+    if declared is not None:
+        rules = user_agents[declared]
+        if rules["disallow"] and "/" in rules["disallow"]:
+            return "fully blocked"
+        if rules["disallow"]:
+            return f"partially blocked ({len(rules['disallow'])} paths)"
+        if rules["allow"]:
+            return "explicitly allowed"
+        return "declared but no rules"
+    if "*" in agents_by_lower:
+        wildcard = user_agents[agents_by_lower["*"]]
+        if wildcard["disallow"] and "/" in wildcard["disallow"]:
+            return "blocked by wildcard (*)"
+        return "not managed (inherits * rules)"
+    return "not managed (allowed by default)"
 
 
 def _parse_robots(content: str, result: dict):
@@ -186,30 +217,11 @@ def _parse_robots(content: str, result: dict):
     # Analyze AI crawler management. User-agent tokens are case-insensitive
     # (RFC 9309 sec 2.2.1), so match on a folded index while keeping the file's
     # original casing for display.
-    agents_by_lower = {name.lower(): name for name in result["user_agents"]}
-
     for crawler in AI_CRAWLERS:
-        declared = agents_by_lower.get(crawler.lower())
-        if declared is not None:
-            rules = result["user_agents"][declared]
-            if rules["disallow"] and "/" in rules["disallow"]:
-                result["ai_crawler_status"][crawler] = "fully blocked"
-            elif rules["disallow"]:
-                result["ai_crawler_status"][crawler] = f"partially blocked ({len(rules['disallow'])} paths)"
-            elif rules["allow"]:
-                result["ai_crawler_status"][crawler] = "explicitly allowed"
-            else:
-                result["ai_crawler_status"][crawler] = "declared but no rules"
-        else:
-            # Check wildcard rules
-            if "*" in agents_by_lower:
-                wildcard = result["user_agents"][agents_by_lower["*"]]
-                if wildcard["disallow"] and "/" in wildcard["disallow"]:
-                    result["ai_crawler_status"][crawler] = "blocked by wildcard (*)"
-                else:
-                    result["ai_crawler_status"][crawler] = "not managed (inherits * rules)"
-            else:
-                result["ai_crawler_status"][crawler] = "not managed (allowed by default)"
+        result["ai_crawler_status"][crawler] = crawler_status(result["user_agents"], crawler)
+    result.setdefault("search_engine_status", {})
+    for crawler in SEARCH_ENGINE_CRAWLERS:
+        result["search_engine_status"][crawler] = crawler_status(result["user_agents"], crawler)
 
     # Generate issues
     unmanaged = [c for c, s in result["ai_crawler_status"].items()
@@ -220,6 +232,13 @@ def _parse_robots(content: str, result: dict):
             f"{', '.join(unmanaged[:5])}"
         )
 
+    blocked_engines = [c for c, s in result["search_engine_status"].items() if s in BLOCKING_STATUSES]
+    if blocked_engines:
+        result["issues"].append(
+            f"🔴 robots.txt blocks {', '.join(blocked_engines)} from the whole site — pages cannot be "
+            "crawled for web search"
+        )
+
     blocked_search = [c for c, s in result["ai_crawler_status"].items()
                       if s in BLOCKING_STATUSES and AI_CRAWLER_ROLES.get(c) == "search"]
     if blocked_search:
@@ -228,6 +247,7 @@ def _parse_robots(content: str, result: dict):
             "indexes AI search answers cite, so the site cannot be cited from them"
         )
 
+    agents_by_lower = {name.lower(): name for name in result["user_agents"]}
     for token, successors in LEGACY_AI_TOKENS.items():
         declared = agents_by_lower.get(token.lower())
         if declared is not None:

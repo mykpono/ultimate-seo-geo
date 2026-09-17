@@ -52,13 +52,17 @@ def robots_section(content, status=200):
     return result
 
 
-def robots_score(section):
+def robots_score(section, key="robots"):
     scores = generate_report.calculate_overall_score({"sections": {"robots": section}})
-    return scores["categories"]["robots"]
+    return scores["categories"][key]
 
 
-def score_of(content):
-    return robots_score(robots_section(content))
+def score_of(content, key="robots"):
+    return robots_score(robots_section(content), key)
+
+
+def access_of(content):
+    return score_of(content, "ai_search_access")
 
 
 # --- roles -----------------------------------------------------------------
@@ -103,26 +107,64 @@ def test_legacy_token_gets_a_note_naming_the_current_tokens():
 
 
 @pytest.mark.parametrize("crawler", SEARCH)
-def test_blocking_a_search_crawler_lowers_the_robots_score(crawler):
-    allowed = score_of(f"User-agent: {crawler}\nAllow: /\n" + SITEMAP)
-    blocked = score_of(f"User-agent: {crawler}\nDisallow: /\n" + SITEMAP)
+def test_blocking_a_search_crawler_lowers_ai_search_access(crawler):
+    allowed = access_of(f"User-agent: {crawler}\nAllow: /\n" + SITEMAP)
+    blocked = access_of(f"User-agent: {crawler}\nDisallow: /\n" + SITEMAP)
 
     assert blocked < allowed, (
         f"Blocking {crawler} scored {blocked}, allowing it scored {allowed}. A search "
         f"crawler that cannot fetch the site takes it out of that engine's AI answers."
     )
+    assert (allowed, blocked) == (100, round(100 * (len(SEARCH) - 1) / len(SEARCH)))
+
+
+@pytest.mark.parametrize("crawler", SEARCH)
+def test_ai_crawler_rules_no_longer_move_the_crawl_hygiene_score(crawler):
+    """AI access is its own GEO check; robots is crawl hygiene only."""
+    assert score_of(f"User-agent: {crawler}\nDisallow: /\n" + SITEMAP) == score_of(SITEMAP) == 100
 
 
 @pytest.mark.parametrize("crawler", TRAINING)
 def test_blocking_a_training_crawler_costs_nothing(crawler):
-    allowed = score_of(f"User-agent: {crawler}\nAllow: /\n" + SITEMAP)
-    blocked = score_of(f"User-agent: {crawler}\nDisallow: /\n" + SITEMAP)
+    for key in ("robots", "ai_search_access"):
+        allowed = score_of(f"User-agent: {crawler}\nAllow: /\n" + SITEMAP, key)
+        blocked = score_of(f"User-agent: {crawler}\nDisallow: /\n" + SITEMAP, key)
 
-    assert blocked == allowed, "Opting out of model training is a licensing choice, not a defect"
+        assert blocked == allowed, "Opting out of model training is a licensing choice, not a defect"
+
+
+def test_explicit_ai_rules_earn_nothing_on_their_own():
+    """The old robots score gave +2 per AI crawler with any rule; only access counts now."""
+    explicit = "".join(f"User-agent: {c}\nAllow: /\n\n" for c in AI_CRAWLERS)
+
+    assert access_of(explicit + SITEMAP) == access_of(SITEMAP) == 100
 
 
 def test_blocking_everything_through_the_wildcard_scores_zero():
     assert score_of("User-agent: *\nDisallow: /\n" + SITEMAP) == 0
+    assert access_of("User-agent: *\nDisallow: /\n" + SITEMAP) == 0
+
+
+@pytest.mark.parametrize("engine", ["Googlebot", "Bingbot", "googlebot"])
+def test_blocking_a_search_engine_is_a_crawl_hygiene_failure(engine):
+    """Before the split nothing scored this: a Googlebot-only block kept a robots score of 80+."""
+    section = robots_section(f"User-agent: {engine}\nDisallow: /\n" + SITEMAP)
+
+    assert robots_score(section) == 100 - generate_report.ROBOTS_BLOCKED_ENGINE_PENALTY
+    assert any("blocks" in i and engine.lower() in i.lower() for i in section["issues"])
+    assert robots_score(section, "ai_search_access") == 100
+
+
+def test_blocking_both_search_engines_scores_zero():
+    assert score_of("User-agent: Googlebot\nUser-agent: Bingbot\nDisallow: /\n" + SITEMAP) == 0
+
+
+def test_ai_search_access_is_unmeasured_when_robots_did_not_run():
+    scores = generate_report.calculate_overall_score({"sections": {"security": {"score": 90}}})
+
+    assert {"robots", "ai_search_access"} <= set(scores["unmeasured"])
+    errored = generate_report.calculate_overall_score({"sections": {"robots": {"error": "HTTP 503"}}})
+    assert "ai_search_access" in errored["unmeasured"]
 
 
 def test_a_missing_robots_txt_scores_like_an_empty_one():
@@ -134,6 +176,7 @@ def test_a_missing_robots_txt_scores_like_an_empty_one():
     }
 
     assert robots_score(missing) == score_of("")
+    assert robots_score(missing, "ai_search_access") == access_of("") == 100
 
 
 def test_blocked_search_crawler_raises_an_issue_and_a_report_finding():
@@ -156,7 +199,7 @@ def test_report_table_names_roles_and_does_not_flag_training_blocks():
     section = robots_section(
         "User-agent: GPTBot\nDisallow: /\n\nUser-agent: OAI-SearchBot\nDisallow: /\n" + SITEMAP
     )
-    html = generate_report._check_panels({"sections": {"robots": section}})["robots"]
+    html = generate_report._check_panels({"sections": {"robots": section}})["ai_search_access"]
 
     rows = {row.split("</td>")[0].split("<td>")[-1]: row for row in html.split("<tr>")[1:]}
     assert "training" in rows["GPTBot"] and "chip-flag" not in rows["GPTBot"]
