@@ -29,3 +29,4 @@ These files hold the **detailed procedural sections** formerly in the root `SKIL
 | 23 | [23-semantic-clustering.md](23-semantic-clustering.md) | SERP-overlap topic clustering, hub-and-spoke architecture |
 | 24 | [24-ecommerce-seo.md](24-ecommerce-seo.md) | E-commerce SEO, product/category schema, faceted nav |
 | 25 | [25-maps-intelligence.md](25-maps-intelligence.md) | Advanced local SEO, geo-grid tracking, GBP audit, review intelligence |
+| 26 | [26-site-structure-content-types.md](26-site-structure-content-types.md) | Page-type coverage, navigation and breadcrumbs, site architecture and link equity, sitemap vs crawl |

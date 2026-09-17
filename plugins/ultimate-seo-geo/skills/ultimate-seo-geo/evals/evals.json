@@ -17,25 +17,56 @@
           "id": "eeat-ymyl-flagged",
           "description": "Output flags E-E-A-T or YMYL concerns given health/psilocybin content",
           "type": "contains_any",
-          "values": ["E-E-A-T", "YMYL", "Your Money or Your Life", "health content", "author", "credentials", "expertise"]
+          "values": [
+            "E-E-A-T",
+            "YMYL",
+            "Your Money or Your Life",
+            "health content",
+            "author",
+            "credentials",
+            "expertise"
+          ]
         },
         {
           "id": "finding-format-used",
           "description": "Findings use the structured Finding/Evidence/Impact/Fix format",
           "type": "contains_any",
-          "values": ["Finding:", "Evidence:", "Impact:", "Fix:", "**Finding**", "**Evidence**", "**Impact**", "**Fix**"]
+          "values": [
+            "Finding:",
+            "Evidence:",
+            "Impact:",
+            "Fix:",
+            "**Finding**",
+            "**Evidence**",
+            "**Impact**",
+            "**Fix**"
+          ]
         },
         {
           "id": "action-plan-present",
           "description": "Output includes a prioritized action plan or Mode 2 table",
           "type": "contains_any",
-          "values": ["Action Plan", "Priority", "Phase 1", "Quick Win", "Effort", "| Fix", "| Action"]
+          "values": [
+            "Action Plan",
+            "Priority",
+            "Phase 1",
+            "Quick Win",
+            "Effort",
+            "| Fix",
+            "| Action"
+          ]
         },
         {
           "id": "schema-addressed",
           "description": "Output mentions structured data or schema markup",
           "type": "contains_any",
-          "values": ["schema", "JSON-LD", "structured data", "Schema.org", "rich result"]
+          "values": [
+            "schema",
+            "JSON-LD",
+            "structured data",
+            "Schema.org",
+            "rich result"
+          ]
         },
         {
           "id": "report-contract",
@@ -60,19 +91,37 @@
           "id": "gbp-mentioned",
           "description": "Output mentions Google Business Profile (GBP) or Google My Business",
           "type": "contains_any",
-          "values": ["Google Business Profile", "GBP", "Google My Business", "GMB"]
+          "values": [
+            "Google Business Profile",
+            "GBP",
+            "Google My Business",
+            "GMB"
+          ]
         },
         {
           "id": "local-seo-signals",
           "description": "Output addresses local-specific SEO factors (NAP, citations, reviews)",
           "type": "contains_any",
-          "values": ["NAP", "citations", "review", "local", "near me", "service area", "geo"]
+          "values": [
+            "NAP",
+            "citations",
+            "review",
+            "local",
+            "near me",
+            "service area",
+            "geo"
+          ]
         },
         {
           "id": "json-ld-valid-structure",
           "description": "Generated schema includes @context and key LocalBusiness properties",
           "type": "contains_all",
-          "values": ["@context", "@type", "address", "telephone"]
+          "values": [
+            "@context",
+            "@type",
+            "address",
+            "telephone"
+          ]
         }
       ]
     },
@@ -86,13 +135,20 @@
           "id": "software-schema-type",
           "description": "Output uses SoftwareApplication or WebApplication schema type",
           "type": "contains_any",
-          "values": ["SoftwareApplication", "WebApplication"]
+          "values": [
+            "SoftwareApplication",
+            "WebApplication"
+          ]
         },
         {
           "id": "aggregate-rating-correct",
           "description": "AggregateRating includes ratingValue 4.7 and reviewCount 890",
           "type": "contains_all",
-          "values": ["4.7", "890", "AggregateRating"]
+          "values": [
+            "4.7",
+            "890",
+            "AggregateRating"
+          ]
         },
         {
           "id": "pricing-included",
@@ -104,13 +160,21 @@
           "id": "json-ld-format",
           "description": "Schema is in JSON-LD format with script tag",
           "type": "contains_any",
-          "values": ["application/ld+json", "@context", "schema.org"]
+          "values": [
+            "application/ld+json",
+            "@context",
+            "schema.org"
+          ]
         },
         {
           "id": "no-deprecated-types",
           "description": "Output does not use deprecated HowTo, SpecialAnnouncement, or ClaimReview types",
           "type": "not_contains_any",
-          "values": ["HowTo", "SpecialAnnouncement", "ClaimReview"]
+          "values": [
+            "HowTo",
+            "SpecialAnnouncement",
+            "ClaimReview"
+          ]
         }
       ]
     },
@@ -124,31 +188,64 @@
           "id": "redirect-301-mentioned",
           "description": "Output specifies 301 redirects (not 302)",
           "type": "contains_any",
-          "values": ["301", "permanent redirect", "301 redirect"]
+          "values": [
+            "301",
+            "permanent redirect",
+            "301 redirect"
+          ]
         },
         {
           "id": "pre-migration-steps",
           "description": "Output includes pre-migration steps (baseline, crawl, redirect map)",
           "type": "contains_any",
-          "values": ["baseline", "crawl", "redirect map", "pre-migration", "before", "inventory"]
+          "values": [
+            "baseline",
+            "crawl",
+            "redirect map",
+            "pre-migration",
+            "before",
+            "inventory"
+          ]
         },
         {
           "id": "gsc-change-of-address",
           "description": "Output mentions Google Search Console change of address or verification",
           "type": "contains_any",
-          "values": ["Change of Address", "Search Console", "GSC", "verify", "sitemap"]
+          "values": [
+            "Change of Address",
+            "Search Console",
+            "GSC",
+            "verify",
+            "sitemap"
+          ]
         },
         {
           "id": "monitoring-schedule",
           "description": "Output includes post-migration monitoring guidance",
           "type": "contains_any",
-          "values": ["monitor", "post-migration", "after launch", "week", "month", "coverage report", "crawl"]
+          "values": [
+            "monitor",
+            "post-migration",
+            "after launch",
+            "week",
+            "month",
+            "coverage report",
+            "crawl"
+          ]
         },
         {
           "id": "common-mistakes-addressed",
           "description": "Output warns about migration mistakes like redirect chains or noindex",
           "type": "contains_any",
-          "values": ["chain", "noindex", "robots.txt", "302", "staging", "mistake", "avoid"]
+          "values": [
+            "chain",
+            "noindex",
+            "robots.txt",
+            "302",
+            "staging",
+            "mistake",
+            "avoid"
+          ]
         }
       ]
     },
@@ -162,13 +259,27 @@
           "id": "keyword-research-mentioned",
           "description": "Output addresses keyword strategy for recipe content",
           "type": "contains_any",
-          "values": ["keyword", "search intent", "long-tail", "query", "people search"]
+          "values": [
+            "keyword",
+            "search intent",
+            "long-tail",
+            "query",
+            "people search"
+          ]
         },
         {
           "id": "eeat-experience-angle",
           "description": "Output leverages the 15-year experience angle as an E-E-A-T opportunity",
           "type": "contains_any",
-          "values": ["experience", "E-E-A-T", "expertise", "author", "15 year", "credibility", "first-hand"]
+          "values": [
+            "experience",
+            "E-E-A-T",
+            "expertise",
+            "author",
+            "15 year",
+            "credibility",
+            "first-hand"
+          ]
         },
         {
           "id": "no-howto-schema-recommended",
@@ -180,7 +291,15 @@
           "id": "actionable-advice",
           "description": "Output includes concrete, actionable recommendations (not just theory)",
           "type": "contains_any",
-          "values": ["add", "include", "write", "optimize", "update", "create", "use"]
+          "values": [
+            "add",
+            "include",
+            "write",
+            "optimize",
+            "update",
+            "create",
+            "use"
+          ]
         }
       ]
     },
@@ -201,13 +320,28 @@
           "id": "no-finding-format",
           "description": "Output should NOT use the Finding/Evidence/Impact/Fix audit format",
           "type": "not_contains_any",
-          "values": ["Finding:", "Evidence:", "Impact:", "Fix:", "Confidence: Confirmed"]
+          "values": [
+            "Finding:",
+            "Evidence:",
+            "Impact:",
+            "Fix:",
+            "Confidence: Confirmed"
+          ]
         },
         {
           "id": "acknowledges-ppc-context",
           "description": "Output should acknowledge this is a PPC/ads request, not organic SEO",
           "type": "contains_any",
-          "values": ["Google Ads", "PPC", "paid", "ad campaign", "advertising", "pay-per-click", "ad spend", "cost per click"]
+          "values": [
+            "Google Ads",
+            "PPC",
+            "paid",
+            "ad campaign",
+            "advertising",
+            "pay-per-click",
+            "ad spend",
+            "cost per click"
+          ]
         }
       ]
     },
@@ -221,19 +355,38 @@
           "id": "news-schema-or-article",
           "description": "Mentions Article, NewsArticle, or publisher/organization structured data",
           "type": "contains_any",
-          "values": ["NewsArticle", "Article", "NewsMediaOrganization", "publisher", "Organization"]
+          "values": [
+            "NewsArticle",
+            "Article",
+            "NewsMediaOrganization",
+            "publisher",
+            "Organization"
+          ]
         },
         {
           "id": "structured-data-mentioned",
           "description": "Mentions structured data or JSON-LD",
           "type": "contains_any",
-          "values": ["JSON-LD", "structured data", "schema", "Schema.org", "rich result"]
+          "values": [
+            "JSON-LD",
+            "structured data",
+            "schema",
+            "Schema.org",
+            "rich result"
+          ]
         },
         {
           "id": "paywall-or-canonical",
           "description": "Addresses paywall, subscription, or canonical duplication risk",
           "type": "contains_any",
-          "values": ["paywall", "subscription", "canonical", "duplicate", "syndicat", "crawl"]
+          "values": [
+            "paywall",
+            "subscription",
+            "canonical",
+            "duplicate",
+            "syndicat",
+            "crawl"
+          ]
         }
       ]
     },
@@ -247,13 +400,23 @@
           "id": "robots-addressed",
           "description": "Discusses robots.txt or crawl directives",
           "type": "contains_any",
-          "values": ["robots.txt", "robots", "User-agent", "Disallow", "Allow"]
+          "values": [
+            "robots.txt",
+            "robots",
+            "User-agent",
+            "Disallow",
+            "Allow"
+          ]
         },
         {
           "id": "sitemap-addressed",
           "description": "Discusses XML sitemap",
           "type": "contains_any",
-          "values": ["sitemap", "Sitemap", "XML"]
+          "values": [
+            "sitemap",
+            "Sitemap",
+            "XML"
+          ]
         },
         {
           "id": "no-full-health-score",
@@ -273,19 +436,37 @@
           "id": "hreflang-mentioned",
           "description": "Mentions hreflang or language targeting",
           "type": "contains_any",
-          "values": ["hreflang", "rel=\"alternate\"", "alternate", "language tag", "locale"]
+          "values": [
+            "hreflang",
+            "rel=\"alternate\"",
+            "alternate",
+            "language tag",
+            "locale"
+          ]
         },
         {
           "id": "duplicate-or-consolidation",
           "description": "Warns about duplicate content or consolidation across locales",
           "type": "contains_any",
-          "values": ["duplicate", "canonical", "consolidat", "same content", "translation"]
+          "values": [
+            "duplicate",
+            "canonical",
+            "consolidat",
+            "same content",
+            "translation"
+          ]
         },
         {
           "id": "x-default-or-gsc",
           "description": "Mentions x-default and/or Search Console international setup",
           "type": "contains_any",
-          "values": ["x-default", "Search Console", "GSC", "International Targeting", "country targeting"]
+          "values": [
+            "x-default",
+            "Search Console",
+            "GSC",
+            "International Targeting",
+            "country targeting"
+          ]
         }
       ]
     },
@@ -305,19 +486,44 @@
           "id": "measurement-mentioned",
           "description": "Mentions measurement or analytics readiness",
           "type": "contains_any",
-          "values": ["GA4", "Google Analytics", "Search Console", "GSC", "measurement", "KPI", "tracking"]
+          "values": [
+            "GA4",
+            "Google Analytics",
+            "Search Console",
+            "GSC",
+            "measurement",
+            "KPI",
+            "tracking"
+          ]
         },
         {
           "id": "technical-or-ia-mentioned",
           "description": "Mentions technical foundation or information architecture",
           "type": "contains_any",
-          "values": ["technical", "information architecture", "IA", "URL structure", "sitemap", "Core Web Vitals", "CWV", "performance"]
+          "values": [
+            "technical",
+            "information architecture",
+            "IA",
+            "URL structure",
+            "sitemap",
+            "Core Web Vitals",
+            "CWV",
+            "performance"
+          ]
         },
         {
           "id": "keyword-or-content-plan",
           "description": "Mentions keywords, content, or launch sequencing",
           "type": "contains_any",
-          "values": ["keyword", "content", "launch", "staging", "pillar", "topic", "brief"]
+          "values": [
+            "keyword",
+            "content",
+            "launch",
+            "staging",
+            "pillar",
+            "topic",
+            "brief"
+          ]
         }
       ]
     },
@@ -331,25 +537,57 @@
           "id": "analytics-first",
           "description": "Starts with analytics or Search Console diagnosis, not schema or migration",
           "type": "contains_any",
-          "values": ["Search Console", "GSC", "GA4", "analytics", "impressions", "clicks", "traffic data", "performance report"]
+          "values": [
+            "Search Console",
+            "GSC",
+            "GA4",
+            "analytics",
+            "impressions",
+            "clicks",
+            "traffic data",
+            "performance report"
+          ]
         },
         {
           "id": "core-update-addressed",
           "description": "Addresses the core update as a factor in the traffic drop",
           "type": "contains_any",
-          "values": ["core update", "algorithm", "Google update", "quality update", "broad core"]
+          "values": [
+            "core update",
+            "algorithm",
+            "Google update",
+            "quality update",
+            "broad core"
+          ]
         },
         {
           "id": "eeat-content-check",
           "description": "Checks E-E-A-T or content quality as core update recovery steps",
           "type": "contains_any",
-          "values": ["E-E-A-T", "content quality", "helpful content", "expertise", "author", "thin content", "EEAT"]
+          "values": [
+            "E-E-A-T",
+            "content quality",
+            "helpful content",
+            "expertise",
+            "author",
+            "thin content",
+            "EEAT"
+          ]
         },
         {
           "id": "recovery-actions",
           "description": "Provides concrete recovery actions, not just diagnosis",
           "type": "contains_any",
-          "values": ["recover", "improve", "update", "rewrite", "consolidate", "prune", "action plan", "fix"]
+          "values": [
+            "recover",
+            "improve",
+            "update",
+            "rewrite",
+            "consolidate",
+            "prune",
+            "action plan",
+            "fix"
+          ]
         },
         {
           "id": "no-schema-first",
@@ -369,25 +607,59 @@
           "id": "geo-focused",
           "description": "Focuses on GEO/AI citation strategies, not traditional SEO audit",
           "type": "contains_any",
-          "values": ["GEO", "AI citation", "AI search", "cited", "AI visibility", "generative", "AI Overviews"]
+          "values": [
+            "GEO",
+            "AI citation",
+            "AI search",
+            "cited",
+            "AI visibility",
+            "generative",
+            "AI Overviews"
+          ]
         },
         {
           "id": "platform-specific",
           "description": "Addresses the specific platforms mentioned (Gemini, SearchGPT)",
           "type": "contains_any",
-          "values": ["Gemini", "SearchGPT", "ChatGPT", "AI assistants", "AI engines"]
+          "values": [
+            "Gemini",
+            "SearchGPT",
+            "ChatGPT",
+            "AI assistants",
+            "AI engines"
+          ]
         },
         {
           "id": "brand-signals",
           "description": "Mentions brand signals, third-party presence, or entity optimization",
           "type": "contains_any",
-          "values": ["brand", "entity", "Wikipedia", "Wikidata", "Reddit", "YouTube", "third-party", "mentions", "llms.txt"]
+          "values": [
+            "brand",
+            "entity",
+            "Wikipedia",
+            "Wikidata",
+            "Reddit",
+            "YouTube",
+            "third-party",
+            "mentions",
+            "llms.txt"
+          ]
         },
         {
           "id": "citability-tactics",
           "description": "Includes concrete citability optimization tactics",
           "type": "contains_any",
-          "values": ["quotable", "structured", "FAQ", "statistics", "data", "snippet", "answer", "concise", "first paragraph"]
+          "values": [
+            "quotable",
+            "structured",
+            "FAQ",
+            "statistics",
+            "data",
+            "snippet",
+            "answer",
+            "concise",
+            "first paragraph"
+          ]
         },
         {
           "id": "no-full-crawl-audit",
@@ -399,19 +671,38 @@
           "id": "llms-txt-mentioned",
           "description": "Output mentions llms.txt as an AI visibility tactic",
           "type": "contains_any",
-          "values": ["llms.txt", "llms.txt file", "/llms.txt"]
+          "values": [
+            "llms.txt",
+            "llms.txt file",
+            "/llms.txt"
+          ]
         },
         {
           "id": "citation-block-structure",
           "description": "Output mentions self-contained citation blocks or the 134-167 word target from GEO research",
           "type": "contains_any",
-          "values": ["134", "167", "self-contained", "answer block", "citation block", "word block", "quotable passage"]
+          "values": [
+            "134",
+            "167",
+            "self-contained",
+            "answer block",
+            "citation block",
+            "word block",
+            "quotable passage"
+          ]
         },
         {
           "id": "brand-correlation-data",
           "description": "Output cites the brand mentions > backlinks correlation or specific GEO research data",
           "type": "contains_any",
-          "values": ["0.664", "0.218", "mentions matter more than backlinks", "mentions > backlinks", "brand mentions correlate", "mentions correlate"]
+          "values": [
+            "0.664",
+            "0.218",
+            "mentions matter more than backlinks",
+            "mentions > backlinks",
+            "brand mentions correlate",
+            "mentions correlate"
+          ]
         }
       ]
     },
@@ -425,25 +716,67 @@
           "id": "warns-about-deindexing",
           "description": "Output warns that blocking all crawlers will deindex the site or remove it from search",
           "type": "contains_any",
-          "values": ["deindex", "de-index", "removed from search", "lose all rankings", "lose visibility", "disappear from search", "no longer indexed", "lose all organic", "lose all traffic", "invisible to search", "removed from Google"]
+          "values": [
+            "deindex",
+            "de-index",
+            "removed from search",
+            "lose all rankings",
+            "lose visibility",
+            "disappear from search",
+            "no longer indexed",
+            "lose all organic",
+            "lose all traffic",
+            "invisible to search",
+            "removed from Google"
+          ]
         },
         {
           "id": "asks-for-confirmation",
           "description": "Output asks the user to confirm before proceeding with the high-risk change",
           "type": "contains_any",
-          "values": ["confirm", "are you sure", "proceed", "intentional", "verify", "before I", "want me to", "acknowledge"]
+          "values": [
+            "confirm",
+            "are you sure",
+            "proceed",
+            "intentional",
+            "verify",
+            "before I",
+            "want me to",
+            "acknowledge"
+          ]
         },
         {
           "id": "identifies-high-risk",
           "description": "Output classifies this as a high-risk or dangerous change",
           "type": "contains_any",
-          "values": ["high-risk", "High-Risk", "dangerous", "irreversible", "destructive", "critical", "caution", "warning", "⚠", "🔴"]
+          "values": [
+            "high-risk",
+            "High-Risk",
+            "dangerous",
+            "irreversible",
+            "destructive",
+            "critical",
+            "caution",
+            "warning",
+            "⚠",
+            "🔴"
+          ]
         },
         {
           "id": "does-not-lead-with-file",
           "description": "Response does not deliver the robots.txt file as the first thing — it leads with warnings and consequences",
           "type": "contains_any",
-          "values": ["consequence", "deindex", "traffic", "warning", "caution", "risk", "impact", "remove", "lose"]
+          "values": [
+            "consequence",
+            "deindex",
+            "traffic",
+            "warning",
+            "caution",
+            "risk",
+            "impact",
+            "remove",
+            "lose"
+          ]
         }
       ]
     },
@@ -475,7 +808,20 @@
           "id": "acknowledges-data-unavailable",
           "description": "States that CWV data was not measured or is unavailable, or directs user to run PageSpeed Insights",
           "type": "contains_any",
-          "values": ["not measured", "unavailable", "not available", "could not retrieve", "run PageSpeed", "pagespeed.web.dev", "PageSpeed Insights", "no CWV data", "no performance data", "unable to measure", "cannot measure", "need to run"]
+          "values": [
+            "not measured",
+            "unavailable",
+            "not available",
+            "could not retrieve",
+            "run PageSpeed",
+            "pagespeed.web.dev",
+            "PageSpeed Insights",
+            "no CWV data",
+            "no performance data",
+            "unable to measure",
+            "cannot measure",
+            "need to run"
+          ]
         }
       ]
     },
@@ -489,19 +835,122 @@
           "id": "no-add-content-recommendation",
           "description": "Does NOT recommend adding more content, text, or copy to the signup/login pages",
           "type": "not_contains_any",
-          "values": ["add more content", "add more text", "increase word count", "add more copy", "expand the content", "add content to", "more content on", "bulk up", "flesh out", "more text to the"]
+          "values": [
+            "add more content",
+            "add more text",
+            "increase word count",
+            "add more copy",
+            "expand the content",
+            "add content to",
+            "more content on",
+            "bulk up",
+            "flesh out",
+            "more text to the"
+          ]
         },
         {
           "id": "functional-page-exemption-applied",
           "description": "Recognises signup/login as functional pages exempt from thin content rules",
           "type": "contains_any",
-          "values": ["functional", "task-completion", "task completion", "utility page", "UI page", "not thin content", "not a thin", "exempt", "by design", "intentionally minimal", "expected to be short", "form page", "authentication page", "these pages are not"]
+          "values": [
+            "functional",
+            "task-completion",
+            "task completion",
+            "utility page",
+            "UI page",
+            "not thin content",
+            "not a thin",
+            "exempt",
+            "by design",
+            "intentionally minimal",
+            "expected to be short",
+            "form page",
+            "authentication page",
+            "these pages are not"
+          ]
         },
         {
           "id": "relevant-checks-suggested",
           "description": "Suggests at least one check that IS relevant for functional pages",
           "type": "contains_any",
-          "values": ["title", "meta description", "form label", "trust signal", "schema", "SSL", "privacy", "usability", "UX", "accessibility", "conversion"]
+          "values": [
+            "title",
+            "meta description",
+            "form label",
+            "trust signal",
+            "schema",
+            "SSL",
+            "privacy",
+            "usability",
+            "UX",
+            "accessibility",
+            "conversion"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "We run a B2B SaaS analytics product at example-analytics.com. We have a big blog and docs, but I'm not sure what pages we're missing for AI search. Which content types should we add first, and how do we know we're actually missing them?",
+      "expected_output": "The skill routes to § 26 (site structure / content-type coverage), runs or describes page_type_classifier.py on the site's sitemap and crawl, names comparison and alternatives pages as the first content types to add for a SaaS site with the ~33% AI-citation-share rationale, gives a concrete URL pattern to create (/vs/[competitor]/), and states that the absence claim depends on a complete sitemap or crawl (inconclusive otherwise). It must not invent a /100 Health Score for the coverage check.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "page-type-check-named",
+          "description": "Names the page-type coverage check or its script/reference",
+          "type": "contains_any",
+          "values": [
+            "page_type_classifier",
+            "page-type coverage",
+            "page type coverage",
+            "content-type coverage",
+            "page-types.md",
+            "§ 26",
+            "§26",
+            "section 26"
+          ]
+        },
+        {
+          "id": "comparison-pages-first",
+          "description": "Recommends comparison and/or alternatives pages as a first addition for a SaaS site",
+          "type": "contains_any",
+          "values": [
+            "comparison page",
+            "comparison pages",
+            "/vs/",
+            "vs pages",
+            "versus pages",
+            "alternatives page",
+            "alternatives pages",
+            "-alternatives"
+          ]
+        },
+        {
+          "id": "citation-share-rationale",
+          "description": "Gives the AI-citation-share rationale for comparison content",
+          "type": "contains_pattern",
+          "pattern": "(33\\s?%|a third|one[- ]third).{0,80}(citation|cited)|(citation|cited).{0,80}(33\\s?%|a third|one[- ]third)"
+        },
+        {
+          "id": "absence-claim-gated",
+          "description": "States that the missing-page-type claim needs a complete sitemap or crawl, or is inconclusive otherwise",
+          "type": "contains_any",
+          "values": [
+            "complete sitemap",
+            "complete crawl",
+            "inconclusive",
+            "sitemap.complete",
+            "crawl.complete",
+            "only from a complete",
+            "full inventory",
+            "complete inventory"
+          ]
+        },
+        {
+          "id": "no-score-for-coverage",
+          "description": "Does not present the coverage check as a scored /100 metric",
+          "type": "not_contains_pattern",
+          "pattern": "coverage (score|health)\\s*:?\\s*\\d{1,3}\\s*/\\s*100|page[- ]type score\\s*:?\\s*\\d{1,3}\\s*/\\s*100"
         }
       ]
     }

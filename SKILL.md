@@ -1,15 +1,15 @@
 ---
 name: ultimate-seo-geo
 description: Audits and optimizes websites for search engine visibility (SEO) and AI search citation (GEO), covering technical health, E-E-A-T content scoring, domain authority, structured data, rich results, and entity signals. Use when running SEO audits, diagnosing traffic drops or ranking losses, generating Schema.org JSON-LD, checking Core Web Vitals, crawlability, robots.txt, sitemaps, hreflang, backlinks, planning content strategy or site migrations, fixing indexing issues, or optimizing for AI Overviews, ChatGPT, and Perplexity. NOT for paid ads (PPC/SEM), social media strategy, email marketing, or general web development unrelated to search.
-version: 1.14.0
+version: 1.15.0
 ---
 
 # Ultimate SEO + GEO — LLM-Agnostic SEO Agent
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.14.0 |
-| **Updated** | 2026-09-16 |
+| **Version** | 1.15.0 |
+| **Updated** | 2026-09-17 |
 | **License** | MIT |
 | **Author** | Myk Pono |
 | **Lab** | [lab.mykpono.com](https://lab.mykpono.com) |
@@ -44,9 +44,10 @@ clear fix directive — not just diagnosis.
 | Content brief generation | `references/procedures/07-keywords-clusters-aeo.md` | `content_brief.py` |
 | E-commerce SEO | `references/procedures/24-ecommerce-seo.md` | `ecommerce_schema.py`, `validate_schema.py` |
 | Advanced local / maps | `references/procedures/25-maps-intelligence.md` | `maps_checker.py`, `local_signals_checker.py` |
+| Site structure / content-type coverage / navigation / sitemap vs crawl | `references/procedures/26-site-structure-content-types.md` | `references/page-types.md`, `site_graph.py`, `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py`, `sitemap_checker.py --reconcile` |
 | Google API credentials | `references/procedures/21-script-toolbox.md` | `google_api_tier.py`, `crux_history.py`, `gsc_query.py`, `ga4_report.py` |
 
-Section numbers **§1–§25** match `AGENTS.md` and the filenames in `references/procedures/`. Full index: [`references/procedures/README.md`](references/procedures/README.md).
+Section numbers **§1–§26** match `AGENTS.md` and the filenames in `references/procedures/`. Full index: [`references/procedures/README.md`](references/procedures/README.md).
 
 ### Reference Reading Guide
 
@@ -72,6 +73,7 @@ When a section points to a reference file, read only what you need for the curre
 | Migration | `references/site-migration.md` | `redirect_checker.py` |
 | Analytics / myths | `references/analytics-reporting.md` | — |
 | Crawl / indexation | `references/crawl-indexation.md` | `sitemap_checker.py`, `duplicate_content.py`, `canonical_checker.py`, `broken_links.py`, `internal_links.py` |
+| Site structure / page types / navigation | `references/page-types.md`, `references/industry-templates.md` | `site_graph.py`, `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py` |
 
 ### When *not* to run Mode 1 (full audit)
 
@@ -241,3 +243,4 @@ Run `python scripts/report_lint.py report.md --summary summary.json` when a shel
 | 23 | [`references/procedures/23-semantic-clustering.md`](references/procedures/23-semantic-clustering.md) |
 | 24 | [`references/procedures/24-ecommerce-seo.md`](references/procedures/24-ecommerce-seo.md) |
 | 25 | [`references/procedures/25-maps-intelligence.md`](references/procedures/25-maps-intelligence.md) |
+| 26 | [`references/procedures/26-site-structure-content-types.md`](references/procedures/26-site-structure-content-types.md) |

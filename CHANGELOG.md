@@ -2,6 +2,39 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.15.0] - 2026-09-17
+
+The site as a structure. Until now every check stripped `<nav>`, `<header>` and `<footer>` as
+noise, no script labelled pages by content type, and `references/industry-templates.md`
+prescribed an ideal site tree that nothing measured. This release adds one shared crawl and four
+checks on top of it, all **shown but not weighted** (the v1.14.0 Health Score contract is
+unchanged: same weights, same `overall` on the same site):
+
+- **Page-type coverage** — every sitemap and crawled URL labelled with one of 28 content types,
+  a matrix by funnel stage, and the page types a SaaS / e-commerce / local / publisher site is
+  expected to have but does not (a SaaS site with no comparison pages is the first Opportunity
+  Signal, since comparison articles take ~33% of AI citations).
+- **Navigation and breadcrumbs** — what the global navigation and footer actually link to, money
+  pages they leave out, broken or redirected global links, footer link dumps, breadcrumb vs
+  BreadcrumbList mismatches.
+- **Site architecture** — sections by directory with size, dominant type, hub page, nav reach,
+  click depth and (on a complete crawl) link-equity share; URL hygiene; a Mermaid tree.
+- **Sitemap truth** — `lastmod` plausibility, index structure, and reconciliation against the crawl.
+
+Every absence claim is gated on a complete sitemap or crawl, and a JavaScript navigation is
+reported as *not measured*, never as missing. Each script was calibrated on real sites before its
+tests were written; the false positives those runs exposed are named regression tests.
+
+`generate_report.py` builds the site graph once (80 pages, depth 2) before the parallel batch;
+the new checks appear as three display-only rows (Page-type coverage, Navigation and breadcrumbs,
+Site architecture) and their findings flow into the summary JSON with `weight: null`.
+
+New: § 26 in `AGENTS.md` and `references/procedures/26-site-structure-content-types.md`,
+`references/page-types.md`, eval 16. Minor, not patch, per D-020: five new capabilities.
+
+### Added
 ### Added
 - **`scripts/site_graph.py`** — crawl a site once and save a reusable structural graph
   (`--out site_graph.json`): sitemap discovery with `lastmod` per URL, BFS link graph, every link

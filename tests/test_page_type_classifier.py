@@ -265,9 +265,9 @@ def test_missing_page_types_on_a_complete_saas_inventory():
     r = ptc.classify_site(_graph(_saas_pages(), urls))
     assert r["site_type"] == "saas"
     assert r["source"]["status"] == "complete"
-    missing = {f["label"] for f in r["findings"] if f["type"] == "missing_page_type"}
+    missing = {f["label"] for f in r["issues"] if f["type"] == "missing_page_type"}
     assert missing == {"comparison", "alternatives"}
-    comp = next(f for f in r["findings"] if f.get("label") == "comparison")
+    comp = next(f for f in r["issues"] if f.get("label") == "comparison")
     assert comp["severity"] == "Medium" and "opportunity" in comp["tags"] and comp["confidence"] == "Likely"
     assert "33%" in comp["evidence"]
     assert comp["fix"].startswith("Create /vs/")
@@ -277,16 +277,16 @@ def test_low_severity_for_non_money_types():
     urls = [S + "/", S + "/pricing", S + "/features/x", S + "/vs/a", S + "/alternatives/a", S + "/integrations/slack",
             S + "/customers/acme", S + "/solutions/y", S + "/blog/a"]  # no docs, no about
     r = ptc.classify_site(_graph(_saas_pages(), urls))
-    sev = {f["label"]: f["severity"] for f in r["findings"] if f["type"] == "missing_page_type"}
+    sev = {f["label"]: f["severity"] for f in r["issues"] if f["type"] == "missing_page_type"}
     assert sev == {"docs_help": "Low", "about_company": "Low"}
 
 
 def test_incomplete_inventory_is_inconclusive_not_a_finding():
     r = ptc.classify_site(_graph(_saas_pages(), [S + "/", S + "/pricing"], sitemap_complete=False, crawl_complete=False))
     assert r["source"]["status"] == "inconclusive"
-    types = [f["type"] for f in r["findings"]]
+    types = [f["type"] for f in r["issues"]]
     assert "missing_page_type" not in types
-    inc = next(f for f in r["findings"] if f["type"] == "coverage_inconclusive")
+    inc = next(f for f in r["issues"] if f["type"] == "coverage_inconclusive")
     assert inc["severity"] == "Info" and "comparison" in inc["labels"]
     assert r["source"]["reasons"]
 
@@ -294,18 +294,18 @@ def test_incomplete_inventory_is_inconclusive_not_a_finding():
 def test_complete_crawl_without_sitemap_is_enough():
     r = ptc.classify_site(_graph(_saas_pages(), (), sitemap_complete=False, crawl_complete=True))
     assert r["source"]["status"] == "complete"
-    assert any(f["type"] == "missing_page_type" for f in r["findings"])
+    assert any(f["type"] == "missing_page_type" for f in r["issues"])
 
 
 def test_site_type_override_changes_expectations():
     r = ptc.classify_site(_graph(_saas_pages(), [S + "/", S + "/pricing"]), site_type="local")
     assert r["site_type"] == "local" and r["site_type_detected"] == "saas"
-    assert {f["label"] for f in r["findings"] if f["type"] == "missing_page_type"} == set(ptc.EXPECTED_BY_SITE_TYPE["local"])
+    assert {f["label"] for f in r["issues"] if f["type"] == "missing_page_type"} == set(ptc.EXPECTED_BY_SITE_TYPE["local"])
 
 
 def test_docs_and_generic_sites_have_no_expectations():
     r = ptc.classify_site(_graph([], [S + "/", S + "/x"]), site_type="docs")
-    assert not [f for f in r["findings"] if f["type"] in ("missing_page_type", "coverage_inconclusive")]
+    assert not [f for f in r["issues"] if f["type"] in ("missing_page_type", "coverage_inconclusive")]
 
 
 def test_saas_remaps_products_to_features():
@@ -337,7 +337,7 @@ def test_families_group_by_label_and_first_dir_with_representatives():
 def test_unclassified_share_warning():
     urls = [S + f"/thing-{i}" for i in range(25)]
     r = ptc.classify_site(_graph([], urls), site_type="generic")
-    w = next(f for f in r["findings"] if f["type"] == "unclassified_share")
+    w = next(f for f in r["issues"] if f["type"] == "unclassified_share")
     assert w["severity"] == "Info" and "--rules" in w["fix"]
 
 
@@ -347,29 +347,29 @@ def test_intent_imbalance_uses_funnel_pages_only():
     urls = [S + "/", S + "/pricing"] + [S + f"/questions/{i}" for i in range(400)] + [S + f"/blog/{i}" for i in range(50)] + [S + f"/vs/{i}" for i in range(5)]
     r = ptc.classify_site(_graph(_saas_pages(), urls), site_type="saas")
     assert r["by_intent"]["BOFU"]["count"] == 6 and r["by_intent"]["support"]["count"] == 400
-    assert not [f for f in r["findings"] if f["type"] == "intent_imbalance"]
+    assert not [f for f in r["issues"] if f["type"] == "intent_imbalance"]
     urls = [S + "/", S + "/pricing"] + [S + f"/blog/{i}" for i in range(60)]
     r = ptc.classify_site(_graph(_saas_pages(), urls), site_type="saas")  # auto would say publisher
-    imb = next(f for f in r["findings"] if f["type"] == "intent_imbalance")
+    imb = next(f for f in r["issues"] if f["type"] == "intent_imbalance")
     assert imb["severity"] == "Low" and "opportunity" in imb["tags"]
 
 
 def test_word_floor_finding_needs_two_fetched_pages():
     thin = [dict(_page(S + f"/blog/{i}"), word_count=200) for i in range(2)]
     r = ptc.classify_site(_graph(thin, [p["url"] for p in thin]), site_type="generic")
-    f = next(f for f in r["findings"] if f["type"] == "type_word_floor")
+    f = next(f for f in r["issues"] if f["type"] == "type_word_floor")
     assert f["label"] == "blog_article" and "200 words" in f["finding"]
     r = ptc.classify_site(_graph(thin[:1], [thin[0]["url"]]), site_type="generic")
-    assert not [f for f in r["findings"] if f["type"] == "type_word_floor"]
+    assert not [f for f in r["issues"] if f["type"] == "type_word_floor"]
 
 
 def test_findings_are_severity_ordered_and_carry_the_contract_fields():
     urls = [S + "/", S + "/pricing"] + [S + f"/thing-{i}" for i in range(25)]
     r = ptc.classify_site(_graph(_saas_pages(), urls))
-    sev = [f["severity"] for f in r["findings"]]
+    sev = [f["severity"] for f in r["issues"]]
     order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3, "Info": 4}
     assert sev == sorted(sev, key=order.get)
-    for f in r["findings"]:
+    for f in r["issues"]:
         for k in ("type", "severity", "finding", "evidence", "impact", "fix", "confidence"):
             assert f.get(k), (f["type"], k)
 
