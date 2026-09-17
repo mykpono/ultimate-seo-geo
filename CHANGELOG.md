@@ -28,6 +28,16 @@
   global links, a footer of 100+ internal links, generic or ambiguous nav anchors, visible
   breadcrumb vs BreadcrumbList JSON-LD mismatch, breadcrumbs missing on deep pages. A raw-HTML
   navigation with fewer than three landmark links is reported as *not measured*, never as absent.
+- **`sitemap_checker.py --lastmod / --structure / --reconcile`** — three additive analyses; the
+  default output and the sitemap score are unchanged. `--lastmod`: coverage, invalid and future
+  values, one date across the whole site, everything within 24 hours, and a 20-page sample compared
+  with the pages' own `article:modified_time` / `dateModified` / `Last-Modified`. `--structure`:
+  index layout, whether child files map to sections, files over 10k (warning) and 50k (critical)
+  URLs, unreadable and empty children, duplicates, foreign hosts, http entries. `--reconcile
+  site_graph.json`: crawled indexable pages missing from the sitemap; listed URLs that are noindex,
+  redirect, canonicalise elsewhere or returned an error; and, only after a complete crawl, listed
+  URLs nothing links to. Found on smashingmagazine.com: 16 `/category/x/` sitemap URLs that
+  canonicalise to `/categories/x/`.
 - **`scripts/site_architecture.py`** — the site as a tree of sections (first directory, split one
   level down when a section holds most of the site; locale prefixes skipped): URL count and share,
   dominant page type, hub page at the root, whether the navigation links into it, click depth and
