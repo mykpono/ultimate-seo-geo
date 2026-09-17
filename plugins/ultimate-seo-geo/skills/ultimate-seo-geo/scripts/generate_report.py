@@ -621,6 +621,7 @@ def collect_data(
         analyses.append(("schema_validation", "validate_schema.py", [html_path]))
         analyses.append(("image_seo", "image_checker.py", [html_path, "--base-url", url]))
         analyses.append(("hidden_instructions", "hidden_instructions.py", [html_path]))
+        analyses.append(("citability", "citability_checker.py", [html_path]))
 
     def _run_one(item: tuple) -> tuple:
         name, script, args = item
@@ -796,6 +797,12 @@ def calculate_overall_score(data: dict) -> dict:
     # Hidden AI instructions: displayed only, not in `weights`. A hit is already a
     # Critical finding, and phrase matching can misfire, so it does not also move the score.
     scores["hidden_instructions"] = data["sections"].get("hidden_instructions", {}).get("score")
+
+    # Citability and structure: displayed only, not in `weights`. Its proxies (lead,
+    # prose walls, paragraph length, headings) are heuristics about page shape, and
+    # it is "not applicable" on homepages and hubs; it earns a weight once it has
+    # run on more audits without false positives.
+    scores["citability"] = data["sections"].get("citability", {}).get("score")
 
     # llms.txt score: displayed only, not in `weights`
     llm = data["sections"].get("llms_txt", {})
@@ -1035,7 +1042,7 @@ CHECK_GROUP = {
     "image_seo": "images",
     "content_quality": "content", "readability": "content", "duplicate_content": "content",
     "article": "content", "programmatic_seo": "content",
-    "entity": "geo", "llms_txt": "geo", "ai_bot_access": "geo", "hidden_instructions": "geo",
+    "entity": "geo", "llms_txt": "geo", "ai_bot_access": "geo", "hidden_instructions": "geo", "citability": "geo",
     "local_signals": "local",
 }
 CONFIDENCE_LABELS = ("Confirmed", "Likely", "Hypothesis")
@@ -1273,6 +1280,7 @@ CHECK_LABELS = {
     "ai_search_access": "AI search crawler access (robots.txt)",
     "ai_bot_access": "AI crawler access (firewall)",
     "hidden_instructions": "Hidden AI instructions",
+    "citability": "Citability and structure",
     "sitemap": "Sitemaps",
     "security": "Security headers",
     "redirects": "Redirects",
@@ -1414,6 +1422,8 @@ def _check_status(key: str, section: dict, score) -> tuple:
         return ("na", "Not applicable")
     if key == "pagespeed" and not section.get("performance_score"):
         return ("deferred", "Not measured")
+    if key == "citability" and section.get("applicable") is False:
+        return ("na", "Not applicable")
     if key == "ai_bot_access":
         if section.get("status") == "inconclusive" or section.get("score") is None:
             return ("deferred", "Not measured")
@@ -1727,6 +1737,26 @@ def _check_panels(data: dict) -> dict:
         + (_notice(_esc(" ".join(hid["limits"])), "info", "Pattern-based.") if hid.get("limits") else "")
         + (_table(["Where", "Element", "Text"], hidden_rows) if hidden_rows else "")
     )
+
+    cit = get("citability")
+    if cit.get("applicable") is False:
+        cit_body = _notice(_esc(cit.get("reason", "")), "info", "Not an article-style page.")
+    else:
+        comp = cit.get("components") or {}
+        rows = [f"<tr><td>{_esc(name.replace('_', ' '))}</td><td class=\"num\">{_esc(c.get('score', '—'))}</td></tr>"
+                for name, c in comp.items()]
+        openings = cit.get("long_openings") or {}
+        cit_body = (
+            _kv([("Words", _esc(cit.get("words", "—"))), ("Sections", _esc(cit.get("sections", "—"))),
+                 ("Question headings", _esc((cit.get("question_headings") or {}).get("count", "—"))),
+                 ("Long section openings (not scored)", _esc(openings.get("count", "—")))])
+            + (_table(["Component", "Score"], rows) if rows else "")
+        )
+    panels["citability"] = (
+        _notice("Structural proxies for passages AI answers can quote: a lead paragraph, no prose walls, "
+                "short paragraphs, a clean heading outline, specific figures. Shown, not weighted.", "info")
+        + cit_body + render_recommendations(cit)
+    ) if cit else ""
 
     sm = get("sitemap")
     health = sm.get("url_health") or {}

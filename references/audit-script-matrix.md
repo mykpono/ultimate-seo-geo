@@ -25,6 +25,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Internal links / redirects | §9, §11 | `internal_links.py` | `python scripts/internal_links.py URL --depth 1 --json` |
 | Core Web Vitals (PSI) | §4 | `pagespeed.py` | `python scripts/pagespeed.py URL --strategy mobile --json` |
 | Entity / Wikidata | §3 | `entity_checker.py` | `python scripts/entity_checker.py URL --json` |
+| Citability and structure (prose walls, paragraph length, headings, lead; article pages) | §3 | `citability_checker.py` | `python scripts/citability_checker.py --url URL --json` (or a saved HTML file) |
 | Link equity / graph / orphans (complete crawls only; otherwise `inconclusive`) | §9, §11 | `link_profile.py` | `python scripts/link_profile.py URL --json` |
 | Hreflang | §14 | `hreflang_checker.py` | `python scripts/hreflang_checker.py URL --json` |
 | Near-duplicate / thin + canonical | §6, §11 | `duplicate_content.py` | `python scripts/duplicate_content.py URL --json` |
