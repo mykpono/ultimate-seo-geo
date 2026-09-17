@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![AGENTS.md](https://img.shields.io/badge/AGENTS.md-compatible-blue)](https://agents.md)
-[![Version](https://img.shields.io/badge/version-1.15.0-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.16.0-green.svg)](CHANGELOG.md)
 [![LLM-Agnostic](https://img.shields.io/badge/LLM--Agnostic-7%2B%20platforms-purple.svg)](#platform-compatibility)
 
 The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML, Excel, and PDF reports.
@@ -256,7 +256,7 @@ ultimate-seo-geo/
 
 **Progressive disclosure for cross-platform support:**
 - **Layer 1** — `AGENTS.md` (~32KB, held under Codex's 32 KiB default): auto-loaded by AGENTS.md-compatible tools. Routing index, condensed procedures, quality gates. The full script index lives in `references/audit-script-matrix.md`.
-- **Layer 2** — `SKILL.md` (routing shell) + `references/procedures/*.md` (detailed steps per §, now §1–§25) + topical `references/*.md` + `scripts/`: load only what the task needs.
+- **Layer 2** — `SKILL.md` (routing shell) + `references/procedures/*.md` (detailed steps per §, now §1–§26) + topical `references/*.md` + `scripts/`: load only what the task needs.
 
 For Claude Code and Cursor, `SKILL.md` is loaded natively as a skill (small shell); hosts pull `references/procedures/` when a section’s detail is required. Other platforms use `AGENTS.md` plus explicit reads of procedure files as needed.
 
@@ -356,7 +356,7 @@ In CI, `--format none --json seo-summary.json --fail-under 70 --fail-on critical
 
 ## Eval Results
 
-Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **15** prompts, **64** assertions):
+Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **16** prompts, **69** assertions):
 
 | Metric | With Skill | Without Skill | Delta |
 |---|---|---|---|

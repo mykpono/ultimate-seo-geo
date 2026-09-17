@@ -157,6 +157,8 @@ Source: generate_report.py — N weighted checks measured; not measured: [checks
 
 For a 3-finding excerpt showing the output format, see `references/audit-output-example.md`.
 
+**Client report set.** When the audit is delivered to a company rather than answered in chat, the Markdown report above is the written form; the deliverable is the report set (executive brief, audit, strategy, implementation plan, appendices) rendered by `scripts/render_report.py` from a report source that extends the `generate_report.py --json` summary with findings, recommendations, coverage, prompts and page cards. Contract, fields and the coverage / automation-lane rules: `references/report-template/report-template.md`; lint the source with `scripts/report_data_lint.py`.
+
 **Lint before delivering.** Save the report and run `python scripts/report_lint.py report.md --summary summary.json` (drop `--summary` when `generate_report.py` did not run). It checks the title and metadata, the Health Score against the summary, the required sections, every finding's fields, severity and section, and that no Core Web Vitals or backlink numbers appear for checks that never ran. Fix every error; each warning names what it could not verify.
 
 ### Mode 2 Plan Entry Format

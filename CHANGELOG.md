@@ -4,6 +4,45 @@
 
 _Nothing yet._
 
+## [1.16.0] - 2026-09-17
+
+The report as a set. The skill had three disagreeing report shapes: the Mode 1 Markdown
+template the linter checks, the `generate_report.py` HTML, and hand-built client reports whose
+CSS was pasted into every file. This release adds the design and layout contract for the
+client-facing deliverable and the tooling that renders it from one source, so findings,
+recommendations, prompts and machine checks are written once and linked everywhere. Minor, not
+patch, per D-020: new capability; the v1.14.0 Health Score contract and the Markdown template
+are unchanged.
+
+### Added
+- **`references/report-template/`** — `report-template.md` (the contract: a five-document set
+  with one spine; finding fields with a `kind` and an `evidence_status`; a recommendation
+  register with tier, owner role, automation lane, dependencies, done-when and a `supersedes`
+  note for human overrides of machine findings; a generated scope-and-coverage section with
+  completeness verdicts; the stated prioritisation rule), `report.css` (tokens and components,
+  light and dark, no CDN scripts), `print.css` (A4), `components.html` (the catalogue).
+- **`scripts/render_report.py`** — renders `index`, `0-brief`, `1-audit`, `2-strategy`, `3-plan`
+  and `4-appendix` from a report source (schema_version 1, JSON, stdlib). `--summary` folds a
+  `generate_report.py --json` run into the coverage section and a machine-checks appendix
+  (display-only checks show no score or weight); `--graph` fills the inventory and the
+  absence-claims verdict from `site_graph.py`; `--structure` renders the page-type matrix,
+  navigation, section table and a static section tree from the § 26 checkers (Mermaid text goes
+  to the appendix). IDs (`F12`, `C4a`, `D3`) link across documents; base IDs resolve to their
+  first variant; prompt IDs (`T1.3`) do not link. A start-today view lists every Auto or Assisted
+  recommendation with no open blocker.
+- **`scripts/report_data_lint.py`** — checks the source: required fields and scales, every
+  `fixes` / `blocked_by` / `unblocks` / `decision` ID exists, the blocked-by graph is acyclic,
+  display-only findings carry no score, keep findings carry no fix, opportunities about site
+  structure are only claimed from a complete inventory, no Core Web Vitals or backlink numbers
+  under `not_measured`. The renderer refuses a source with errors unless `--force`.
+- `tests/test_report_set.py` (26 tests): every lint rule proven by a failing fixture; rendered
+  documents self-contained, escaped, linked across the set; display-only checks unscored in the
+  coverage table; the start-today rule.
+- Routing rows in `SKILL.md` and `AGENTS.md`; a pointer in § 2 Audit Output Format; matrix rows.
+
+### Changed
+- `README.md` eval counts (16 prompts, 69 assertions) and procedure range (§ 1–26) caught up.
+
 ## [1.15.0] - 2026-09-17
 
 The site as a structure. Until now every check stripped `<nav>`, `<header>` and `<footer>` as

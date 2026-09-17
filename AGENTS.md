@@ -2,7 +2,7 @@
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.15.0 |
+| **Version** | 1.16.0 |
 | **Updated** | 2026-09-17 |
 | **License** | MIT |
 | **Author** | Myk Pono |
@@ -37,6 +37,7 @@ What to read, what to run, which procedure file has the detail. Full script inde
 | Links | `references/link-building.md` | `internal_links.py`, `broken_links.py`, `link_profile.py` | `09-link-building-internal.md` |
 | Local SEO | `references/local-seo.md` | `local_signals_checker.py`, `maps_checker.py` | `12-local-seo.md`, `25-maps-intelligence.md` |
 | Site structure / page types / navigation | `references/page-types.md`, `references/industry-templates.md` | `site_graph.py`, `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py`, `sitemap_checker.py --reconcile` | `26-site-structure-content-types.md` |
+| Client report set | `references/report-template/report-template.md` | `render_report.py`, `report_data_lint.py` | — |
 | Images | `references/image-seo.md` | `image_checker.py` | `13-image-seo.md` |
 | International / hreflang | `references/international-seo.md` | `hreflang_checker.py` | `14-international-hreflang.md` |
 | Programmatic SEO | `references/programmatic-seo.md` | `programmatic_seo_auditor.py` | `15-programmatic-seo.md` |
