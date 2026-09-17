@@ -20,6 +20,18 @@
   shapes that win over the section; fetched pages add H1, schema and CTA signals with Confirmed /
   Likely / Hypothesis confidence. Absence findings are only made from a complete sitemap or crawl.
   Display-only; the taxonomy is pinned to the reference doc by `tests/test_page_type_parity.py`.
+- **`scripts/navigation_checker.py`** — the first check that reads the chrome instead of stripping
+  it: primary navigation, footer and breadcrumbs extracted from the site graph, a link counted as
+  global when it repeats on ≥ 80% of sampled pages (links repeating outside any landmark are found
+  too, for `<div>`-built footers). Findings, display-only: a money page type that exists but is not
+  linked from the global navigation or footer (`money_page_not_in_nav`), broken or redirected
+  global links, a footer of 100+ internal links, generic or ambiguous nav anchors, visible
+  breadcrumb vs BreadcrumbList JSON-LD mismatch, breadcrumbs missing on deep pages. A raw-HTML
+  navigation with fewer than three landmark links is reported as *not measured*, never as absent.
+- `site_graph.py` now records each link's outermost container (a `<nav>` inside the footer is
+  footer navigation), the page's visible breadcrumb trail and its BreadcrumbList item names
+  (`schema_version` 2), and decodes responses without a declared charset as UTF-8 (nav anchors on
+  developers.cloudflare.com read as mojibake before).
 
 ## [1.14.0] - 2026-09-16
 

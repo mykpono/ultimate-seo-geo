@@ -55,7 +55,7 @@ except ImportError:
 import jsonld
 from url_safety import validate_url
 
-GRAPH_SCHEMA_VERSION = 1
+GRAPH_SCHEMA_VERSION = 2
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-SiteGraph/1.15; +https://github.com/mykpono/ultimate-seo-geo)"
 HEADERS = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"}
 
@@ -184,6 +184,11 @@ def fetch_url(url: str, timeout: int = 10) -> dict:
         result["headers"] = {k.lower(): v for k, v in resp.headers.items()}
         ctype = result["headers"].get("content-type", "")
         if resp.status_code == 200 and ("html" in ctype or "xml" in ctype or not ctype):
+            # requests falls back to ISO-8859-1 when the header names no charset,
+            # which turns every non-ASCII nav anchor into mojibake ("agent setup â").
+            # Modern HTML is UTF-8; trust the declared charset when there is one.
+            if "charset" not in ctype.lower():
+                resp.encoding = "utf-8"
             result["html"] = resp.text
         elif resp.status_code != 200:
             result["error"] = f"HTTP {resp.status_code}"
@@ -334,31 +339,117 @@ def _is_breadcrumb(tag) -> bool:
     )
 
 
-def link_region(a_tag) -> str:
-    """The page region an <a> sits in: the nearest qualifying ancestor wins.
+CONTAINERS = ("header", "footer", "main", "aside", "other")
 
-    Breadcrumb is tested before nav on each ancestor because a breadcrumb
-    trail is usually ``<nav aria-label="breadcrumb">`` — one element that
-    is both, and the more specific answer is the useful one.
+
+def _landmark_of(tag) -> str | None:
+    name = tag.name.lower()
+    role = (tag.get("role") or "").lower()
+    if name == "header" or role == "banner":
+        return "header"
+    if name == "footer" or role == "contentinfo":
+        return "footer"
+    if name == "aside" or role == "complementary":
+        return "aside"
+    if name == "main" or role == "main":
+        return "main"
+    return None
+
+
+def link_region_and_container(a_tag) -> tuple[str, str]:
+    """(region, container) for an <a>.
+
+    ``region`` is the nearest qualifying ancestor: breadcrumb is tested
+    before nav on each ancestor because a breadcrumb trail is usually
+    ``<nav aria-label="breadcrumb">`` — one element that is both, and the
+    more specific answer is the useful one.
+
+    ``container`` is the OUTERMOST page landmark the link sits in (header,
+    footer, main, aside, or other). A ``<nav>`` inside the footer has region
+    nav and container footer; that is how a footer nav is told apart from
+    the primary navigation.
     """
+    region = None
+    container = None
     for parent in a_tag.parents:
         if parent is None or parent.name is None:
             continue
         name = parent.name.lower()
         role = (parent.get("role") or "").lower()
-        if _is_breadcrumb(parent):
-            return "breadcrumb"
-        if name == "nav" or role == "navigation":
-            return "nav"
-        if name == "header" or role == "banner":
-            return "header"
-        if name == "footer" or role == "contentinfo":
-            return "footer"
-        if name == "aside" or role == "complementary":
-            return "aside"
-        if name == "main" or role == "main" or name == "article":
-            return "main"
-    return "other"
+        if region is None:
+            if _is_breadcrumb(parent):
+                region = "breadcrumb"
+            elif name == "nav" or role == "navigation":
+                region = "nav"
+            elif name == "header" or role == "banner":
+                region = "header"
+            elif name == "footer" or role == "contentinfo":
+                region = "footer"
+            elif name == "aside" or role == "complementary":
+                region = "aside"
+            elif name == "main" or role == "main" or name == "article":
+                region = "main"
+        lm = _landmark_of(parent)
+        if lm:
+            container = lm  # keep walking: the outermost wins
+    return region or "other", container or "other"
+
+
+def link_region(a_tag) -> str:
+    return link_region_and_container(a_tag)[0]
+
+
+def _jsonld_blocks(soup) -> list:
+    blocks = []
+    for script in soup.find_all("script", attrs={"type": re.compile(r"application/ld\+json", re.I)}):
+        raw = (script.string or script.get_text() or "").strip()
+        if not raw:
+            continue
+        try:
+            blocks.append(json.loads(raw))
+        except json.JSONDecodeError:
+            try:
+                blocks.append(json.loads(re.sub(r",\s*([}\]])", r"\1", raw)))
+            except json.JSONDecodeError:
+                continue
+    return blocks
+
+
+def _jsonld_items(blocks) -> list[dict]:
+    items = []
+    for data in blocks:
+        for node in jsonld.nodes(data):
+            graph = node.get("@graph") if isinstance(node.get("@graph"), list) else [node]
+            items.extend(i for i in graph if isinstance(i, dict))
+    return items
+
+
+def breadcrumb_jsonld(soup_or_items) -> list[str]:
+    """Item names of the page's BreadcrumbList, in position order (first list only)."""
+    items = soup_or_items if isinstance(soup_or_items, list) else _jsonld_items(_jsonld_blocks(soup_or_items))
+    for item in items:
+        if not jsonld.is_type(item, "BreadcrumbList"):
+            continue
+        elements = item.get("itemListElement")
+        if not isinstance(elements, list):
+            continue
+        rows = []
+        for el in elements:
+            if not isinstance(el, dict):
+                continue
+            name = el.get("name")
+            if name is None and isinstance(el.get("item"), dict):
+                name = el["item"].get("name")
+            pos = el.get("position")
+            try:
+                pos = int(pos)
+            except (TypeError, ValueError):
+                pos = len(rows) + 1
+            if isinstance(name, str) and name.strip():
+                rows.append((pos, name.strip()))
+        rows.sort(key=lambda r: r[0])
+        return [n for _, n in rows]
+    return []
 
 
 def _jsonld_types(soup) -> list[str]:
@@ -423,7 +514,7 @@ def extract_page(html: str, url: str, site_host: str) -> dict:
         rel = a.get("rel") or []
         if isinstance(rel, str):
             rel = rel.split()
-        region = link_region(a)
+        region, container = link_region_and_container(a)
         region_counts[region] += 1
         out_links.append({
             "href": full,
@@ -431,10 +522,13 @@ def extract_page(html: str, url: str, site_host: str) -> dict:
             "anchor": a.get_text(" ", strip=True)[:120],
             "rel": [r.lower() for r in rel],
             "region": region,
+            "container": container,
             "internal": internal,
         })
 
     jsonld_types = _jsonld_types(soup)
+    crumbs_schema = breadcrumb_jsonld(soup)
+    crumbs_visible = [l["anchor"] for l in out_links if l["region"] == "breadcrumb" and l["anchor"]]
     text = _main_text(soup)
     words = re.findall(r"\b\w+\b", text)
     return {
@@ -447,6 +541,8 @@ def extract_page(html: str, url: str, site_host: str) -> dict:
         "robots_meta": (robots_tag.get("content") or "").strip().lower() if robots_tag else None,
         "lang": (html_tag.get("lang") or "").strip().lower() if html_tag and html_tag.get("lang") else None,
         "jsonld_types": jsonld_types,
+        "breadcrumb_visible": crumbs_visible,
+        "breadcrumb_jsonld": crumbs_schema,
         "word_count": len(words),
         "main_text_hash": hashlib.sha256(text.encode("utf-8")).hexdigest()[:16] if text else None,
         "out_links": out_links,
