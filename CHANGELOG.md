@@ -11,6 +11,15 @@
   whole site. Foundation for the page-type, navigation and site-architecture checks that follow;
   not yet wired into `generate_report.py`. Regions are landmark-based: a footer built from plain
   `<div>`s (posthog.com) reports zero footer links rather than guessing.
+- **`scripts/page_type_classifier.py` + `references/page-types.md`** — label every sitemap and
+  crawled URL with one of 28 content types (comparison, alternatives, pricing, persona/ICP, industry,
+  solution, pain-point, glossary, pillar, docs, community Q&A, product, category, location, …), roll
+  them up into a coverage matrix by funnel stage, detect the site type, and report the page types a
+  SaaS / e-commerce / local / publisher site is expected to have but does not (`missing_page_type`,
+  tagged `opportunity`). URL rules are section-level (first path segment) plus slug-level content
+  shapes that win over the section; fetched pages add H1, schema and CTA signals with Confirmed /
+  Likely / Hypothesis confidence. Absence findings are only made from a complete sitemap or crawl.
+  Display-only; the taxonomy is pinned to the reference doc by `tests/test_page_type_parity.py`.
 
 ## [1.14.0] - 2026-09-16
 
