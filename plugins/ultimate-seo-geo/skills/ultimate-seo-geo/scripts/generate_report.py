@@ -1353,7 +1353,7 @@ CHECK_LABELS = {
 
 _SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2, "pass": 3}
 _SEVERITY_LABEL = {"critical": "Critical", "warning": "Warning", "info": "Info", "pass": "Pass"}
-_SEVERITY_CHIP = {"critical": "sev-critical", "warning": "sev-warning", "info": "sev-info", "pass": "chip-ok"}
+_SEVERITY_CHIP = {"critical": "c", "warning": "h", "info": "o", "pass": "g"}
 _STATUS_RANK = {"gap": 0, "flag": 1, "ok": 2, "deferred": 3, "na": 4}
 
 # Scripts prefix string issues with status emoji. Severity is read from them
@@ -1362,8 +1362,9 @@ _STATUS_RANK = {"gap": 0, "flag": 1, "ok": 2, "deferred": 3, "na": 4}
 _EMOJI_PREFIX = re.compile("^\\s*(?:[\U0001F300-\U0001FAFF☀-➿ℹ⭐]️?\\s*)+")
 
 _FONTS_URL = (
-    "https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700"
-    "&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700"
+    "&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400"
+    "&display=swap"
 )
 
 
@@ -1419,9 +1420,7 @@ def _severity_chip(severity: str) -> str:
 
 
 def _status_chip(status: str, label: str) -> str:
-    if status == "deferred":
-        return f'<span class="mark m-deferred">⏸︎<small>{_esc(label)}</small></span>'
-    kind = {"ok": "chip-ok", "flag": "chip-flag", "gap": "chip-gap"}.get(status, "chip-na")
+    kind = {"ok": "g", "flag": "h", "gap": "c"}.get(status, "o")
     return _chip(kind, label)
 
 
@@ -1439,14 +1438,16 @@ def _kv(pairs: list) -> str:
 def _table(headers: list, rows: list) -> str:
     head = "".join(f'<th scope="col">{_esc(h)}</th>' for h in headers)
     return (
-        f'<div class="table-scroll"><table class="tbl"><thead><tr>{head}</tr></thead>'
+        f'<div class="tw"><table><thead><tr>{head}</tr></thead>'
         f'<tbody>{"".join(rows)}</tbody></table></div>'
     )
 
 
 def _notice(body_html: str, tone: str = "empty", lead: str = "") -> str:
+    """A callout in the report-set vocabulary: flag (default), info, good, or a plain note."""
     lead_html = f"<b>{_esc(lead)}</b> " if lead else ""
-    return f'<p class="notice {tone}">{lead_html}{body_html}</p>'
+    css = {"flag": "callout", "info": "callout k", "good": "callout g"}.get(tone, "callout k")
+    return f'<div class="{css}"><p>{lead_html}{body_html}</p></div>'
 
 
 def _subhead(text: str) -> str:
@@ -1507,7 +1508,7 @@ def _render_issue_metadata(issue: dict) -> str:
             parts.append(f"<div><dt>{label}</dt><dd>{_esc(value)}</dd></div>")
     if not parts:
         return ""
-    return '<dl class="meta">' + "".join(parts) + "</dl>"
+    return '<dl class="fmeta">' + "".join(parts) + "</dl>"
 
 
 def render_environment_fixes(fixes: list) -> str:
@@ -2136,89 +2137,199 @@ def _check_panels(data: dict) -> dict:
     return panels
 
 
-_STEPPER = (
-    '<span class="stepper"><button type="button" data-step="-1">Previous</button>'
-    '<button type="button" data-step="1">Next</button></span>'
-)
+def compare_with_previous(summary: dict, previous: dict) -> dict:
+    """What changed since an earlier ``--json`` summary of the same site.
+
+    Findings are matched by check and wording, because IDs are renumbered on
+    every run. Returned as plain data so the JSON summary can carry it too.
+    """
+    def key(finding: dict) -> tuple:
+        return (finding.get("section"), str(finding.get("finding") or "").strip().lower())
+
+    current = {key(f): f for f in summary.get("findings") or [] if isinstance(f, dict)}
+    earlier = {key(f): f for f in previous.get("findings") or [] if isinstance(f, dict)}
+    resolved = [{"id": f.get("id"), "section": f.get("section"), "finding": f.get("finding")}
+                for k, f in earlier.items() if k not in current]
+    new = [{"id": f.get("id"), "section": f.get("section"), "finding": f.get("finding")}
+           for k, f in current.items() if k not in earlier]
+    changes = []
+    earlier_categories = previous.get("categories") or {}
+    for check, category in (summary.get("categories") or {}).items():
+        before = earlier_categories.get(check) or {}
+        if before and before.get("status") != category.get("status"):
+            changes.append({"check": check, "label": category.get("label") or CHECK_LABELS.get(check, check),
+                            "from": before.get("status"), "to": category.get("status")})
+    now, then = summary.get("overall"), previous.get("overall")
+    delta = now - then if isinstance(now, int) and isinstance(then, int) else None
+    return {
+        "timestamp": previous.get("timestamp"),
+        "overall": then,
+        "score_delta": delta,
+        "resolved": resolved,
+        "new": new,
+        "status_changes": changes,
+    }
+
+
+def _coverage_counts(statuses: dict, weights: dict) -> dict:
+    counts = {"weighted": 0, "display": 0, "deferred": 0, "na": 0}
+    for key, (status, _label) in statuses.items():
+        if status in ("ok", "flag", "gap"):
+            if key in DISPLAY_ONLY_CHECKS or not weights.get(key):
+                counts["display"] += 1
+            else:
+                counts["weighted"] += 1
+        elif status == "deferred":
+            counts["deferred"] += 1
+        else:
+            counts["na"] += 1
+    return counts
+
+
+def _inventory(data: dict) -> dict:
+    """Inventory and completeness from the structure checks, when they ran."""
+    sections = data.get("sections", {})
+    ar = _source_section(sections, "architecture")
+    pt = _source_section(sections, "page_types")
+    inv = (ar.get("inventory") or {}) if isinstance(ar, dict) else {}
+    src = (pt.get("source") or {}) if isinstance(pt, dict) else {}
+    complete = inv.get("complete") if inv else (src.get("status") == "complete" if src else None)
+    site_type = (pt.get("site_type") if isinstance(pt, dict) else None) or (ar.get("site_type") if isinstance(ar, dict) else None)
+    return {
+        "total": inv.get("total"),
+        "fetched": inv.get("fetched"),
+        "sitemap_urls": inv.get("sitemap_urls"),
+        "complete": complete,
+        "site_type": site_type,
+        "measured": bool(inv or src),
+    }
+
+
+def _short_date(timestamp) -> str:
+    try:
+        return datetime.fromisoformat(str(timestamp)).strftime("%Y-%m-%d")
+    except (TypeError, ValueError):
+        return str(timestamp or "")
+
+
+def _finding_kind(issue: dict) -> str:
+    tags = (issue.get("source_issue") or {}).get("tags")
+    if isinstance(tags, list) and "opportunity" in [str(t) for t in tags]:
+        return "opportunity"
+    return "defect"
+
+
+def _finding_card(issue: dict) -> str:
+    fid = issue["id"]
+    severity = issue["severity"]
+    section = issue["section"]
+    label = CHECK_LABELS.get(section, section.replace("_", " ").capitalize())
+    headline = _headline(issue["finding"] or issue["text"])
+    source = issue.get("source_issue") or {}
+    kind = _finding_kind(issue)
+    rows = []
+    if issue["finding"] and issue["finding"] != headline:
+        rows.append(("Finding", _esc(issue["finding"])))
+    for field_label, keys in (
+        ("Evidence", ("evidence",)),
+        ("Impact", ("impact",)),
+    ):
+        value = _supplied(source, *keys)
+        if value:
+            rows.append((field_label, _esc(value)))
+    confidence = _confidence(source)
+    falsifiability = _supplied(source, "falsifiability", "failure_check", "how_to_know_failed", "validation")
+    if confidence or falsifiability:
+        text = _esc(confidence) if confidence else ""
+        if falsifiability:
+            text += (". " if text else "") + "Wrong if: " + _esc(falsifiability)
+        rows.append(("Confidence", text))
+    if issue["fix"]:
+        rows.append(("Fix", _esc(issue["fix"])))
+    watch = _supplied(source, "leading_indicator", "metric")
+    if watch:
+        rows.append(("Watch", _esc(watch)))
+    dependency = _supplied(source, "dependency", "depends_on")
+    if dependency:
+        rows.append(("Depends on", _esc(dependency)))
+    check_link = (
+        f'<a href="#check-{section}">Open the {_esc(label)} check</a>'
+        if section in CHECK_LABELS else _esc(label)
+    )
+    rows.append(("Source", f'<span class="mono">script:{_esc(section)}</span> · {check_link}'))
+    dl = "".join(f"<dt>{_esc(k)}</dt><dd>{v}</dd>" for k, v in rows)
+    kind_chip = _chip("g", "Opportunity") if kind == "opportunity" else _severity_chip(severity)
+    css = "opp" if kind == "opportunity" else _SEVERITY_CHIP.get(severity, "o")
+    return (
+        f'<article class="find {css}" data-key="{fid}" data-filter="{severity}" id="{fid}" aria-labelledby="{fid}-title">'
+        f'<div class="find-top"><span class="pid">{fid}</span>{kind_chip}'
+        f'<h3 id="{fid}-title">{_esc(headline)}</h3><span class="chip o">{_esc(label)}</span></div>'
+        f"<dl>{dl}</dl></article>"
+    )
 
 
 def _render_findings(issues: list) -> str:
-    counts = {s: sum(1 for i in issues if i["severity"] == s) for s in ("critical", "warning", "info")}
+    defects = [i for i in issues if _finding_kind(i) == "defect"]
+    opportunities = [i for i in issues if _finding_kind(i) == "opportunity"]
+    counts = {s: sum(1 for i in defects if i["severity"] == s) for s in ("critical", "warning", "info")}
+    tally = (f'{len(defects)} · {counts["critical"]} critical · {counts["warning"]} warning · {counts["info"]} info')
+    if opportunities:
+        tally += f' · {len(opportunities)} {"opportunity" if len(opportunities) == 1 else "opportunities"}'
     head = (
-        '<div class="section-head"><h2 id="findings-h">Findings</h2>'
-        f'<span class="mono note">{len(issues)} · {counts["critical"]} critical · '
-        f'{counts["warning"]} warning · {counts["info"]} info</span>'
+        '<div class="sec-head"><span class="sec-n">05</span><h2 id="findings-h">Findings</h2>'
+        f'<span class="small mono">{tally}</span></div>'
     )
     if not issues:
-        return head + "</div>" + _notice("No findings. Every check came back without an issue.")
+        return head + _notice("No findings. Every check came back without an issue.", "good")
 
     filters = "".join(
         f'<button type="button" data-filter="{key}" aria-pressed="{"true" if key == "all" else "false"}">'
-        f'{label} <span class="mono">{count}</span></button>'
+        f"{label} <b>{count}</b></button>"
         for key, label, count in (
-            ("all", "All", len(issues)),
-            ("critical", "Critical", counts["critical"]),
-            ("warning", "Warning", counts["warning"]),
-            ("info", "Info", counts["info"]),
+            ("all", "All", len(defects)),
+            ("critical", "Critical", sum(1 for i in defects if i["severity"] == "critical")),
+            ("warning", "Warning", sum(1 for i in defects if i["severity"] == "warning")),
+            ("info", "Info", sum(1 for i in defects if i["severity"] == "info")),
         )
     )
-    head += f'<div class="filter" id="finding-filter" role="group" aria-label="Filter by severity">{filters}</div></div>'
+    intro = (
+        '<p class="prose">Ordered by severity, then by the check that raised them. Every card names its '
+        "evidence when the check supplied it, the fix, and the check to open for detail. "
+        "Opportunities (pages to create) are listed separately and never count against the score.</p>"
+        f'<div class="filters" id="finding-filter" role="group" aria-label="Filter by severity">{filters}</div>'
+    )
 
-    rows, cards = [], []
-    for issue in issues:
+    rows = []
+    for issue in defects:
         fid = issue["id"]
-        severity = issue["severity"]
-        section = issue["section"]
-        label = CHECK_LABELS.get(section, section.replace("_", " ").capitalize())
-        headline = _headline(issue["finding"] or issue["text"])
-        id_class = "id hi" if severity == "critical" else "id"
+        label = CHECK_LABELS.get(issue["section"], issue["section"].replace("_", " ").capitalize())
         rows.append(
-            f'<tr data-key="{fid}" data-filter="{severity}" aria-selected="false">'
-            f'<td class="{id_class}">{fid}</td>'
-            f'<td><button type="button" class="row-title" aria-controls="finding-detail">{_esc(headline)}</button></td>'
-            f"<td>{_severity_chip(severity)}</td>"
-            f'<td class="small col-check">{_esc(label)}</td></tr>'
+            f'<tr data-key="{fid}" data-filter="{issue["severity"]}">'
+            f'<td class="q"><a href="#{fid}">{fid}</a></td>'
+            f'<td>{_esc(_headline(issue["finding"] or issue["text"]))}</td>'
+            f"<td>{_severity_chip(issue['severity'])}</td>"
+            f'<td class="small">{_esc(label)}</td></tr>'
         )
-        finding_field = ""
-        if issue["finding"] and issue["finding"] != headline:
-            finding_field = f'<div class="field"><p class="lbl">Finding</p><p>{_esc(issue["finding"])}</p></div>'
-        fix_field = f'<div class="field"><p class="lbl">Fix</p><p>{_esc(issue["fix"])}</p></div>' if issue["fix"] else ""
-        check_link = (
-            f'<a class="mono" href="#check-{section}" data-open-check="{section}">Open the {_esc(label)} check</a>'
-            if section in CHECK_LABELS else f'<span class="mono">{_esc(label)}</span>'
-        )
-        cards.append(
-            f'<article class="card detail" data-key="{fid}" id="{fid}" aria-labelledby="{fid}-title">'
-            '<div class="card-body">'
-            f'<div class="card-top"><span class="id">{fid}</span>{_severity_chip(severity)}<span class="lbl">{_esc(label)}</span></div>'
-            f'<h3 id="{fid}-title">{_esc(headline)}</h3>'
-            f"{finding_field}{fix_field}{_render_issue_metadata(issue)}"
-            "</div>"
-            f'<div class="card-foot">{check_link}{_STEPPER}</div>'
-            "</article>"
-        )
-    return (
-        head
-        + '<div class="ledger-grid"><div class="panel"><div class="table-scroll">'
-        '<table class="ledger" aria-label="Findings"><thead><tr>'
-        '<th class="lbl" scope="col" style="width:52px">ID</th>'
-        '<th class="lbl" scope="col">Finding</th>'
-        '<th class="lbl" scope="col" style="width:108px">Severity</th>'
-        '<th class="lbl col-check" scope="col" style="width:170px">Check</th>'
+    index = (
+        '<div class="tw"><table aria-label="Findings index"><thead><tr>'
+        '<th scope="col">ID</th><th scope="col">Finding</th><th scope="col">Severity</th><th scope="col">Check</th>'
         f'</tr></thead><tbody id="finding-rows">{"".join(rows)}</tbody></table></div>'
-        '<p class="legend">Arrow keys move through the list.</p></div>'
-        f'<aside class="detail-stack" id="finding-detail" aria-live="polite">{"".join(cards)}</aside></div>'
+        if rows else ""
     )
+    cards = "".join(_finding_card(i) for i in defects)
+    opp_html = ""
+    if opportunities:
+        opp_html = (
+            '<h3 class="block-h" id="opportunities">Opportunities</h3>'
+            '<p class="small prose">Pages to create, not defects to fix. Raised by the page-type check from a '
+            "complete inventory; they never enter the severity list.</p>"
+            + "".join(_finding_card(i) for i in opportunities)
+        )
+    return head + intro + index + f'<div id="finding-cards">{cards}</div>' + opp_html
 
 
-def _render_checks(data: dict, scores: dict, issues: list) -> str:
+def _check_entries(data: dict, scores: dict) -> list:
     categories = scores.get("categories", {})
-    weights = scores.get("weights", {})
-    panels = _check_panels(data)
-    finding_counts = {}
-    for issue in issues:
-        finding_counts[issue["section"]] = finding_counts.get(issue["section"], 0) + 1
-
     entries = []
     for key, label in CHECK_LABELS.items():
         section = _source_section(data["sections"], key)
@@ -2226,51 +2337,328 @@ def _render_checks(data: dict, scores: dict, issues: list) -> str:
         status, status_label = _check_status(key, section, categories.get(key))
         entries.append((key, label, status, status_label, categories.get(key) or 0))
     entries.sort(key=lambda e: (_STATUS_RANK[e[2]], e[4]))
+    return entries
 
-    rows, cards = [], []
+
+def _render_checks_table(data: dict, scores: dict, issues: list, entries: list) -> str:
+    weights = scores.get("weights", {})
+    finding_counts = {}
+    for issue in issues:
+        finding_counts[issue["section"]] = finding_counts.get(issue["section"], 0) + 1
+    rows = []
     for key, label, status, status_label, score in entries:
         measured = status not in ("deferred", "na")
-        scored = measured and key not in DISPLAY_ONLY_CHECKS  # structure checks have findings, not a score
+        scored = measured and key not in DISPLAY_ONLY_CHECKS and bool(weights.get(key))
         pct = max(0, min(100, int(score)))
-        score_html = (
-            f'<span class="score"><span class="mono">{pct}</span>'
-            f'<span class="meter {status}"><span style="width:{pct}%"></span></span></span>'
-            if scored else '<span class="mono muted">—</span>'
-        )
-        weight = weights.get(key)
-        weight_html = _esc(weight) if weight and scored else "—"
-        count = finding_counts.get(key, 0)
-        chip = _status_chip(status, status_label)
+        if scored:
+            counts_as = "weighted"
+        elif measured:
+            counts_as = "shown, not weighted"
+        elif status == "deferred":
+            counts_as = "not measured"
+        else:
+            counts_as = status_label.lower()
+        score_html = f'<span class="mono">{pct}</span>' if scored else '<span class="muted">—</span>'
+        weight_html = _esc(weights.get(key)) if scored else "—"
         rows.append(
-            f'<tr data-key="{key}" aria-selected="false">'
-            f'<td><button type="button" class="row-title" aria-controls="check-detail">{_esc(label)}</button></td>'
-            f"<td>{score_html}</td><td>{chip}</td>"
-            f'<td class="num">{count}</td><td class="num col-weight">{weight_html}</td></tr>'
+            f'<tr data-key="{key}">'
+            f'<td><a href="#check-{key}">{_esc(label)}</a></td>'
+            f'<td class="small">{_esc(CHECK_GROUP.get(key, ""))}</td>'
+            f"<td>{_status_chip(status, status_label)}</td>"
+            f'<td class="n">{score_html}</td><td class="n">{weight_html}</td>'
+            f'<td class="n">{finding_counts.get(key, 0)}</td>'
+            f'<td class="small">{_esc(counts_as)}</td></tr>'
         )
-        score_top = f'<span class="mono">{pct} / 100</span>' if scored else ""
+    return (
+        '<div class="tw"><table aria-label="Checks"><thead><tr>'
+        '<th scope="col">Check</th><th scope="col">Group</th><th scope="col">Status</th>'
+        '<th scope="col" class="n">Score</th><th scope="col" class="n">Weight</th>'
+        '<th scope="col" class="n">Findings</th><th scope="col">Counts toward score</th>'
+        f'</tr></thead><tbody id="check-rows">{"".join(rows)}</tbody></table></div>'
+    )
+
+
+def _render_check_details(data: dict, scores: dict, issues: list, entries: list) -> str:
+    weights = scores.get("weights", {})
+    panels = _check_panels(data)
+    finding_counts = {}
+    for issue in issues:
+        finding_counts[issue["section"]] = finding_counts.get(issue["section"], 0) + 1
+    cards = []
+    for key, label, status, status_label, score in entries:
+        measured = status not in ("deferred", "na")
+        scored = measured and key not in DISPLAY_ONLY_CHECKS and bool(weights.get(key))
+        pct = max(0, min(100, int(score)))
+        score_top = f'<span class="mono">{pct} / 100 · weight {_esc(weights.get(key))}</span>' if scored else ""
+        count = finding_counts.get(key, 0)
         noun = "finding" if count == 1 else "findings"
         cards.append(
             f'<article class="card detail" data-key="{key}" id="check-{key}" aria-labelledby="check-{key}-title">'
-            '<div class="card-body">'
-            f'<div class="card-top"><span class="lbl">Check</span>{chip}{score_top}</div>'
+            f'<div class="card-top"><span class="label">Check</span>{_status_chip(status, status_label)}{score_top}'
+            f'<span class="small">{count} {noun}</span></div>'
             f'<h3 id="check-{key}-title">{_esc(label)}</h3>'
             f'<div class="panel-body">{panels.get(key, "")}</div>'
-            "</div>"
-            f'<div class="card-foot"><span class="mono">{count} {noun} · weight {weight_html}</span>{_STEPPER}</div>'
             "</article>"
         )
+    return "".join(cards)
+
+
+def _measured_count(scores: dict) -> int:
+    """How many weighted checks produced a score (the number the CI gate reads)."""
+    value = scores.get("measured_categories")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (list, tuple, set)):
+        return len(value)
+    weights = scores.get("weights") or {}
+    raw = scores.get("raw_categories") or {}
+    return sum(1 for k, w in weights.items() if w and raw.get(k) is not None)
+
+
+def _render_score(data: dict, scores: dict, stamp: str, statuses: dict) -> str:
+    overall = scores["overall"]
+    measured = _measured_count(scores)
+    weights = scores.get("weights") or {}
+    # "Not measured" is a weighted check that ran and failed; a check that never
+    # ran is counted, not listed, so the source line stays readable.
+    unmeasured = [k for k, (status, _label) in statuses.items() if status == "deferred" and weights.get(k)]
+    not_run = sum(1 for k, (status, label) in statuses.items() if label == "Not run" and weights.get(k))
+    groups = group_scores(scores)
+    bars = []
+    for group, info in groups.items():
+        score = info.get("score")
+        n_checks = len(info.get("checks") or [])
+        n_unmeasured = len(info.get("unmeasured") or [])
+        sub = f"{n_checks} {'check' if n_checks == 1 else 'checks'}"
+        if n_unmeasured:
+            sub += f" · {n_unmeasured} not measured"
+        if info.get("share"):
+            sub += f" · {info['share']}% of score"
+        status = info.get("status", "")
+        chip = _chip({"Strong": "g", "Needs work": "h", "Gap": "c"}.get(status, "o"), status)
+        if score is None:
+            track = '<div class="track nm"></div><div class="val nm">—</div>'
+        else:
+            track = f'<div class="track"><i style="width:{max(0, min(100, int(score)))}%"></i></div><div class="val">{int(score)}</div>'
+        bars.append(f'<div class="lbl">{_esc(info.get("label", group))} <small>{_esc(sub)}</small></div>{track}{chip}')
+    if measured < MIN_MEASURED_FOR_GATE:
+        number = f'<div class="score-n ns">Inconclusive</div>'
+        source = (f"Only {measured} weighted {'check' if measured == 1 else 'checks'} measured; the Health Score needs "
+                  f"at least {MIN_MEASURED_FOR_GATE}. Computed value {overall}/100 is not a valid score.")
+    else:
+        number = f'<div class="score-n">{overall}<small>/100 · {_esc(_grade(overall))}</small></div>'
+        source = f"{measured} weighted checks measured"
+        if unmeasured:
+            source += " · not measured: " + _esc(_join_labels([CHECK_LABELS.get(k, k) for k in unmeasured]))
+        if not_run:
+            source += f" · {not_run} weighted {'check' if not_run == 1 else 'checks'} did not run"
+        source += ". Shown unmodified; display-only checks carry no weight."
     return (
-        '<div class="section-head"><h2 id="checks-h">Checks</h2>'
-        '<p class="note">Sorted by status, weakest first. Scores run 0 to 100, and weight sets how much '
-        "each check counts toward the overall score.</p></div>"
-        '<div class="panel"><div class="table-scroll"><table class="ledger" aria-label="Checks"><thead><tr>'
-        '<th class="lbl" scope="col">Check</th>'
-        '<th class="lbl" scope="col" style="width:150px">Score</th>'
-        '<th class="lbl" scope="col" style="width:150px">Status</th>'
-        '<th class="lbl" scope="col" style="width:90px">Findings</th>'
-        '<th class="lbl col-weight" scope="col" style="width:80px">Weight</th>'
-        f'</tr></thead><tbody id="check-rows">{"".join(rows)}</tbody></table></div></div>'
-        f'<div class="detail-stack check-detail" id="check-detail" aria-live="polite">{"".join(cards)}</div>'
+        '<div class="sec-head"><span class="sec-n">02</span><h2 id="score-h">Health Score</h2></div>'
+        f'<div class="score">{number}<p class="score-src">Source: generate_report.py · {_esc(stamp)}<br>{source}</p>'
+        f'<div class="bars" role="img" aria-label="Score by category">{"".join(bars)}</div></div>'
+        '<p class="small prose">Category shares are the weights of the checks that ran, renormalised. A category with '
+        "a hatched track was not measured or does not apply; it never reads as a low score.</p>"
+    )
+
+
+def _render_delta(delta: dict) -> str:
+    if not delta:
+        return ""
+    then = _short_date(delta.get("timestamp"))
+    change = delta.get("score_delta")
+    if change is None:
+        score_html = '<b>—</b><span>Health Score comparison not available</span>'
+    else:
+        sign = "+" if change > 0 else ""
+        css = "up" if change > 0 else "dn" if change < 0 else ""
+        score_html = (f'<b class="{css}">{sign}{change}</b>'
+                      f'<span>Health Score since the {_esc(then)} run ({_esc(delta.get("overall"))} → now)</span>')
+
+    def ids(items: list) -> str:
+        return "".join(f'<span class="pid">{_esc(i.get("id"))}</span>' for i in items[:6] if i.get("id"))
+
+    resolved = delta.get("resolved") or []
+    new = delta.get("new") or []
+    changes = delta.get("status_changes") or []
+    change_text = " · ".join(f'{_esc(c.get("label"))} {_esc(c.get("from"))} → {_esc(c.get("to"))}' for c in changes[:4])
+    return (
+        f'<div class="delta" aria-label="Change since the previous run">'
+        f"<div>{score_html}</div>"
+        f'<div><b>{len(resolved)}</b><span>Findings resolved</span><span class="ids">{ids(resolved)}</span></div>'
+        f'<div><b class="{"dn" if new else ""}">{len(new)}</b><span>New findings</span><span class="ids">{ids(new)}</span></div>'
+        f'<div><b>{len(changes)}</b><span>Checks that changed status</span><span class="small">{change_text}</span></div>'
+        "</div>"
+    )
+
+
+def _render_coverage(data: dict, scores: dict, issues: list, entries: list, counts: dict, inventory: dict) -> str:
+    sections = data["sections"]
+    ran = sum(1 for value in sections.values() if isinstance(value, dict) and not value.get("error"))
+    tiles = []
+    if inventory["measured"]:
+        tiles.append((inventory.get("sitemap_urls") if inventory.get("sitemap_urls") is not None else "—",
+                      "sitemap URLs · " + ("complete" if inventory.get("complete") else "incomplete")))
+        tiles.append((inventory.get("fetched") if inventory.get("fetched") is not None else "—", "pages fetched by the site graph"))
+    tiles.append((f"{ran} of {len(sections)}", "checks ran"))
+    tiles.append((counts["weighted"], "weighted checks in the score"))
+    if len(tiles) < 4:
+        tiles.append((len(issues), "findings"))
+    tiles_html = "".join(f"<div><b>{_esc(v)}</b><span>{_esc(l)}</span></div>" for v, l in tiles[:4])
+    if inventory["measured"] and inventory.get("complete"):
+        claim = _notice("Inventory complete: findings about missing page types, hubs and orphans are allowed.", "good")
+    elif inventory["measured"]:
+        claim = _notice("Inventory incomplete: absence claims (missing page types, hubs, orphans, equity share) are withheld.", "flag")
+    else:
+        claim = _notice("No site graph: the structure checks did not run, so absence claims are withheld.", "flag")
+    return (
+        '<div class="sec-head"><span class="sec-n">03</span><h2 id="coverage-h">Scope and coverage</h2></div>'
+        f'<div class="cov" aria-label="Inventory and completeness">{tiles_html}</div>{claim}'
+        '<p class="small prose">Every check with its status, sorted weakest first. Weighted checks score 0 to 100 and '
+        "carry a weight; display-only checks are reviewed but never move the score; a check that failed to run is "
+        "not measured, and one that does not apply to this site is not a gap.</p>"
+        + _render_checks_table(data, scores, issues, entries)
+    )
+
+
+def _render_site_shape(data: dict) -> str:
+    sections = data["sections"]
+    pt = _source_section(sections, "page_types")
+    nv = _source_section(sections, "navigation")
+    ar = _source_section(sections, "architecture")
+    sm = _source_section(sections, "sitemap")
+    pt = pt if isinstance(pt, dict) and not pt.get("error") else {}
+    nv = nv if isinstance(nv, dict) and not nv.get("error") else {}
+    ar = ar if isinstance(ar, dict) and not ar.get("error") else {}
+    sm = sm if isinstance(sm, dict) else {}
+    if not (pt or nv or ar):
+        return ""
+    parts = ['<div class="sec-head"><span class="sec-n">04</span><h2 id="shape-h">Site shape</h2></div>',
+             '<p class="prose">Measured by the structure checks on the shared crawl. Shown, not weighted.</p>']
+
+    by_intent = pt.get("by_intent") or {}
+    if by_intent:
+        order = ("TOFU", "MOFU", "BOFU", "support", "trust", "meta")
+        cells = []
+        for stage in order:
+            info = by_intent.get(stage) or {}
+            count = info.get("count", 0) or 0
+            share = info.get("share")
+            share_text = f"{round(100 * share)}% of URLs" if isinstance(share, (int, float)) else ""
+            cells.append(f'<div class="{"gap" if not count else ""}"><span>{_esc(stage)}</span><b>{count}</b><small>{_esc(share_text)}</small></div>')
+        parts.append(f'<div class="funnel" aria-label="Pages by funnel stage">{"".join(cells)}</div>')
+
+    tree_html = ""
+    top = [s for s in (ar.get("sections") or []) if isinstance(s, dict) and not s.get("parent")]
+    if top:
+        children = {}
+        for s in ar.get("sections") or []:
+            if isinstance(s, dict) and s.get("parent"):
+                children.setdefault(s["parent"], []).append(s)
+
+        def node(s: dict) -> str:
+            tags = []
+            if s.get("in_nav"):
+                tags.append("in nav")
+            hub = s.get("hub") or {}
+            if hub.get("exists"):
+                tags.append("hub")
+            share = s.get("equity_share")
+            if isinstance(share, (int, float)):
+                tags.append(f"{share:.0%} equity")
+            flags = []
+            if not hub.get("exists"):
+                flags.append("no hub")
+            if not s.get("in_nav"):
+                flags.append("not in nav")
+            html = (f'<li><span class="path">{_esc(s.get("path", ""))}</span>'
+                    f'<span class="cnt">{_esc(s.get("url_count", 0))}</span>')
+            if s.get("dominant_label"):
+                html += f'<span class="tag">{_esc(str(s["dominant_label"]).replace("_", " "))}</span>'
+            if tags:
+                html += f'<span class="tag">{_esc(" · ".join(tags))}</span>'
+            if flags:
+                html += f'<span class="chip c">{_esc(" · ".join(flags))}</span>'
+            kids = children.get(s.get("path"))
+            if kids:
+                html += "<ul>" + "".join(node(k) for k in kids[:8]) + "</ul>"
+            return html + "</li>"
+
+        top.sort(key=lambda s: -(s.get("url_count") or 0))
+        inventory = ar.get("inventory") or {}
+        root = f'<li><span class="path">/</span><span class="cnt">{_esc(inventory.get("total", ""))} URLs</span><ul>'
+        tree_html = (f"<h3>Section tree</h3><ul class=\"tree\">{root}{''.join(node(s) for s in top[:12])}</ul></li></ul>")
+
+    rows = []
+    if nv:
+        prim = nv.get("primary_nav") or {}
+        foot = nv.get("footer_nav") or {}
+        bc = nv.get("breadcrumbs") or {}
+        if nv.get("status") == "not_measured":
+            rows.append(("Global navigation", "—", _status_chip("deferred", "Not measured")))
+        else:
+            rows.append(("Primary navigation links", _esc(prim.get("count", "—")), _status_chip("ok", "Measured")))
+            rows.append(("Footer links", _esc(foot.get("count", "—")), _status_chip("ok", "Measured")))
+            visible, jsonld = bc.get("with_visible", 0) or 0, bc.get("with_jsonld", 0) or 0
+            bc_status = _status_chip("ok", "Match") if visible == jsonld else _status_chip("flag", "Mismatch")
+            rows.append(("Breadcrumbs visible / BreadcrumbList", f"{visible} / {jsonld}", bc_status))
+    reconcile = sm.get("reconcile") or {}
+    if reconcile:
+        unlisted = (reconcile.get("crawled_not_in_sitemap") or {}).get("count", 0) or 0
+        rows.append(("Indexable pages not in the sitemap", _esc(unlisted),
+                     _status_chip("gap" if unlisted > 50 else "flag" if unlisted else "ok", "Gap" if unlisted > 50 else "Needs work" if unlisted else "Strong")))
+    if ar:
+        eq = ar.get("equity") or {}
+        eq_status = "measured" if eq.get("by_section") else "deferred"
+        rows.append(("Link equity by section", _esc(eq.get("status", "—")),
+                     _status_chip("ok" if eq_status == "measured" else "deferred", "Measured" if eq_status == "measured" else "Withheld")))
+    if pt:
+        matrix = pt.get("matrix") or {}
+        expected = pt.get("expected") or []
+        missing = [l for l in expected if not (matrix.get(l) or {}).get("count")]
+        src = pt.get("source") or {}
+        if expected:
+            if src.get("status") != "complete":
+                rows.append(("Expected page types missing", "inventory incomplete", _status_chip("deferred", "Withheld")))
+            else:
+                rows.append(("Expected page types missing", _esc(", ".join(l.replace("_", " ") for l in missing) or "none"),
+                             _status_chip("flag" if missing else "ok", "Gap" if missing else "Strong")))
+    table_html = ""
+    if rows:
+        body = "".join(f"<tr><td>{_esc(k)}</td><td class=\"n\">{v}</td><td>{chip}</td></tr>" for k, v, chip in rows)
+        table_html = ('<h3>Navigation and sitemap</h3><div class="tw"><table style="min-width:0" aria-label="Navigation and sitemap">'
+                      f"<tbody>{body}</tbody></table></div>")
+    if tree_html or table_html:
+        parts.append(f'<div class="shape-grid"><div>{tree_html}</div><div>{table_html}</div></div>')
+    parts.append('<p class="small prose">Full page-type matrix, navigation links and the section table are in the '
+                 'appendix under <a href="#check-page_types">Page-type coverage</a>, '
+                 '<a href="#check-navigation">Navigation and breadcrumbs</a> and '
+                 '<a href="#check-architecture">Site architecture</a>.</p>')
+    return "".join(parts)
+
+
+_GEO_QUICK = (
+    ("ai_search_access", "AI search crawlers allowed in robots.txt"),
+    ("ai_bot_access", "AI crawlers not refused by the firewall"),
+    ("hidden_instructions", "No hidden instructions aimed at AI agents"),
+    ("citability", "Answer-first, self-contained passages an assistant can cite"),
+    ("entity", "Entity resolvable off-site (Wikidata, sameAs, consistent name)"),
+    ("llms_txt", "llms.txt present and consistent (never weighted; Google ignores it)"),
+)
+
+
+def _render_geo(statuses: dict) -> str:
+    items = []
+    for key, question in _GEO_QUICK:
+        status, label = statuses.get(key, ("na", "Not run"))
+        css = "ok" if status == "ok" else "no" if status in ("flag", "gap") else "nm"
+        mark = "✓" if css == "ok" else "✗" if css == "no" else "–"
+        items.append(f'<li class="{css}"><span class="mk">{mark}</span><div>{_esc(question)}'
+                     f'<small>{_esc(CHECK_LABELS.get(key, key))} · {_esc(label)} · <a href="#check-{key}">detail</a></small></div></li>')
+    return (
+        '<div class="sec-head"><span class="sec-n">06</span><h2 id="geo-h">GEO readiness</h2></div>'
+        '<p class="prose">Whether AI assistants can reach, read and cite this site. Each line is the status of one check.</p>'
+        f'<ul class="qc">{"".join(items)}</ul>'
     )
 
 
@@ -2286,36 +2674,75 @@ def _render_platform(data: dict) -> str:
              ("Confidence", _esc(str(env.get("confidence", "low")).capitalize())),
              ("Signals matched", _esc(len(signals)))])
         + (_subhead("Detection signals") + f'<ul class="recs">{signal_list}</ul>' if signal_list else "")
-        + (f'<p class="note">Also possible: {_esc(", ".join(alternatives))}</p>' if alternatives else "")
+        + (f'<p class="small">Also possible: {_esc(", ".join(alternatives))}</p>' if alternatives else "")
     )
     plan_title = "Fix plan" if platform == "Unknown" else f"Fix plan for {platform}"
     return (
-        '<div class="section-head"><h2 id="platform-h">Platform</h2>'
-        '<p class="note">Inferred from signals in the HTML source. Fixes are phrased for the detected platform.</p></div>'
+        '<div class="sec-head"><span class="sec-n">08</span><h2 id="platform-h">Platform</h2></div>'
+        '<p class="prose">Inferred from signals in the HTML source. Fixes are phrased for the detected platform.</p>'
         f'<div class="two-col"><div>{left}</div>'
         f'<div>{_subhead(plan_title)}{render_environment_fixes(data.get("environment_fixes", []))}</div></div>'
     )
 
 
-def generate_html(data: dict, scores: dict) -> str:
-    """Generate the HTML report: Tobto design system, Ledger layout."""
+_ACCENT_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _report_options(options) -> dict:
+    options = dict(options or {})
+    accent = options.get("accent")
+    if accent and not _ACCENT_RE.match(str(accent)):
+        raise ValueError(f"accent must be a six-digit hex colour like #0D6E74, got {accent!r}")
+    return {
+        "prepared_for": options.get("prepared_for") or "",
+        "prepared_by": options.get("prepared_by") or "ultimate-seo-geo · generate_report.py",
+        "accent": accent or "",
+    }
+
+
+def _load_template_asset(name: str, fallback: str) -> str:
+    """Read a design-system file from references/report-template/, beside scripts/.
+
+    The plugin bundle ships references/ next to scripts/, so the same relative
+    path works installed and in the repo. A missing file is reported and the
+    report falls back to the embedded minimum so a run never fails on CSS.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "references", "report-template", name)
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return fh.read()
+    except OSError as exc:
+        print(f"  ⚠️ {name} not found beside scripts/ ({exc}); using the embedded fallback stylesheet", file=sys.stderr)
+        return fallback
+
+
+def generate_html(data: dict, scores: dict, options=None, previous_summary=None) -> str:
+    """Generate the HTML report: the report-set design system, one page, the spine.
+
+    Masthead with coverage bar → verdict and figures → delta since the previous
+    run → Health Score by category → scope and coverage → site shape → findings
+    by kind → GEO readiness → recommendations → platform → appendix of check
+    details. Every section is in the markup; JavaScript only filters and
+    scroll-spies, so print and PDF show everything.
+    """
+    opts = _report_options(options)
     domain = data["domain"]
     url = data["url"]
     timestamp = data["timestamp"]
     sections = data.get("sections", {})
     env = data.get("environment", {}) or {}
     overall = scores["overall"]
-    categories = scores.get("categories", {})
+    weights = scores.get("weights", {}) or {}
     issues = _collect_issues(data)
-    counts = {s: sum(1 for i in issues if i["severity"] == s) for s in ("critical", "warning", "info")}
-
-    statuses = {}
-    for key in CHECK_LABELS:
-        section = _source_section(sections, key)
-        statuses[key] = _check_status(key, section if isinstance(section, dict) else {}, categories.get(key))
-    not_measured = sum(1 for status, _ in statuses.values() if status == "deferred")
+    defects = [i for i in issues if _finding_kind(i) == "defect"]
+    counts = {s: sum(1 for i in defects if i["severity"] == s) for s in ("critical", "warning", "info")}
+    entries = _check_entries(data, scores)
+    statuses = {key: (status, label) for key, label_, status, label, _score in
+                ((e[0], e[1], e[2], e[3], e[4]) for e in entries)}
+    coverage = _coverage_counts(statuses, weights)
+    inventory = _inventory(data)
     gaps = sorted((k for k, (status, _) in statuses.items() if status == "gap"),
-                  key=lambda k: categories.get(k) or 0)[:3]
+                  key=lambda k: (scores.get("categories") or {}).get(k) or 0)[:3]
     ran = sum(1 for value in sections.values() if isinstance(value, dict) and not value.get("error"))
 
     try:
@@ -2325,316 +2752,268 @@ def generate_html(data: dict, scores: dict) -> str:
     except (TypeError, ValueError):
         date_label = stamp = str(timestamp)
 
+    delta = None
+    if previous_summary:
+        delta = compare_with_previous(build_summary(data, scores), previous_summary)
+
     lede = (
         f"{len(issues)} findings: {counts['critical']} critical, {counts['warning']} warnings "
         f"and {counts['info']} informational."
     )
     if gaps:
         lede += " Weakest checks: " + _join_labels([CHECK_LABELS[k] for k in gaps]) + "."
+    if inventory.get("site_type"):
+        lede += f" Detected site type: {inventory['site_type']}."
 
-    lead = next((i for i in issues if i["severity"] == "critical"), None) or next(
-        (i for i in issues if i["severity"] == "warning"), None)
+    lead = next((i for i in defects if i["severity"] == "critical"), None) or next(
+        (i for i in defects if i["severity"] == "warning"), None)
     if lead:
         lead_label = CHECK_LABELS.get(lead["section"], lead["section"])
         lead_fix = f'<p>{_esc(lead["fix"])}</p>' if lead["fix"] else ""
-        callout = (
-            '<div class="callout"><p class="lbl">Start here</p>'
-            f'<p class="callout-title">{_esc(_headline(lead["finding"]))}</p>{lead_fix}'
-            f'<p class="mono note"><a href="#{lead["id"]}" data-open-finding="{lead["id"]}">Open {lead["id"]}</a>'
-            f" · {_esc(lead_label)}</p></div>"
+        start = (
+            '<div class="start"><span class="label">Start here</span>'
+            f'<h3>{_esc(_headline(lead["finding"]))}</h3>{lead_fix}'
+            f'<p><span class="ids"><a href="#{lead["id"]}">{lead["id"]}</a>'
+            f'<a href="#check-{lead["section"]}">{_esc(lead_label)}</a></span></p></div>'
         )
     else:
-        callout = (
-            '<div class="callout"><p class="lbl">Start here</p>'
-            '<p class="callout-title">No critical or warning findings.</p>'
+        start = (
+            '<div class="start ok"><span class="label">Start here</span>'
+            "<h3>No critical or warning findings.</h3>"
             "<p>Review the informational items and keep running regular reports.</p></div>"
         )
 
-    strip = (
-        f'<span class="count"><b>{overall}</b>/100 · grade {_grade(overall)}</span>'
-        f'<span class="count"><b>{counts["critical"]}</b> critical</span>'
-        f'<span class="count"><b>{counts["warning"]}</b> warning</span>'
-        f'<span class="count"><b>{counts["info"]}</b> info</span>'
+    measured = _measured_count(scores)
+    if measured >= MIN_MEASURED_FOR_GATE:
+        score_fig = f'<div class="fig nu">{overall}<small>/100</small></div><span class="label">Health Score · grade {_esc(_grade(overall))}</span>'
+    else:
+        score_fig = '<div class="fig nu">—</div><span class="label">Health Score inconclusive</span>'
+    figs = (
+        f'<div class="figs" aria-label="Headline figures"><div>{score_fig}</div>'
+        f'<div><div class="fig {"dn" if counts["critical"] else ""}">{counts["critical"]}</div><span class="label">Critical findings</span></div>'
+        f'<div><div class="fig {"dn" if counts["warning"] else ""}">{counts["warning"]}</div><span class="label">Warning findings</span></div>'
+        f'<div><div class="fig">{counts["info"]}</div><span class="label">Informational findings</span></div></div>'
     )
-    if not_measured:
-        plural = "check" if not_measured == 1 else "checks"
-        strip += f'<span class="mark m-deferred">⏸︎<small>{not_measured} {plural} not measured</small></span>'
+
+    meta_rows = []
+    if opts["prepared_for"]:
+        meta_rows.append(("Prepared for", opts["prepared_for"]))
+    meta_rows.append(("Prepared by", opts["prepared_by"]))
+    meta_rows.append(("Date", date_label))
+    meta_rows.append(("Platform", env.get("primary", "Unknown")))
+    meta_rows.append(("Mode", "Internal · automated checks"))
+    meta_rows.append(("Site type", inventory.get("site_type") or "not classified"))
+    meta_rows.append(("Checks", f"{ran} of {len(sections)} ran"))
+    meta_html = "".join(f"<div><dt>{_esc(k)}</dt><dd>{_esc(v)}</dd></div>" for k, v in meta_rows)
+
+    if inventory["measured"] and inventory.get("complete"):
+        claim_chip = '<span class="seg ok">Inventory complete · absence claims allowed</span>'
+    else:
+        claim_chip = '<span class="seg warn">Inventory incomplete · absence claims withheld</span>'
+    covbar = (
+        '<div class="covbar" aria-label="Coverage summary">'
+        f'<span class="seg"><i class="dot w"></i><b>{coverage["weighted"]}</b> checks weighted</span>'
+        f'<span class="seg"><i class="dot d"></i><b>{coverage["display"]}</b> shown, not weighted</span>'
+        f'<span class="seg"><i class="dot n"></i><b>{coverage["deferred"]}</b> not measured</span>'
+        f'<span class="seg"><i class="dot x"></i><b>{coverage["na"]}</b> not applicable or not run</span>'
+        f"{claim_chip}</div>"
+    )
+
+    accent_css = f":root{{--accent:{opts['accent']}}}" if opts["accent"] else ""
+    css = _load_template_asset("report.css", _FALLBACK_CSS) + _REPORT_EXTRA_CSS + accent_css
+    print_css = _load_template_asset("print.css", "")
+
+    nav_items = [("verdict", "Verdict"), ("score", "Score"), ("coverage", "Coverage")]
+    shape_html = _render_site_shape(data)
+    if shape_html:
+        nav_items.append(("shape", "Site shape"))
+    nav_items += [("findings", "Findings"), ("geo", "GEO readiness"), ("recommendations", "Recommendations"),
+                  ("platform", "Platform"), ("appendix", "Appendix")]
+    nav_html = "".join(
+        f'<a href="#{key}" class="active">{label}</a>' if i == 0 else f'<a href="#{key}">{label}</a>'
+        for i, (key, label) in enumerate(nav_items)
+    )
+
+    shape_section = f'<section id="shape" aria-labelledby="shape-h">{shape_html}</section>' if shape_html else ""
 
     return (
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n"
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f"<title>SEO report · {_esc(domain)}</title>\n"
+        f"<title>SEO + GEO report · {_esc(domain)}</title>\n"
         '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
         f'<link rel="stylesheet" href="{_esc(_FONTS_URL)}">\n'
-        f"<style>{_REPORT_CSS}</style>\n</head>\n<body>\n"
-        '<div class="hero">\n'
-        '<header class="site-header"><div class="wrap">'
-        '<span class="brand">Ultimate SEO + GEO</span>'
-        '<nav class="site-nav" aria-label="Report sections">'
-        '<a href="#findings">Findings</a><a href="#checks">Checks</a>'
-        '<a href="#platform">Platform</a><a href="#recommendations">Recommendations</a></nav>'
-        '<button type="button" class="theme-toggle" id="theme-toggle">Theme: system</button>'
-        "</div></header>\n"
-        '<div class="wrap"><div class="intro">'
-        '<div class="intro-main">'
-        f'<p class="lbl">SEO + GEO report · {_esc(domain)}</p>'
+        f"<style>{css}\n{print_css}</style>\n</head>\n<body>\n"
+        '<header class="top"><div class="top-in">'
+        '<div class="top-row"><p class="eyebrow">SEO + GEO report · automated checks</p>'
+        '<button type="button" class="theme-toggle" id="theme-toggle">Theme: system</button></div>'
         f"<h1>{_esc(domain)}</h1>"
-        f'<p class="mono note">{_esc(date_label)} · {_esc(env.get("primary", "Unknown"))} · '
-        f"{ran} of {len(sections)} checks ran</p>"
-        f'<p class="lede">{_esc(lede)}</p>'
-        f'<div class="strip" aria-label="Score and findings">{strip}</div>'
-        "</div>"
-        f'<div class="intro-side">{callout}'
-        '<p class="scope"><span class="mark">◇</span><span><b>Automated checks.</b> Every finding '
-        f"and score comes from scripts run against {_esc(url)}. Scores are a triage signal; confirm "
-        "high-risk changes such as redirects, canonicals and robots.txt before acting.</span></p>"
-        "</div></div></div>\n</div>\n"
-        '<main class="wrap">\n'
-        f'<section class="section band" id="findings" aria-labelledby="findings-h">{_render_findings(issues)}</section>\n'
-        f'<section class="section" id="checks" aria-labelledby="checks-h">{_render_checks(data, scores, issues)}</section>\n'
-        f'<section class="section" id="platform" aria-labelledby="platform-h">{_render_platform(data)}</section>\n'
-        '<section class="section" id="recommendations" aria-labelledby="recommendations-h">'
-        '<div class="section-head"><h2 id="recommendations-h">Recommendations</h2>'
-        '<p class="note">Every recommendation the checks returned, grouped by check.</p></div>'
+        f'<p class="sub">{_esc(lede)}</p>'
+        f'<dl class="meta">{meta_html}</dl>{covbar}'
+        "</div></header>\n"
+        f'<nav class="toc" aria-label="Sections"><div class="toc-in">{nav_html}</div></nav>\n'
+        '<main class="shell">\n'
+        '<section id="verdict" aria-labelledby="verdict-h">'
+        '<div class="sec-head"><span class="sec-n">01</span><h2 id="verdict-h">Verdict</h2></div>'
+        f"{figs}"
+        '<div class="two"><div class="verdict">'
+        f'<p class="lead">{_esc(lede)}</p>'
+        f"<p>Every finding and score on this page comes from scripts run against {_esc(url)}. "
+        "Scores are a triage signal; confirm high-risk changes such as redirects, canonicals and robots.txt before acting.</p>"
+        f"</div>{start}</div>{_render_delta(delta)}</section>\n"
+        f'<section id="score" aria-labelledby="score-h">{_render_score(data, scores, stamp, statuses)}</section>\n'
+        f'<section id="coverage" aria-labelledby="coverage-h">{_render_coverage(data, scores, issues, entries, coverage, inventory)}</section>\n'
+        f"{shape_section}\n"
+        f'<section id="findings" aria-labelledby="findings-h">{_render_findings(issues)}</section>\n'
+        f'<section id="geo" aria-labelledby="geo-h">{_render_geo(statuses)}</section>\n'
+        '<section id="recommendations" aria-labelledby="recommendations-h">'
+        '<div class="sec-head"><span class="sec-n">07</span><h2 id="recommendations-h">Recommendations</h2></div>'
+        '<p class="prose">Every recommendation the checks returned, grouped by check.</p>'
         f'<div class="rec-grid">{render_all_recommendations(data)}</div></section>\n'
+        f'<section id="platform" aria-labelledby="platform-h">{_render_platform(data)}</section>\n'
+        '<section id="appendix" aria-labelledby="appendix-h">'
+        '<div class="sec-head"><span class="sec-n">A</span><h2 id="appendix-h">Appendix · check details</h2></div>'
+        '<p class="prose">What each check measured, in full. Sorted weakest first, like the coverage table.</p>'
+        f'<div class="check-details" id="check-detail">{_render_check_details(data, scores, issues, entries)}</div>'
+        "</section>\n"
         "</main>\n"
-        '<footer class="site-footer"><div class="wrap">'
-        f'<span class="mono">Generated by ultimate-seo-geo generate_report.py · {_esc(stamp)}</span>'
-        f'<span>Findings and scores come from automated checks against <a href="{_esc(url)}">{_esc(url)}</a>.</span>'
-        "</div></footer>\n"
+        f'<footer class="shell"><span class="mono">Generated by ultimate-seo-geo generate_report.py · {_esc(stamp)}</span>'
+        f' · Findings and scores come from automated checks against <a href="{_esc(url)}">{_esc(url)}</a>.'
+        "</footer>\n"
         f"<script>{_REPORT_JS}</script>\n</body>\n</html>"
     )
 
 
-_REPORT_CSS = """
-:root{
-  --font-sans:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  --page:#ffffff;--card:#ffffff;--sunk:#f5f6f8;--band:#f5f6f8;--hover:#fafbfc;
-  --text-strong:#0b0d10;--text-body:#16191e;--text-muted:#5b626d;--text-faint:#838a95;
-  --link:#0057b7;--link-hover:#003c7f;--line:#d7dbe1;--line-strong:#b4bac3;
-  --ring:rgba(11,13,16,.10);--focus:rgba(0,87,183,.35);
-  --head-bg:#eef4fc;--head-text:#003c7f;
-  --ok-text:#2f5e18;--ok-bg:#e8efe4;--ok-border:rgba(63,125,32,.35);
-  --flag-text:#6e4c05;--flag-bg:#fdf6e3;--flag-border:rgba(153,106,8,.40);
-  --danger-text:#a2213a;--danger-bg:#f8e7ea;--danger-border:rgba(194,51,79,.35);
-  --info-text:#003c7f;--info-bg:#eef4fc;--info-border:rgba(0,87,183,.30);
-  --warn-chip-text:#ffffff;--warn-chip-bg:#262a31;
-  --st-deferred:#838a95;--accent:#b83f00;--observed:#0e7490;
-  --hero-bg:#eef4fc;--hero-grid:rgba(0,87,183,.07);--hero-line:rgba(0,87,183,.18);--hero-code:#ffffff;
-  --callout-bg:#ffffff;--callout-border:rgba(0,87,183,.22);
-  --meter-ok:#3f7d20;--meter-flag:#996a08;--meter-gap:#c2334f;
-  --code-bg:#f5f6f8;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    color-scheme:dark;
-    --page:#0b0d10;--card:#16191e;--sunk:#1d2127;--band:#111418;--hover:rgba(255,255,255,.04);
-    --text-strong:#ffffff;--text-body:#eaedf1;--text-muted:#838a95;--text-faint:#5b626d;
-    --link:#7faae4;--link-hover:#b0ccf0;--line:rgba(255,255,255,.12);--line-strong:rgba(255,255,255,.24);
-    --ring:rgba(255,255,255,.12);--focus:rgba(127,170,228,.45);
-    --head-bg:#0d213b;--head-text:#7faae4;
-    --ok-text:#8fce6e;--ok-bg:#16260f;--ok-border:rgba(63,125,32,.6);
-    --flag-text:#e5c86a;--flag-bg:#2a200a;--flag-border:rgba(153,106,8,.6);
-    --danger-text:#f08fa2;--danger-bg:#321219;--danger-border:rgba(194,51,79,.55);
-    --info-text:#7faae4;--info-bg:#0d213b;--info-border:rgba(0,87,183,.55);
-    --warn-chip-text:#0b0d10;--warn-chip-bg:#d7dbe1;
-    --meter-ok:#8fce6e;--meter-flag:#e5c86a;--meter-gap:#f08fa2;
-    --code-bg:rgba(255,255,255,.08);
-  --hero-bg:#09192b;--hero-grid:rgba(255,255,255,.05);--hero-line:rgba(255,255,255,.12);--hero-code:rgba(255,255,255,.10);
-  --callout-bg:#16191e;--callout-border:rgba(255,255,255,.14);--accent:#ff6a1a;--observed:#7fd4e8;
-  }
-}
-:root[data-theme="dark"]{
-  color-scheme:dark;
-  --page:#0b0d10;--card:#16191e;--sunk:#1d2127;--band:#111418;--hover:rgba(255,255,255,.04);
-  --text-strong:#ffffff;--text-body:#eaedf1;--text-muted:#838a95;--text-faint:#5b626d;
-  --link:#7faae4;--link-hover:#b0ccf0;--line:rgba(255,255,255,.12);--line-strong:rgba(255,255,255,.24);
-  --ring:rgba(255,255,255,.12);--focus:rgba(127,170,228,.45);
-  --head-bg:#0d213b;--head-text:#7faae4;
-  --ok-text:#8fce6e;--ok-bg:#16260f;--ok-border:rgba(63,125,32,.6);
-  --flag-text:#e5c86a;--flag-bg:#2a200a;--flag-border:rgba(153,106,8,.6);
-  --danger-text:#f08fa2;--danger-bg:#321219;--danger-border:rgba(194,51,79,.55);
-  --info-text:#7faae4;--info-bg:#0d213b;--info-border:rgba(0,87,183,.55);
-  --warn-chip-text:#0b0d10;--warn-chip-bg:#d7dbe1;
-  --meter-ok:#8fce6e;--meter-flag:#e5c86a;--meter-gap:#f08fa2;
-  --code-bg:rgba(255,255,255,.08);
-  --hero-bg:#09192b;--hero-grid:rgba(255,255,255,.05);--hero-line:rgba(255,255,255,.12);--hero-code:rgba(255,255,255,.10);
-  --callout-bg:#16191e;--callout-border:rgba(255,255,255,.14);--accent:#ff6a1a;--observed:#7fd4e8;
-}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
-body{margin:0;background:var(--page);color:var(--text-body);font-family:var(--font-sans);font-size:17px;line-height:1.7;-webkit-font-smoothing:antialiased;text-wrap:pretty}
-h1,h2,h3,h4{margin:0;color:var(--text-strong);font-weight:600;letter-spacing:-0.02em;line-height:1.2;text-wrap:balance}
-p{margin:0}
-a{color:var(--link);text-underline-offset:.15em}
-a:hover{color:var(--link-hover)}
-code{font-family:var(--font-mono);font-size:.86em;background:var(--code-bg);border-radius:4px;padding:.1em .35em;overflow-wrap:anywhere}
-button{font:inherit;color:inherit}
-:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus);border-radius:6px}
-.wrap{max-width:76rem;margin-inline:auto;padding-inline:24px}
-.lbl{font-family:var(--font-mono);font-size:12px;line-height:1.4;text-transform:uppercase;letter-spacing:.12em;font-weight:500;color:var(--text-muted)}
-.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
-.muted{color:var(--text-muted)}
-.note{font-size:14px;line-height:1.5;color:var(--text-muted)}
-.subhead{font-size:15px;margin:20px 0 8px}
+# The minimum a report needs when references/report-template/report.css is not
+# beside scripts/. Tokens match report.css so the extra CSS below still resolves.
+_FALLBACK_CSS = """
+:root{--paper:#FAFAF7;--surface:#FFFFFF;--surface-2:#F2F4F2;--ink:#11181B;--ink-2:#2B383B;--muted:#5E6E71;--faint:#8A9899;
+--line:#DFE4E2;--line-strong:#C3CCCA;--accent:#0D6E74;--accent-soft:#E4F0F0;--accent-ink:#0A5257;
+--critical:#A8242E;--critical-soft:#FAEBEC;--warn:#8F5B05;--warn-soft:#FBF2E2;--good:#116A4A;--good-soft:#E6F3ED;
+--shadow:0 1px 2px rgba(17,24,27,.05);--sans:"IBM Plex Sans",system-ui,sans-serif;--serif:"Source Serif 4",Georgia,serif;--mono:"IBM Plex Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#0D1315;--surface:#141C1F;--surface-2:#1A2427;--ink:#E3EAE8;--ink-2:#C6D2D0;--muted:#93A3A4;--faint:#6F8082;--line:#242F32;--line-strong:#334145;--accent:#4FBAC0;--accent-soft:#12292B;--accent-ink:#7FD3D7;--critical:#E8737C;--critical-soft:#2A1417;--warn:#D69B36;--warn-soft:#2A2012;--good:#4FB88D;--good-soft:#0F2620}}
+:root[data-theme="dark"]{--paper:#0D1315;--surface:#141C1F;--surface-2:#1A2427;--ink:#E3EAE8;--ink-2:#C6D2D0;--muted:#93A3A4;--faint:#6F8082;--line:#242F32;--line-strong:#334145;--accent:#4FBAC0;--accent-soft:#12292B;--accent-ink:#7FD3D7;--critical:#E8737C;--critical-soft:#2A1417;--warn:#D69B36;--warn-soft:#2A2012;--good:#4FB88D;--good-soft:#0F2620}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.6}
+.shell{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:0 96px}.top-in{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:40px 30px}
+h1,h2,h3,h4,.label,.eyebrow,th,.fig,.chip,nav,button,dt{font-family:var(--sans)}
+.chip{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;padding:3px 8px;border-radius:2px;display:inline-block}
+.chip.c{background:var(--critical-soft);color:var(--critical)}.chip.h{background:var(--warn-soft);color:var(--warn)}.chip.g{background:var(--good-soft);color:var(--good)}.chip.o{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:13.5px}th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:3px;background:var(--surface);margin:20px 0}
+.find{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:3px;padding:18px 20px;margin:0 0 14px}
+.find.c{border-left-color:var(--critical)}.find.h{border-left-color:var(--warn)}
+.find dl{margin:0;display:grid;grid-template-columns:96px 1fr;gap:5px 16px;font-size:15px}.find dt{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}.find dd{margin:0}
+"""
 
-.hero{--line:var(--hero-line);--code-bg:var(--hero-code);--st-deferred:var(--text-muted);
-  color:var(--text-body);background-color:var(--hero-bg);background-image:linear-gradient(var(--hero-grid) 1px,transparent 1px),linear-gradient(90deg,var(--hero-grid) 1px,transparent 1px);background-size:28px 28px;border-bottom:1px solid var(--line)}
-.site-header{border-bottom:1px solid var(--line)}
-.site-header .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;padding-block:16px}
-.brand{font-size:17px;font-weight:600;letter-spacing:-0.02em;color:var(--text-strong)}
-.site-nav{display:flex;flex-wrap:wrap;gap:4px 20px;font-size:14px}
-.site-nav a{color:var(--text-muted);text-decoration:none;transition:color 100ms cubic-bezier(.2,0,.2,1)}
-.site-nav a:hover{color:var(--text-strong)}
-.theme-toggle{display:none;margin-left:auto;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text-muted);font-family:var(--font-mono);font-size:12px;cursor:pointer}
+# Components the generator adds on top of report.css: the coverage bar, the
+# score block, the delta strip, the start-here card, filters, site shape, the
+# GEO list, check-panel primitives, and the theme toggle.
+_REPORT_EXTRA_CSS = """
+.top-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.top-row .eyebrow{margin:0}
+.theme-toggle{display:none;height:30px;padding:0 10px;border-radius:2px;border:1px solid var(--line-strong);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer}
 .js .theme-toggle{display:inline-block}
-.theme-toggle:hover{color:var(--text-strong)}
-.intro{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:24px 48px;align-items:start;padding-block:48px 44px}
-.intro-main{display:flex;flex-direction:column;gap:12px}
-h1{font-size:36px;letter-spacing:-0.022em;line-height:1.15;overflow-wrap:anywhere}
-.lede{font-size:18px;line-height:1.6;color:var(--text-muted);max-width:44rem}
-.strip{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 28px;margin-top:12px;padding-top:16px;border-top:1px solid var(--line)}
-.strip .count{font-family:var(--font-mono);font-size:14px;color:var(--text-body)}
-.strip .count b{font-weight:700;color:var(--text-strong)}
-.intro-side{display:flex;flex-direction:column;gap:12px}
-.callout{border:1px solid var(--callout-border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--callout-bg)}
-.callout .lbl{color:var(--accent)}
-.callout p{font-size:15px;line-height:1.6}
-.callout .callout-title{font-size:17px;font-weight:600;color:var(--text-strong);line-height:1.4}
-.scope{font-size:14px;line-height:1.5;color:var(--text-muted);display:flex;gap:10px;align-items:baseline}
-.scope .mark{color:var(--observed)}
-.scope b{font-weight:500;color:var(--text-strong)}
-
-.notice{padding:12px 16px;border-radius:10px;border:1px solid var(--line);background:var(--sunk);font-size:14px;line-height:1.5;color:var(--text-muted);margin:0 0 12px}
-.notice b{font-weight:500;color:var(--text-strong)}
-.notice.info{background:var(--info-bg);border-color:var(--info-border)}
-.notice.flag{background:var(--flag-bg);border-color:var(--flag-border)}
-
-.section{margin-top:48px;border-top:1px solid var(--line);padding-top:32px}
-.band{background:var(--band);box-shadow:0 0 0 100vmax var(--band);clip-path:inset(0 -100vmax)}
-.band.section{border-top:0;margin-top:0;padding-block:40px 44px}
-.section-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;margin-bottom:20px}
-.section-head h2{font-size:20px}
-.section-head .note{flex-basis:100%}
-
-.chip{display:inline-block;font-family:var(--font-mono);font-size:12px;line-height:18px;text-transform:uppercase;letter-spacing:.12em;font-weight:500;padding:1px 8px;border-radius:6px;border:1px solid;white-space:nowrap}
-.sev-critical,.chip-gap{color:var(--danger-text);background:var(--danger-bg);border-color:var(--danger-border)}
-.sev-warning{color:var(--warn-chip-text);background:var(--warn-chip-bg);border-color:var(--warn-chip-bg)}
-.sev-info,.chip-na{color:var(--text-muted);background:transparent;border-color:var(--line)}
-.chip-ok{color:var(--ok-text);background:var(--ok-bg);border-color:var(--ok-border)}
-.chip-flag{color:var(--flag-text);background:var(--flag-bg);border-color:var(--flag-border)}
-.chip-info{color:var(--info-text);background:var(--info-bg);border-color:var(--info-border)}
-.mark{display:inline-flex;align-items:baseline;gap:8px;font-family:var(--font-mono);font-size:14px;font-weight:700;white-space:nowrap;font-variant-emoji:text}
-.mark small{font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:500}
-.m-deferred{color:var(--st-deferred)}
-.yes{color:var(--ok-text);font-weight:600}
-.no{color:var(--danger-text);font-weight:600}
-
-.filter{display:none;flex-wrap:wrap;gap:8px;margin-left:auto}
-.js .filter{display:flex}
-.filter button{cursor:pointer;display:inline-flex;align-items:baseline;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:transparent;font-size:14px;line-height:30px;color:var(--text-muted)}
-.filter button:hover{background:var(--hover);color:var(--text-strong)}
-.filter button:active{transform:translateY(1px)}
-.filter button[aria-pressed="true"]{background:var(--card);border-color:var(--line-strong);color:var(--text-strong);font-weight:500}
-.filter .mono{font-size:12px;color:var(--text-faint)}
-
-.panel{border-radius:14px;box-shadow:0 0 0 1px var(--ring);background:var(--card);padding:12px 16px 14px}
-.ledger-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:32px;align-items:start}
-.table-scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
-.ledger{font-size:15px;line-height:1.45}
-.ledger th{padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--line-strong);white-space:nowrap;color:var(--head-text)}
-.ledger td{padding:0 8px;border-bottom:1px solid var(--line);vertical-align:baseline}
-.ledger tbody tr:last-child td{border-bottom:0}
-.js .ledger tbody tr{cursor:pointer}
-.ledger tbody tr:hover{background:var(--hover)}
-.ledger tbody tr[aria-selected="true"]{background:var(--sunk)}
-.ledger tbody tr[aria-selected="true"] .row-title{font-weight:600}
-.ledger td.id{font-family:var(--font-mono);font-size:13px;color:var(--text-muted);padding-block:12px}
-.ledger td.id.hi{color:var(--danger-text)}
-.row-title{all:unset;display:block;cursor:pointer;padding-block:12px;color:var(--text-strong);border-radius:6px;overflow-wrap:anywhere}
-.row-title:focus-visible{box-shadow:0 0 0 3px var(--focus)}
-.ledger td.small{font-size:14px;color:var(--text-muted)}
-.legend{display:none;margin-top:12px;font-family:var(--font-mono);font-size:13px;color:var(--text-muted)}
-.js .legend{display:block}
-.score{display:inline-flex;align-items:center;gap:10px}
-.meter{display:inline-block;width:64px;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
-.meter.wide{width:160px}
-.meter>span{display:block;height:100%;background:var(--link)}
-.meter.ok>span{background:var(--meter-ok)}
-.meter.flag>span{background:var(--meter-flag)}
-.meter.gap>span{background:var(--meter-gap)}
-
-.detail-stack{display:flex;flex-direction:column;gap:16px}
-.check-detail{margin-top:16px}
-.card{border-radius:14px;box-shadow:0 0 0 1px var(--ring);background:var(--card);overflow:hidden}
-.card-body{padding:16px;display:flex;flex-direction:column;gap:14px}
-.card-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
-.card-top .id{font-family:var(--font-mono);font-size:13px;color:var(--text-muted)}
-.card h3{font-size:20px;line-height:1.25;overflow-wrap:anywhere}
-.field{display:flex;flex-direction:column;gap:4px}
-.field p{font-size:15px;line-height:1.6;overflow-wrap:anywhere}
-.card-foot{border-top:1px solid var(--line);background:var(--sunk);padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:13px}
-.card-foot .mono{font-size:13px;color:var(--text-muted)}
-.stepper{display:none;margin-left:auto;gap:8px}
-.js .stepper{display:flex}
-.stepper button{cursor:pointer;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--card);font-size:14px;color:var(--text-strong)}
-.stepper button:hover{background:var(--hover)}
-.stepper button:active{transform:translateY(1px)}
-.stepper button:disabled{opacity:.5;pointer-events:none}
-
-.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0;margin:0 0 12px;border-top:1px solid var(--line)}
-.kv>div{padding:10px 12px 10px 0;border-bottom:1px solid var(--line)}
-.kv dt{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:500;color:var(--text-muted)}
-.kv dd{margin:2px 0 0;font-family:var(--font-mono);font-size:15px;color:var(--text-strong);overflow-wrap:anywhere}
-.tbl{font-size:14px;line-height:1.5;margin:0 0 12px}
-.tbl th,.tbl td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
-.tbl thead th{background:var(--head-bg);font-weight:600;color:var(--head-text)}
-.tbl .num{text-align:right;font-family:var(--font-mono);font-size:13px;white-space:nowrap}
-.url{font-family:var(--font-mono);font-size:13px;overflow-wrap:anywhere}
-.issues{list-style:none;margin:0 0 12px;padding:0;border-top:1px solid var(--line)}
-.issue{padding:12px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
-.issue-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
-.issue-head strong{font-weight:600;color:var(--text-strong);font-size:15px;line-height:1.45}
-.issue-reason,.issue-fix{font-size:14px;line-height:1.55}
-.issue-reason{color:var(--text-muted)}
-.issue-fix .lbl{margin-right:6px}
-.meta{margin:0;display:grid;gap:2px;font-size:13px;line-height:1.5;color:var(--text-muted)}
-.meta>div{display:flex;flex-wrap:wrap;gap:0 6px}
-.meta dt{font-weight:600;color:var(--text-body)}
-.meta dd{margin:0}
-.recs{margin:0 0 12px;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.55}
-
-.two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:start}
-.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px 32px}
-.site-footer{margin-top:64px;border-top:1px solid var(--line)}
-.site-footer .wrap{padding-block:24px 48px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--text-muted)}
-
-@media (max-width: 960px){
-  .intro,.ledger-grid,.two-col{grid-template-columns:minmax(0,1fr)}
-  .filter{margin-left:0}
+.theme-toggle:hover{color:var(--ink)}
+section[id]{scroll-margin-top:56px}
+.block-h{margin-top:34px}
+.covbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:18px 0 0;font-family:var(--sans);font-size:13px;color:var(--muted)}
+.covbar .seg{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:2px;background:var(--surface)}
+.covbar .seg b{font-family:var(--mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.covbar .seg.ok{border-color:var(--good);color:var(--good)}
+.covbar .seg.warn{border-color:var(--warn);color:var(--warn)}
+.covbar .dot{width:8px;height:8px;border-radius:1px;display:inline-block}
+.dot.w{background:var(--accent)} .dot.d{background:var(--accent);opacity:.35} .dot.n{background:transparent;border:1px dashed var(--muted)} .dot.x{background:var(--line-strong)}
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start;margin-bottom:22px}
+.start{border:1px solid var(--line-strong);border-left:4px solid var(--critical);background:var(--surface);border-radius:3px;padding:18px 22px;box-shadow:var(--shadow)}
+.start.ok{border-left-color:var(--good)}
+.start .label{margin-bottom:6px;display:block}
+.start h3{margin:0 0 6px}
+.start p{margin:0 0 6px;font-size:15.5px;color:var(--ink-2)}
+.start p:last-child{margin-bottom:0}
+.fig small{font-size:16px;color:var(--muted)}
+.score{display:grid;grid-template-columns:220px 1fr;gap:20px 28px;border:1px solid var(--line);border-radius:3px;background:var(--surface);padding:24px 26px;margin:0 0 22px}
+.score-n{font-family:var(--sans);font-size:64px;line-height:1;font-weight:700;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.score-n small{font-size:22px;color:var(--muted);font-weight:500;letter-spacing:0}
+.score-n.ns{font-size:30px;line-height:1.1;color:var(--muted);letter-spacing:-.02em}
+.score-src{font-family:var(--mono);font-size:12px;color:var(--muted);margin:0;line-height:1.5;grid-column:1}
+.bars{display:grid;grid-template-columns:200px 1fr 46px 110px;gap:6px 14px;align-items:center;font-family:var(--sans);font-size:13.5px;grid-column:2;grid-row:1/3}
+.bars .lbl{color:var(--ink-2)}
+.bars .lbl small{display:block;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.bars .track{height:10px;background:var(--surface-2);border-radius:2px;position:relative;overflow:hidden}
+.bars .track.nm{background:repeating-linear-gradient(135deg,transparent 0 4px,var(--line) 4px 6px);border:1px dashed var(--line-strong)}
+.bars .track i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:2px 4px 4px 2px;display:block}
+.bars .val{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.bars .val.nm{color:var(--faint)}
+.delta{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:3px;background:var(--surface);margin:0 0 22px;overflow:hidden}
+.delta>div{padding:14px 18px;border-right:1px solid var(--line)}
+.delta>div:last-child{border-right:0}
+.delta b{display:block;font-family:var(--sans);font-size:22px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.delta span{display:block;font-family:var(--sans);font-size:12.5px;color:var(--muted);margin-top:2px}
+.delta .ids{margin-top:6px}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;font-family:var(--sans)}
+.filters button{font:inherit;font-size:12.5px;font-weight:500;padding:5px 11px;border:1px solid var(--line-strong);border-radius:2px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.filters button b{font-family:var(--mono);font-weight:500;margin-left:4px;color:var(--muted)}
+.funnel{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:14px 0 20px}
+.funnel>div{border:1px solid var(--line);border-radius:3px;background:var(--surface);padding:12px 14px}
+.funnel b{display:block;font-family:var(--sans);font-size:22px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.funnel span{display:block;font-family:var(--sans);font-size:11.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-bottom:4px}
+.funnel small{display:block;font-family:var(--sans);font-size:12px;color:var(--muted)}
+.funnel .gap b{color:var(--critical)}
+.shape-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.tree .chip{font-size:9.5px}
+.qc{list-style:none;padding:0;margin:14px 0;display:grid;gap:8px;font-family:var(--sans);font-size:14.5px}
+.qc li{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:start;padding:10px 14px;border:1px solid var(--line);border-radius:3px;background:var(--surface)}
+.qc .mk{font-family:var(--mono);font-size:13px;font-weight:600;text-align:center}
+.qc .ok .mk{color:var(--good)} .qc .no .mk{color:var(--critical)} .qc .nm .mk{color:var(--faint)}
+.qc small{display:block;color:var(--muted);margin-top:2px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.kv{margin:0 0 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 18px;font-family:var(--sans);font-size:14px}
+.kv div{border-top:1px solid var(--line);padding-top:6px}
+.kv dt{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600}
+.kv dd{margin:2px 0 0;color:var(--ink-2);overflow-wrap:anywhere}
+.callout{margin:14px 0}
+.callout b{font-family:var(--sans)}
+.subhead{font-size:14px;margin:18px 0 6px}
+.issues,.recs{padding-left:20px;margin:0 0 12px;font-family:var(--sans);font-size:14.5px}
+.issues{list-style:none;padding-left:0}
+.issue{border:1px solid var(--line);border-radius:3px;background:var(--surface);padding:10px 14px;margin:0 0 8px}
+.issue-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.issue-fix,.issue-reason{margin:4px 0 0;font-size:14px;color:var(--ink-2)}
+.issue-fix .lbl{font-family:var(--sans);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-right:6px}
+.fmeta{margin:6px 0 0;display:grid;gap:2px;font-size:13px;line-height:1.5;color:var(--muted);font-family:var(--sans)}
+.fmeta>div{display:flex;flex-wrap:wrap;gap:0 6px}
+.fmeta dt{font-weight:600;color:var(--ink-2)}
+.fmeta dd{margin:0}
+.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.rec-group{border:1px solid var(--line);border-radius:3px;background:var(--surface);padding:12px 16px}
+.rec-group .subhead{margin-top:0}
+.check-details{display:grid;gap:14px}
+.card.detail{border:1px solid var(--line);border-radius:3px;background:var(--surface);padding:18px 22px}
+.card-top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px;font-family:var(--sans);font-size:13px;color:var(--muted)}
+.panel-body{font-size:15px}
+.panel-body .tw{margin:12px 0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+td.url{font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
+.yes{color:var(--good);font-weight:600}.no{color:var(--critical);font-weight:600}.muted{color:var(--muted)}
+.meter{display:inline-block;height:8px;width:120px;background:var(--surface-2);border-radius:2px;vertical-align:middle;overflow:hidden;margin-left:8px}
+.meter span{display:block;height:100%;background:var(--accent)}
+.meter.wide{width:220px}
+footer.shell{margin-top:60px;padding-top:22px;padding-bottom:40px;border-top:1px solid var(--line-strong);font-size:13px;color:var(--faint);font-family:var(--sans)}
+@media (max-width:820px){
+  .score{grid-template-columns:1fr}
+  .score-src,.bars{grid-column:auto;grid-row:auto}
+  .bars{grid-template-columns:1fr 60px}
+  .bars .lbl{grid-column:1/-1}
+  .bars .chip{display:none}
+  .two,.shape-grid,.two-col,.rec-grid{grid-template-columns:1fr}
+  .funnel{grid-template-columns:repeat(3,1fr)}
+  .delta{grid-template-columns:1fr 1fr}
+  .delta>div{border-bottom:1px solid var(--line)}
+  .delta>div:nth-child(2n){border-right:0}
 }
-@media (max-width: 640px){
-  h1{font-size:28px}
-  .col-check,.col-weight{display:none}
-  .theme-toggle{margin-left:0}
-}
-@media (prefers-reduced-motion: reduce){
-  *{transition:none!important;scroll-behavior:auto!important}
-}
-@media print{
-  body{font-size:11pt;background:#ffffff}
-  .hero{--text-strong:#0b0d10;--text-body:#16191e;--text-muted:#5b626d;--line:#d7dbe1;--link:#0057b7;background:none!important;color:#16191e}
-  .callout{border-color:#d7dbe1;background:none}
-  .band{box-shadow:none!important;background:none!important}
-  .site-nav,.filter,.stepper,.theme-toggle,.legend{display:none!important}
-  .detail[hidden]{display:block!important}
-  .ledger-grid,.two-col,.intro{grid-template-columns:minmax(0,1fr)!important}
-  .ledger tbody tr[aria-selected="true"]{background:transparent}
-  .card{break-inside:avoid;box-shadow:none;border:1px solid #d7dbe1}
-}
+@media print{.theme-toggle,.filters{display:none}}
 """
 
 _REPORT_JS = """
@@ -2664,112 +3043,30 @@ _REPORT_JS = """
     });
   }
 
-  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  var stacked = window.matchMedia('(max-width: 960px)');
-
-  function makeLedger(bodyId, detailId, filterId) {
-    var body = document.getElementById(bodyId);
-    var detail = document.getElementById(detailId);
-    if (!body || !detail) return null;
-    var rows = Array.prototype.slice.call(body.querySelectorAll('tr[data-key]'));
-    var cards = Array.prototype.slice.call(detail.querySelectorAll('article[data-key]'));
-    var selected = null;
-
-    function visibleRows() { return rows.filter(function (r) { return !r.hidden; }); }
-    function indexOfSelected(list) {
-      for (var i = 0; i < list.length; i++) if (list[i].getAttribute('data-key') === selected) return i;
-      return -1;
-    }
-    function syncStepper() {
-      var list = visibleRows();
-      var i = indexOfSelected(list);
-      cards.forEach(function (card) {
-        var prev = card.querySelector('[data-step="-1"]');
-        var next = card.querySelector('[data-step="1"]');
-        if (prev) prev.disabled = i <= 0;
-        if (next) next.disabled = i < 0 || i >= list.length - 1;
-      });
-    }
-    function select(key, opts) {
-      opts = opts || {};
-      var row = body.querySelector('tr[data-key="' + key + '"]');
-      if (!row) return;
-      if (row.hidden) setFilter('all');
-      selected = key;
-      rows.forEach(function (r) { r.setAttribute('aria-selected', r === row ? 'true' : 'false'); });
-      cards.forEach(function (card) { card.hidden = card.getAttribute('data-key') !== key; });
-      syncStepper();
-      if (opts.focus) {
-        var button = row.querySelector('.row-title');
-        if (button) button.focus();
-      }
-      if (opts.reveal) {
-        var target = stacked.matches ? detail : body.closest('section');
-        if (target) target.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'start' });
-      }
-    }
-    function setFilter(value) {
-      rows.forEach(function (r) {
-        r.hidden = !(value === 'all' || r.getAttribute('data-filter') === value);
-      });
-      if (filterId) {
-        var buttons = document.querySelectorAll('#' + filterId + ' button[data-filter]');
-        Array.prototype.forEach.call(buttons, function (b) {
-          b.setAttribute('aria-pressed', b.getAttribute('data-filter') === value ? 'true' : 'false');
-        });
-      }
-      var list = visibleRows();
-      if (list.length && indexOfSelected(list) < 0) select(list[0].getAttribute('data-key'));
-      else syncStepper();
-    }
-    function step(delta) {
-      var list = visibleRows();
-      var next = list[indexOfSelected(list) + delta];
-      if (next) select(next.getAttribute('data-key'), { focus: true });
-    }
-
-    body.addEventListener('click', function (e) {
-      var row = e.target.closest('tr[data-key]');
-      if (row) select(row.getAttribute('data-key'), { reveal: stacked.matches });
+  var filterEl = document.getElementById('finding-filter');
+  if (filterEl) {
+    var buttons = Array.prototype.slice.call(filterEl.querySelectorAll('button[data-filter]'));
+    var targets = Array.prototype.slice.call(document.querySelectorAll('#finding-rows tr[data-filter], #finding-cards article[data-filter]'));
+    filterEl.addEventListener('click', function (e) {
+      var button = e.target.closest('button[data-filter]');
+      if (!button) return;
+      var value = button.getAttribute('data-filter');
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', b === button ? 'true' : 'false'); });
+      targets.forEach(function (t) { t.hidden = !(value === 'all' || t.getAttribute('data-filter') === value); });
     });
-    body.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowDown') { e.preventDefault(); step(1); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
-    });
-    detail.addEventListener('click', function (e) {
-      var button = e.target.closest('[data-step]');
-      if (button) step(Number(button.getAttribute('data-step')));
-    });
-    if (filterId) {
-      var filterEl = document.getElementById(filterId);
-      if (filterEl) {
-        filterEl.addEventListener('click', function (e) {
-          var button = e.target.closest('button[data-filter]');
-          if (button) setFilter(button.getAttribute('data-filter'));
-        });
-      }
-    }
-    if (rows.length) select(rows[0].getAttribute('data-key'));
-    return {
-      select: select,
-      has: function (key) { return !!body.querySelector('tr[data-key="' + key + '"]'); }
-    };
   }
 
-  var findings = makeLedger('finding-rows', 'finding-detail', 'finding-filter');
-  var checks = makeLedger('check-rows', 'check-detail', null);
-
-  document.addEventListener('click', function (e) {
-    var link = e.target.closest('[data-open-finding],[data-open-check]');
-    if (!link) return;
-    e.preventDefault();
-    if (link.hasAttribute('data-open-finding') && findings) findings.select(link.getAttribute('data-open-finding'), { reveal: true });
-    if (link.hasAttribute('data-open-check') && checks) checks.select(link.getAttribute('data-open-check'), { reveal: true });
-  });
-
-  var hash = decodeURIComponent((location.hash || '').slice(1));
-  if (findings && findings.has(hash)) findings.select(hash, { reveal: true });
-  else if (hash.indexOf('check-') === 0 && checks && checks.has(hash.slice(6))) checks.select(hash.slice(6), { reveal: true });
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  if ('IntersectionObserver' in window && sections.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        links.forEach(function (a) { a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id); });
+      });
+    }, { rootMargin: '-40% 0px -55% 0px' });
+    sections.forEach(function (s) { io.observe(s); });
+  }
 })();
 """
 
@@ -3016,8 +3313,29 @@ def main():
         action="store_true",
         help="Print GitHub Actions ::error / ::warning annotations for critical and warning findings",
     )
+    parser.add_argument(
+        "--previous",
+        metavar="PATH",
+        help="An earlier --json summary of the same site; the report opens with what changed since it "
+             "and the JSON summary carries the comparison under \"previous\"",
+    )
+    parser.add_argument("--prepared-for", metavar="NAME", help="Shown in the report masthead")
+    parser.add_argument("--prepared-by", metavar="NAME", help="Shown in the report masthead (default: the skill)")
+    parser.add_argument("--accent", metavar="#RRGGBB", help="Accent colour for the report (white-label); default teal")
 
     args = parser.parse_args()
+    if args.accent and not _ACCENT_RE.match(args.accent):
+        parser.error("--accent must be a six-digit hex colour like #0D6E74")
+    previous_summary = None
+    if args.previous:
+        try:
+            with open(args.previous, "r", encoding="utf-8") as fh:
+                previous_summary = json.load(fh)
+        except (OSError, ValueError) as exc:
+            parser.error(f"--previous: cannot read {args.previous}: {exc}")
+        if not isinstance(previous_summary, dict) or "findings" not in previous_summary:
+            parser.error(f"--previous: {args.previous} is not a generate_report.py --json summary")
+    report_options = {"prepared_for": args.prepared_for, "prepared_by": args.prepared_by, "accent": args.accent}
     if args.fail_under is not None and not 0 <= args.fail_under <= 100:
         parser.error("--fail-under must be between 0 and 100")
     if args.json == "-" and args.github_annotations:
@@ -3035,13 +3353,16 @@ def main():
         render=args.render,
     )
     scores = calculate_overall_score(data)
+    summary = build_summary(data, scores)
+    if previous_summary:
+        summary["previous"] = compare_with_previous(summary, previous_summary)
 
     formats = [] if args.fmt == "none" else ["html", "xlsx"] if args.fmt == "all" else [args.fmt]
 
     html_cache = None
     for fmt in formats:
         if fmt == "html":
-            html_cache = generate_html(data, scores)
+            html_cache = generate_html(data, scores, report_options, previous_summary)
             if args.output and args.fmt != "all":
                 out = args.output
             elif args.output and args.fmt == "all":
@@ -3068,7 +3389,7 @@ def main():
 
         elif fmt == "pdf":
             if html_cache is None:
-                html_cache = generate_html(data, scores)
+                html_cache = generate_html(data, scores, report_options, previous_summary)
             if args.output:
                 out = args.output
             else:
@@ -3081,7 +3402,6 @@ def main():
     if scores.get("unmeasured"):
         print(f"   Unmeasured (left out of the score): {', '.join(scores['unmeasured'])}")
 
-    summary = build_summary(data, scores)
     gate = evaluate_gate(summary, args.fail_under, args.fail_on)
     summary["gate"] = {"fail_under": args.fail_under, "fail_on": args.fail_on, **gate}
     if gate["result"] != "not set":

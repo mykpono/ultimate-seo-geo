@@ -74,6 +74,12 @@ python scripts/generate_report.py https://example.com --output seo-report.html
 
 Runs the bundled analysis pipeline (see §2): URL-based scripts, homepage HTML for `validate_schema` + `image_checker`, plus dashboard sections for schema, images, sitemaps, local signals, and IndexNow probe. Use at the start of any Mode 1 full audit.
 
+**Layout:** the HTML follows the report design in `references/report-template/report-template.md` (one page, the same `report.css` as the client set): masthead with a coverage bar, verdict and figures, Health Score by category, scope and coverage, site shape, findings by kind (opportunities apart), GEO readiness, recommendations, platform, and every check's detail as an appendix. Nothing is hidden behind JavaScript.
+
+**Previous run:** `python scripts/generate_report.py https://example.com --json summary.json --previous last-month.json` opens the report with what changed since the earlier `--json` summary (score delta, findings resolved and new, checks that changed status) and writes the same comparison under `"previous"` in the new summary.
+
+**White-label:** `--prepared-for "Client"`, `--prepared-by "Agency"` fill the masthead; `--accent "#B83F00"` sets the accent colour. Nothing else in the design changes per brand.
+
 **Excel:** `python scripts/generate_report.py https://example.com --format xlsx --output report.xlsx` (requires `openpyxl`).
 
 **PDF:** `python scripts/generate_report.py https://example.com --format pdf --output report.pdf` — optional **`weasyprint`** (`pip install weasyprint`; [system dependencies](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation) may apply). If WeasyPrint is unavailable or rendering fails, generate HTML and use the browser **Print → Save as PDF**.

@@ -4,6 +4,47 @@
 
 _Nothing yet._
 
+## [1.17.0] - 2026-09-17
+
+The automated report joins the design system. `generate_report.py` produced a third visual
+language (its own theme, a master-detail findings pane that hid every card but one until
+JavaScript ran); the client set from 1.16.0 had the reader-tested one. The generator now renders
+the same spine with the same `report.css`, so a CLI run, an agent-written audit and a consulting
+set look like one product. Minor per D-020: new capability (`--previous`, white-label flags); the
+Health Score contract, the summary JSON schema (additive `previous` key) and every test that
+pinned the old HTML are unchanged.
+
+### Changed
+- **`scripts/generate_report.py` HTML** — one page in the report-set design, read from
+  `references/report-template/report.css` and `print.css` at run time (embedded fallback with the
+  same tokens if the folder is missing): masthead with a coverage bar (weighted · shown-not-weighted
+  · not measured · not applicable, plus the absence-claims verdict from the site graph), figures
+  then verdict then Start here, Health Score by category as nine bars with a hatched track for a
+  category that was not measured, scope and coverage with a "counts toward score" column, a site
+  shape section (pages by funnel stage, section tree with hub and nav flags, navigation and sitemap
+  reconciliation) whenever the structure checks ran, findings as filterable cards with an index
+  table and opportunities in their own block, a GEO readiness list, recommendations, platform, and
+  every check's detail as the appendix. Fewer than five weighted checks renders "Inconclusive", not
+  a number. No CDN scripts; every section is in the markup; print and PDF show all of it.
+
+### Added
+- **`--previous PATH`** — an earlier `--json` summary of the same site. The report opens with a
+  delta strip (score change, findings resolved, findings new, checks whose status changed) and the
+  new summary carries the comparison under `previous`. Findings are matched by check and wording,
+  because IDs renumber on every run (`compare_with_previous`).
+- **`--prepared-for`, `--prepared-by`, `--accent`** — white-label slots for the masthead and the
+  accent token; `--accent` must be a six-digit hex colour.
+- `tests/test_report_design.py` (23 tests): the design system is inlined and falls back with a
+  warning; sections follow the spine and the site-shape section is omitted when nothing measured
+  it; the coverage bar counts and the absence-claims verdict; white-label values escaped and the
+  accent override; figures before verdict before Start here; every group in the score block with a
+  bar or a hatched track; an inconclusive score never shown as a number; the delta by wording, only
+  with a previous summary; the coverage table's "counts toward score" column; the funnel, tree and
+  reconciliation rows; opportunities apart from the severity list with all contract fields on a
+  card; filters cover rows and cards; GEO readiness links every check; the appendix carries every
+  check detail unhidden; CLI validation of `--accent` and `--previous`; the JSON summary carries
+  the comparison.
+
 ## [1.16.0] - 2026-09-17
 
 The report as a set. The skill had three disagreeing report shapes: the Mode 1 Markdown
