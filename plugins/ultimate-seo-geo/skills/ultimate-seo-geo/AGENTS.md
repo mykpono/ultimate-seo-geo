@@ -172,13 +172,13 @@ Category shares of the `generate_report.py` score when every check is measured (
 
 | Category | Weight |
 |---|---|
-| Technical SEO | 36% |
+| Technical SEO | 32% |
 | Content quality / E-E-A-T | 18% |
-| On-page SEO | 12% |
-| Link authority | 12% |
+| On-page SEO | 11% |
+| Link authority | 11% |
 | Core Web Vitals | 10% |
+| AI search readiness (GEO) | 10% |
 | Schema / structured data | 4% |
-| AI search readiness (GEO) | 4% |
 | Images | 2% |
 | Local SEO | 2% |
 

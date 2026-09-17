@@ -26,7 +26,7 @@ Confidence: Confirmed / Likely / Hypothesis
 
 ## Health Score
 
-The Health Score is computed only by scripts/generate_report.py (weights: Technical 36% | Content/E-E-A-T 18% | On-Page 12% | Links 12% | CWV 10% | Schema 4% | GEO 4% | Images 2% | Local 2%). You cannot run it here. If the user pastes its --json summary, report "overall" unchanged and its group_scores. Otherwise write "SEO Health Score: not scored — generate_report.py did not run" and give each category a status (Strong / Needs work / Gap / Not measured) backed by findings. Never estimate a number.
+The Health Score is computed only by scripts/generate_report.py (weights: Technical 32% | Content/E-E-A-T 18% | On-Page 11% | Links 11% | CWV 10% | GEO 10% | Schema 4% | Images 2% | Local 2%). You cannot run it here. If the user pastes its --json summary, report "overall" unchanged and its group_scores. Otherwise write "SEO Health Score: not scored — generate_report.py did not run" and give each category a status (Strong / Needs work / Gap / Not measured) backed by findings. Never estimate a number.
 
 ## GEO (AI Search)
 

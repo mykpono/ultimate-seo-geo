@@ -3,18 +3,18 @@ Here is the full audit for psybear.co.
 # SEO Audit Report — psybear.co
 Date: 2026-09-16 | Business Type: Publisher / Blog (YMYL health) | Audited Pages: 12 | Confidence: Medium
 
-## SEO Health Score: 65/100
-Source: generate_report.py — 18 weighted checks measured; not measured: pagespeed
+## SEO Health Score: 62/100
+Source: generate_report.py — 19 weighted checks measured; not measured: pagespeed
 
 | Category | Score | Share | Status |
 |---|---|---|---|
-| Technical SEO | 74/100 | 41.1% | Needs work |
-| Content quality / E-E-A-T | 52/100 | 20.5% | Needs work |
-| On-page SEO | 70/100 | 13.4% | Needs work |
-| Link authority | 61/100 | 13.4% | Needs work |
-| Schema / structured data | 45/100 | 4.5% | Gap |
-| AI search readiness (GEO) | 35/100 | 4.5% | Gap |
-| Images | 88/100 | 2.7% | Strong |
+| Technical SEO | 74/100 | 36.2% | Needs work |
+| Content quality / E-E-A-T | 52/100 | 19.8% | Needs work |
+| On-page SEO | 70/100 | 12.9% | Needs work |
+| Link authority | 61/100 | 12.9% | Needs work |
+| AI search readiness (GEO) | 35/100 | 11.2% | Gap |
+| Schema / structured data | 45/100 | 4.3% | Gap |
+| Images | 88/100 | 2.6% | Strong |
 | Core Web Vitals | — | 0% | Not measured |
 | Local SEO | — | 0% | Not applicable |
 
