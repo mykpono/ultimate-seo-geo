@@ -1,0 +1,26 @@
+/* Print stylesheet for the client report set — inlined after report.css. */
+@media print{
+  @page{size:A4;margin:18mm 16mm}
+  html{color-scheme:light}
+  :root{--paper:#fff;--surface:#fff;--surface-2:#f4f4f2;--ink:#111;--ink-2:#222;--muted:#555;--faint:#777;--line:#ccc;--line-strong:#999;--shadow:none}
+  body{font-size:11pt;line-height:1.5;background:#fff;color:#111}
+  nav.toc{display:none}
+  .shell{max-width:none;padding-inline:0}
+  header.top{border-bottom:1px solid #999}
+  .top-in{padding-block:0 12pt}
+  h1{font-size:26pt}
+  h2{font-size:16pt;break-after:avoid}
+  h3,h4{break-after:avoid}
+  section{break-inside:auto;padding-block:18pt 0;margin-top:18pt}
+  .find,.pg,.ptier,.verdict,.figs,.cov,.callout,.ba,tr{break-inside:avoid}
+  .tw{overflow:visible;border:0}
+  table{min-width:0;font-size:9.5pt}
+  th{background:#f4f4f2}
+  thead{display:table-header-group}
+  a{color:#111;text-decoration:none}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:8.5pt;color:#555}
+  .ids a,.pid,.chip{border-color:#999}
+  .fig{font-size:20pt}
+  pre.mono{white-space:pre-wrap}
+  footer{margin-top:24pt}
+}

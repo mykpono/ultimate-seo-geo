@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-1.15.0-green.svg)](../../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.16.0-green.svg)](../../CHANGELOG.md)
 
 > The definitive SEO + GEO skill for Claude. Full site audits, AI search optimization, schema generation, E-E-A-T assessment, and **54** bundled diagnostic Python scripts.
 

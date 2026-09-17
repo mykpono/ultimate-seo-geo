@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report set — component catalogue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Report set design system — references/report-template/report.css
+   Tokens and components for the client report set (report-template.md § 8).
+   Extracted from the Improvado SEO & GEO audit set (2026-09). One copy; the
+   renderer inlines it into every document so each file stays self-contained. */
+
+:root{
+  --paper:#FAFAF7; --surface:#FFFFFF; --surface-2:#F2F4F2;
+  --ink:#11181B; --ink-2:#2B383B; --muted:#5E6E71; --faint:#8A9899;
+  --line:#DFE4E2; --line-strong:#C3CCCA;
+  --accent:#0D6E74; --accent-soft:#E4F0F0; --accent-ink:#0A5257;
+  --critical:#A8242E; --critical-soft:#FAEBEC;
+  --warn:#8F5B05; --warn-soft:#FBF2E2;
+  --good:#116A4A; --good-soft:#E6F3ED;
+  --shadow:0 1px 2px rgba(17,24,27,.05), 0 8px 24px rgba(17,24,27,.045);
+  --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0D1315; --surface:#141C1F; --surface-2:#1A2427;
+    --ink:#E3EAE8; --ink-2:#C6D2D0; --muted:#93A3A4; --faint:#6F8082;
+    --line:#242F32; --line-strong:#334145;
+    --accent:#4FBAC0; --accent-soft:#12292B; --accent-ink:#7FD3D7;
+    --critical:#E8737C; --critical-soft:#2A1417;
+    --warn:#D69B36; --warn-soft:#2A2012;
+    --good:#4FB88D; --good-soft:#0F2620;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0D1315; --surface:#141C1F; --surface-2:#1A2427;
+  --ink:#E3EAE8; --ink-2:#C6D2D0; --muted:#93A3A4; --faint:#6F8082;
+  --line:#242F32; --line-strong:#334145;
+  --accent:#4FBAC0; --accent-soft:#12292B; --accent-ink:#7FD3D7;
+  --critical:#E8737C; --critical-soft:#2A1417;
+  --warn:#D69B36; --warn-soft:#2A2012;
+  --good:#4FB88D; --good-soft:#0F2620;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.25);
+}
+
+html{color-scheme:light dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased}
+img{max-width:100%}
+[hidden]{display:none!important}
+.shell{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:0 96px}
+.prose{max-width:68ch}
+p{margin:0 0 1.05em}
+a{color:var(--accent);text-underline-offset:3px;text-decoration-thickness:1px}
+h1,h2,h3,h4,.label,.eyebrow,th,.fig,.chip,nav,button,dt{font-family:var(--sans)}
+h2{font-size:clamp(23px,2.5vw,29px);line-height:1.18;letter-spacing:-.018em;margin:0 0 6px;text-wrap:balance;font-weight:600}
+h3{font-size:19px;line-height:1.3;letter-spacing:-.01em;margin:0 0 6px;font-weight:600;text-wrap:balance}
+h4{font-size:15px;margin:0 0 4px;font-weight:600}
+.eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--accent);margin:0 0 10px}
+.label{font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:600;color:var(--muted)}
+.mono{font-family:var(--mono);font-size:.88em}
+.num{font-variant-numeric:tabular-nums}
+.small{font-size:14px;line-height:1.55;color:var(--muted)}
+code{font-family:var(--mono);font-size:.85em;background:var(--surface-2);padding:1px 5px;border-radius:2px;color:var(--ink);border:1px solid var(--line)}
+pre.mono{font-family:var(--mono);font-size:12.5px;line-height:1.5;background:var(--surface-2);border:1px solid var(--line);border-radius:3px;padding:14px 16px;overflow-x:auto}
+ul,ol{padding-left:22px;margin:0 0 1.05em}
+li{margin:5px 0}
+ul.tight li,ol.tight li{margin:3px 0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* masthead */
+header.top{border-bottom:1px solid var(--line-strong);background:var(--surface)}
+.top-in{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:44px 34px}
+h1{font-family:var(--sans);font-size:clamp(34px,5.2vw,54px);line-height:1.02;letter-spacing:-.035em;font-weight:700;margin:14px 0 14px;max-width:16ch;text-wrap:balance}
+.sub{font-size:19px;color:var(--ink-2);max-width:62ch;margin:0 0 26px}
+.meta{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--line);padding-top:16px;margin:0}
+.meta div{padding-right:28px;margin-right:28px;border-right:1px solid var(--line);margin-bottom:10px}
+.meta div:last-child{border-right:0;padding-right:0;margin-right:0}
+.meta dt{font-family:var(--sans);font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+.meta dd{margin:0;font-family:var(--mono);font-size:13px;color:var(--ink-2)}
+
+/* section nav */
+nav.toc{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid var(--line)}
+.toc-in{max-width:1080px;margin:0 auto;padding-inline:20px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
+.toc-in a{white-space:nowrap;font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;padding:12px 10px;border-bottom:2px solid transparent}
+.toc-in a:hover,.toc-in a.active{color:var(--accent);border-bottom-color:var(--accent)}
+section[id]{scroll-margin-top:56px}
+section{padding-block:52px 0;border-top:1px solid var(--line);margin-top:52px}
+section:first-of-type{border-top:0;margin-top:0}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:22px}
+.sec-n{font-family:var(--mono);font-size:13px;color:var(--faint);font-weight:500;padding-top:5px}
+
+/* verdict + figures */
+.verdict{background:var(--surface);border:1px solid var(--line-strong);border-left:4px solid var(--accent);border-radius:3px;padding:26px 28px;margin:0 0 30px;box-shadow:var(--shadow)}
+.verdict p:last-child{margin-bottom:0}
+.verdict .lead{font-size:20px;line-height:1.45;color:var(--ink)}
+.figs{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--surface);margin:26px 0}
+.figs>div{padding:18px 20px;border-right:1px solid var(--line)}
+.figs>div:last-child{border-right:0}
+.fig{font-size:29px;line-height:1.05;font-weight:600;letter-spacing:-.025em;font-variant-numeric:tabular-nums;margin-bottom:5px}
+.fig.dn{color:var(--critical)} .fig.up{color:var(--good)} .fig.nu{color:var(--accent)}
+.figs .label{display:block;line-height:1.35}
+
+/* tables */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:3px;background:var(--surface);margin:20px 0}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:13.5px;min-width:560px}
+th{text-align:left;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:11px 14px;border-bottom:1px solid var(--line-strong);background:var(--surface-2);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+tbody tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+td.q{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.dn{color:var(--critical);font-weight:500}
+.up{color:var(--good);font-weight:500}
+tbody tr.tot td{background:var(--surface-2);font-weight:600;border-top:1px solid var(--line-strong)}
+tbody tr.dropped td{color:var(--faint);text-decoration:line-through}
+tbody tr.dropped td.q{text-decoration:none}
+
+/* chips */
+.chip{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;padding:3px 8px;border-radius:2px;white-space:nowrap;display:inline-block;line-height:1.5}
+.chip.c{background:var(--critical-soft);color:var(--critical)}
+.chip.h{background:var(--warn-soft);color:var(--warn)}
+.chip.m{background:var(--accent-soft);color:var(--accent-ink)}
+.chip.g{background:var(--good-soft);color:var(--good)}
+.chip.o{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.chip.k{background:transparent;color:var(--ink-2);border:1px solid var(--line-strong)}
+a.chip{text-decoration:none}
+
+/* findings */
+.find{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:3px;padding:20px 22px;margin:0 0 14px}
+.find.c{border-left-color:var(--critical)}
+.find.h{border-left-color:var(--warn)}
+.find.m{border-left-color:var(--accent)}
+.find.l,.find.i{border-left-color:var(--muted)}
+.find.keep{border-left-color:var(--good)}
+.find.opp{border-left-color:var(--good);border-left-style:double;border-left-width:6px}
+.find-top{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-bottom:9px}
+.find h3{margin:0;flex:1 1 320px;font-size:17.5px}
+.find dl{margin:0;display:grid;grid-template-columns:96px 1fr;gap:5px 16px;font-size:15px}
+.find dt{font-family:var(--sans);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600;padding-top:5px}
+.find dd{margin:0;color:var(--ink-2)}
+.find dd .ids a{font-family:var(--mono);font-size:12.5px;text-decoration:none;border:1px solid var(--line-strong);border-radius:2px;padding:1px 6px;margin-right:4px;color:var(--accent-ink);background:var(--surface-2)}
+.ids a,.pid{font-family:var(--mono);font-size:12.5px;text-decoration:none;border:1px solid var(--line-strong);border-radius:2px;padding:1px 6px;margin-right:4px;color:var(--accent-ink);background:var(--surface-2);display:inline-block;margin-bottom:3px}
+
+/* pass/fail checklist rows, coverage */
+.cov{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--surface);margin:18px 0}
+.cov>div{padding:14px 18px;border-right:1px solid var(--line)}
+.cov>div:last-child{border-right:0}
+.cov b{display:block;font-family:var(--sans);font-size:22px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.cov span{display:block;font-family:var(--sans);font-size:12px;color:var(--muted);margin-top:2px}
+.cov-claim{font-family:var(--sans);font-size:14px;padding:10px 14px;border:1px solid var(--line);border-radius:3px;margin:0 0 18px}
+.cov-claim.ok{background:var(--good-soft);color:var(--good)}
+.cov-claim.no{background:var(--warn-soft);color:var(--warn)}
+
+/* callouts, before/after */
+.callout{border:1px solid var(--line);border-left:3px solid var(--warn);background:var(--warn-soft);border-radius:3px;padding:15px 18px;margin:18px 0;font-size:15px;line-height:1.55}
+.callout.k{border-left-color:var(--accent);background:var(--accent-soft)}
+.callout.g{border-left-color:var(--good);background:var(--good-soft)}
+.callout p:last-child{margin-bottom:0}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.ba>div{border:1px solid var(--line);border-radius:3px;padding:16px 18px;background:var(--surface)}
+.ba .now{border-top:3px solid var(--critical)}
+.ba .fix{border-top:3px solid var(--good)}
+.ba p{font-size:14.5px;line-height:1.55;margin:0}
+.ba .label{margin-bottom:9px;display:block}
+.rule{height:1px;background:var(--line);margin:34px 0}
+
+/* page cards (strategy annex) */
+.pg{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:3px;padding:18px 20px;margin:0 0 12px}
+.pg.new{border-left-color:var(--good)}
+.pg.con{border-left-color:var(--critical)}
+.pg.reb{border-left-color:var(--warn)}
+.pg.add{border-left-color:var(--accent)}
+.pg-top{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-bottom:10px}
+.pg-url{font-family:var(--mono);font-size:14.5px;font-weight:500;color:var(--ink);flex:1 1 260px;word-break:break-word}
+.pg dl{margin:0;display:grid;grid-template-columns:78px 1fr;gap:5px 16px;font-size:14.5px}
+.pg dt{font-family:var(--sans);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600;padding-top:4px}
+.pg dd{margin:0;color:var(--ink-2)}
+.pg dd.state{color:var(--muted)}
+.pg dd.test{color:var(--good)}
+
+/* prompt roster */
+.ptier{border:1px solid var(--line);border-radius:3px;background:var(--surface);margin:0 0 16px;overflow:hidden}
+.ptier-h{padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--line);font-family:var(--sans);font-size:14px}
+.ptier-h strong{display:block;margin-bottom:2px}
+.ptier-h span{color:var(--muted);font-size:13px}
+.prow{display:grid;grid-template-columns:1fr 260px;gap:16px;padding:12px 16px;border-bottom:1px solid var(--line);font-size:14.5px}
+.prow:last-child{border-bottom:0}
+.prow q{quotes:"“" "”";color:var(--ink)}
+.prow .own{font-family:var(--sans);font-size:13px;color:var(--muted)}
+.prow .own b{display:block;font-family:var(--mono);font-weight:500;color:var(--accent-ink);font-size:12.5px;margin-bottom:2px}
+
+/* site shape: section tree */
+.tree{list-style:none;padding-left:0;margin:14px 0;font-family:var(--sans);font-size:14px}
+.tree ul{list-style:none;padding-left:22px;border-left:1px solid var(--line);margin:4px 0 4px 8px}
+.tree li{margin:4px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.tree li>ul{flex-basis:100%}
+.tree .path{font-family:var(--mono);font-size:13px;color:var(--ink)}
+.tree .cnt{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.tree .tag{font-size:11px;color:var(--faint)}
+
+/* plan timeline */
+.plan-h{display:flex;align-items:baseline;gap:12px;margin:26px 0 8px}
+.plan-h h3{margin:0}
+.plan-h .small{margin:0}
+.deps{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.lane-Auto{background:var(--good-soft);color:var(--good)}
+.lane-Assisted{background:var(--accent-soft);color:var(--accent-ink)}
+.lane-Human{background:var(--warn-soft);color:var(--warn)}
+.lane-Decision{background:var(--critical-soft);color:var(--critical)}
+
+/* glossary */
+.gloss{columns:2 420px;column-gap:40px;margin:8px 0 0}
+.gloss div{break-inside:avoid}
+.gloss dt{font-family:var(--sans);font-weight:600;font-size:15px;color:var(--ink);margin:0}
+.gloss dd{margin:2px 0 14px;font-size:15.5px;color:var(--ink-2);max-width:72ch}
+
+/* index / set list */
+.set{list-style:none;padding:0;margin:20px 0;display:grid;gap:12px}
+.set li{border:1px solid var(--line);border-radius:3px;background:var(--surface);padding:16px 18px;display:grid;grid-template-columns:52px 1fr;gap:14px;align-items:baseline}
+.set .n{font-family:var(--mono);color:var(--faint);font-size:14px}
+.set a{font-family:var(--sans);font-weight:600;font-size:17px;text-decoration:none}
+.set p{margin:4px 0 0;font-size:14.5px;color:var(--muted)}
+
+footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line-strong);font-size:13px;color:var(--faint);font-family:var(--sans)}
+
+@media (max-width:820px){
+  body{font-size:16px}
+  .figs,.cov{grid-template-columns:1fr 1fr}
+  .figs>div,.cov>div{border-bottom:1px solid var(--line)}
+  .figs>div:nth-child(2n),.cov>div:nth-child(2n){border-right:0}
+  .ba{grid-template-columns:1fr}
+  .meta div{border-right:0;padding-right:0;margin-right:22px}
+  .find dl,.pg dl{grid-template-columns:1fr;gap:2px}
+  .find dt,.pg dt{padding-top:8px}
+  .prow{grid-template-columns:1fr}
+}
+
+/* Print stylesheet for the client report set — inlined after report.css. */
+@media print{
+  @page{size:A4;margin:18mm 16mm}
+  html{color-scheme:light}
+  :root{--paper:#fff;--surface:#fff;--surface-2:#f4f4f2;--ink:#111;--ink-2:#222;--muted:#555;--faint:#777;--line:#ccc;--line-strong:#999;--shadow:none}
+  body{font-size:11pt;line-height:1.5;background:#fff;color:#111}
+  nav.toc{display:none}
+  .shell{max-width:none;padding-inline:0}
+  header.top{border-bottom:1px solid #999}
+  .top-in{padding-block:0 12pt}
+  h1{font-size:26pt}
+  h2{font-size:16pt;break-after:avoid}
+  h3,h4{break-after:avoid}
+  section{break-inside:auto;padding-block:18pt 0;margin-top:18pt}
+  .find,.pg,.ptier,.verdict,.figs,.cov,.callout,.ba,tr{break-inside:avoid}
+  .tw{overflow:visible;border:0}
+  table{min-width:0;font-size:9.5pt}
+  th{background:#f4f4f2}
+  thead{display:table-header-group}
+  a{color:#111;text-decoration:none}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:8.5pt;color:#555}
+  .ids a,.pid,.chip{border-color:#999}
+  .fig{font-size:20pt}
+  pre.mono{white-space:pre-wrap}
+  footer{margin-top:24pt}
+}
+
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+<div class="eyebrow">Example · SEO &amp; GEO · 2 of 4</div>
+<h1>Report set — component catalogue</h1>
+<p class="sub">Every component of references/report-template/report.css rendered once. Toggle the theme with the button; print to see print.css.</p>
+<dl class="meta"><div><dt>Prepared for</dt><dd>Example marketing team</dd></div><div><dt>Prepared by</dt><dd>The audit team</dd></div><div><dt>Date</dt><dd>2026-09-17</dd></div><div><dt>Data window</dt><dd>Aug 2026</dd></div><div><dt>Site type</dt><dd>saas</dd></div><div><dt>Version</dt><dd>sample</dd></div></dl>
+</div></header>
+<nav class="toc" aria-label="Sections"><div class="toc-in"><a href="#verdict">Verdict</a><a href="#coverage">Coverage</a><a href="#shape">Site shape</a><a href="#findings">Findings</a><a href="#register">Register</a><a href="#prompts">Prompts</a><a href="#pages">Page card</a><a href="#glossary">Glossary</a></div></nav>
+<div class="shell">
+<section id="verdict"><div class="sec-head"><span class="sec-n">01</span><h2>Verdict, figures, prose, callout, before / after, table</h2></div><div class="verdict"><p class="lead">The verdict card: one paragraph that answers the question, before any evidence.</p></div><div class="figs"><div><div class="fig dn">−28%</div><span class="label">Brand clicks, year over year</span></div><div><div class="fig up">2.40%</div><span class="label">Homepage demo rate</span></div><div><div class="fig nu">0.35%</div><span class="label">Share of clicks to commercial URLs</span></div><div><div class="fig up">91</div><span class="label">Demo requests from AI referrals</span></div></div><p>Prose with <code>code</code>, <strong>bold</strong> and linked IDs: <a href="#F1">F1</a> is fixed by <a href="3-plan.html#T1">T1</a>, which needs decision <a href="3-plan.html#D1">D1</a>.</p><div class="callout k"><p>A callout for a caveat the reader must not miss.</p></div><div class="ba"><div class="now"><span class="label">Today</span><p>The page opens with a breadcrumb and a marketing sentence.</p></div><div class="fix"><span class="label">Answer-first</span><p>The page opens with the definition and one specific number.</p></div></div><div class="tw"><table><thead><tr><th>Metric</th><th class="n">Aug 2025</th><th class="n">Aug 2026</th><th class="n">Change</th></tr></thead><tbody><tr><td>Clicks</td><td class="n">1,004</td><td class="n">719</td><td class="n">−28%</td></tr></tbody></table></div></section><section id="coverage"><div class="sec-head"><span class="sec-n">02</span><h2>Scope and coverage (generated)</h2></div><div class="cov"><div><b>3,021</b><span>sitemap URLs · complete</span></div><div><b>3,298</b><span>pages fetched · crawl incomplete</span></div><div><b>3</b><span>max click depth seen</span></div><div><b>saas</b><span>site type</span></div></div><div class="cov-claim ok">Inventory complete: absence claims (missing page types, hubs, orphans, equity share) are allowed.</div><p class="small">Site graph generated 2026-09-17T20:04:56+00:00 by site_graph.py.</p><h3>Checks run</h3><div class="tw"><table><thead><tr><th>Check</th><th>Group</th><th>Status</th><th class="n">Score</th><th class="n">Weight</th><th>Counts toward the score</th></tr></thead><tbody><tr><td>Robots &amp; AI crawlers</td><td>technical</td><td><span class="chip g">Strong</span></td><td class="n">100</td><td class="n">5</td><td>weighted</td></tr><tr><td>Page-type coverage</td><td>content</td><td><span class="chip g">Reviewed</span></td><td class="n">—</td><td class="n">—</td><td>shown, not weighted</td></tr><tr><td>Core Web Vitals</td><td>performance</td><td><span class="chip o">Not measured</span></td><td class="n">—</td><td class="n">—</td><td>weighted</td></tr></tbody></table></div><p class="small">Health Score 84/100 · Source: generate_report.py — 19 weighted checks measured.</p><h3>Data sources</h3><div class="tw"><table><thead><tr><th>Dimension</th><th>Status</th><th>Basis</th><th>Window</th><th>As of</th></tr></thead><tbody><tr><td>Search Console</td><td><span class="chip g">Measured</span></td><td>Daily property series</td><td>Jun 2025–Sep 2026</td><td>2026-09-15</td></tr><tr><td>AI-assistant citations</td><td><span class="chip o">Not measured</span></td><td>No prompt baseline yet</td><td>—</td><td>—</td></tr></tbody></table></div><h3>Not examined</h3><div class="tw"><table><thead><tr><th>What</th><th>Why</th><th>Enabled by</th></tr></thead><tbody><tr><td>Backlinks</td><td>No Links export yet</td><td><span class="ids"><a href="3-plan.html#M1">M1</a></span></td></tr></tbody></table></div><h3>Out of scope</h3><ul class="tight"><li><strong>Paid search</strong> — Not a search surface</li></ul><h3>Assumptions you can reject</h3><ul class="tight"><li>The homepage represents brand demand.</li></ul></section><section id="shape"><div class="sec-head"><span class="sec-n">03</span><h2>Site shape: section table and static tree</h2></div><h3>Sections</h3><p class="small">4,345 URLs in inventory (complete) · link equity not measured (needs a complete crawl). Shown, not weighted.</p><div class="tw"><table><thead><tr><th>Section</th><th class="n">URLs</th><th>Dominant type</th><th>In nav</th><th>Hub</th><th class="n">Depth</th><th class="n">Equity</th></tr></thead><tbody><tr><td><span class="mono">/blog/</span></td><td class="n">890</td><td>blog_article</td><td>yes</td><td>yes</td><td class="n">2.0</td><td class="n">—</td></tr></tbody></table></div><ul class="tree"><li><span class="path">/blog/</span><span class="cnt">890</span> <span class="tag">blog_article · in nav</span><ul><li><span class="path">/blog/ai/</span><span class="cnt">82</span> <span class="tag">blog_article</span></li></ul></li></ul></section><section id="findings"><div class="sec-head"><span class="sec-n">04</span><h2>Finding cards: defect, risk, opportunity, keep</h2></div><div class="find c" id="F1"><div class="find-top"><span class="chip c">Critical</span><span class="chip g">Measured</span><h3>F1 · Brand demand is falling</h3></div><dl><dt>Observation</dt><dd>Clicks on the exact brand query fell 28%.</dd><dt>Evidence</dt><dd>1,004 → 719 per 28 days, Search Console.</dd><dt>Impact</dt><dd>The homepage produces 44% of organic demo requests.</dd><dt>Confidence</dt><dd><strong>Confirmed</strong> · would be wrong if: Brand clicks recover without a paid change.</dd><dt>Fix</dt><dd><span class="ids"><a href="3-plan.html#T1">T1</a></span></dd><dt>Watch</dt><dd>Brand clicks per 28 days, read at 8 weeks.</dd><dt>Depends on</dt><dd><span class="ids"><a href="#F2">F2</a></span> · blocks —</dd></dl></div><div class="find h" id="F2"><div class="find-top"><span class="chip h">High</span><span class="chip k">risk</span><span class="chip h">Inferred</span><h3>F2 · Pipeline figures are not CRM-reconciled</h3></div><dl><dt>Observation</dt><dd>GA4 and CRM disagree.</dd><dt>Evidence</dt><dd>GA4 demo requests only.</dd><dt>Impact</dt><dd>Every pipeline figure carries this uncertainty.</dd><dt>Confidence</dt><dd><strong>Likely</strong> · would be wrong if: CRM shows the same series.</dd><dt>Fix</dt><dd><span class="ids"><a href="3-plan.html#M1">M1</a></span></dd><dt>Watch</dt><dd>GA4 vs CRM within 10%.</dd></dl></div><div class="find opp" id="F3"><div class="find-top"><span class="chip m">Medium</span><span class="chip k">opportunity</span><span class="chip m">Measured · shown, not weighted</span><span class="chip o" title="navigation:money_page_not_in_nav">script: navigation</span><h3>F3 · No comparison page in the navigation</h3></div><dl><dt>Observation</dt><dd>163 comparison URLs, none linked globally.</dd><dt>Evidence</dt><dd>navigation_checker.py, 40 pages sampled.</dd><dt>Impact</dt><dd>The most-cited page type is buried.</dd><dt>Confidence</dt><dd><strong>Confirmed</strong> · would be wrong if: Contextual links exist.</dd><dt>Fix</dt><dd><span class="ids"><a href="3-plan.html#C1">C1</a></span></dd><dt>Watch</dt><dd>Comparison prompt citations.</dd></dl></div><div class="find keep" id="F4"><div class="find-top"><span class="chip g">Working well</span><span class="chip g">Measured</span><h3>F4 · AI crawlers are allowed and pages render server-side</h3></div><dl><dt>Observation</dt><dd>Nine allow groups; content readable without JavaScript.</dd><dt>Evidence</dt><dd>robots.txt and raw-HTML crawl.</dd><dt>Confidence</dt><dd><strong>Confirmed</strong> · would be wrong if: A rendering change.</dd></dl></div></section><section id="register"><div class="sec-head"><span class="sec-n">05</span><h2>Recommendation register: chips, lanes, dependencies, supersedes, dropped row</h2></div><div class="tw"><table><thead><tr><th class="q">ID</th><th>Action</th><th>Fixes</th><th>Basis</th><th>Validity</th><th>Tier</th><th>Owner</th><th>Lane</th><th class="n">Effort</th><th>Expected effect</th><th>Dependencies</th><th>Done when</th><th>Status</th></tr></thead><tbody><tr><td class="q"><a id="T1" href="#T1" class="mono">T1</a></td><td>Redirect <code>www</code> to the identical apex path in one hop</td><td><span class="ids"><a href="1-audit.html#F1">F1</a></span></td><td><span class="chip g">Documented</span></td><td><span class="chip g">Confirmed</span></td><td><span class="chip h">Gated</span></td><td>Engineering</td><td><span class="chip lane-Human">Human</span></td><td class="n">S</td><td>Deep links pass value to the right page</td><td><span class="deps">blocked by</span> —<br><span class="deps">unblocks</span> <span class="ids"><a href="#C1">C1</a></span></td><td>20 sampled paths return one 301</td><td>planned</td></tr><tr><td class="q"><a id="M1" href="#M1" class="mono">M1</a></td><td>Reconcile GA4 demo requests with the CRM monthly</td><td><span class="ids"><a href="1-audit.html#F2">F2</a></span></td><td><span class="chip m">Data-backed</span></td><td><span class="chip m">Revised</span></td><td><span class="chip g">Free</span></td><td>Analytics</td><td><span class="chip lane-Auto">Auto</span></td><td class="n">S</td><td>Trustworthy pipeline figures</td><td><span class="deps">blocked by</span> —<br><span class="deps">unblocks</span> —</td><td>Agreement within 10% for 3 months</td><td>planned</td></tr><tr><td class="q"><a id="C1" href="#C1" class="mono">C1</a></td><td>Link the comparison pages from <code>/pricing</code> and the footer<p class="small">Overrides navigation finding money_page_not_in_nav: Global navigation stays as is; links are tested cluster by cluster first.</p></td><td><span class="ids"><a href="1-audit.html#F3">F3</a></span></td><td><span class="chip h">Test first</span></td><td><span class="chip h">Added</span></td><td><span class="chip m">Review</span></td><td>Content</td><td><span class="chip lane-Assisted">Assisted</span></td><td class="n">M</td><td>Comparison citations</td><td><span class="deps">blocked by</span> <span class="ids"><a href="#T1">T1</a></span><br><span class="deps">unblocks</span> —</td><td>Linked; citations read at 8 weeks</td><td>planned</td></tr><tr class="dropped"><td class="q"><a id="C2" href="#C2" class="mono">C2</a></td><td>Publish the pricing model</td><td><span class="ids"><a href="1-audit.html#F1">F1</a></span></td><td><span class="chip m">Data-backed</span></td><td><span class="chip c">Dropped</span></td><td><span class="chip c">Legal</span></td><td>Leadership</td><td><span class="chip lane-Decision">Decision</span></td><td class="n">S</td><td>—</td><td><span class="deps">blocked by</span> —<br><span class="deps">unblocks</span> —</td><td>—</td><td>dropped</td></tr></tbody></table></div></section><section id="prompts"><div class="sec-head"><span class="sec-n">06</span><h2>Prompt tier</h2></div><div class="ptier"><div class="ptier-h"><strong>Tier 1 · Category selection</strong><span>Improvado must appear as a named candidate.</span></div><div class="prow"><q>What platform should a 2,000-person retailer use to unify marketing data?</q><div class="own"><b>T1.1 · /products, /reporting</b>Needs an enterprise-scale qualifier</div></div></div></section><section id="pages"><div class="sec-head"><span class="sec-n">07</span><h2>Page card</h2></div><div class="pg con"><div class="pg-top"><span class="chip c">Consolidate</span><span class="pg-url">/products/marketing-attribution</span></div><dl><dt>Owns</dt><dd><span class="pid">T1.1</span></dd><dt>Page type</dt><dd>product_feature</dd><dt>Today</dt><dd><span class="state">551 words</span></dd><dt>Change</dt><dd>301 the duplicate (<a href="3-plan.html#T1">T1</a>)</dd><dt>Test</dt><dd><span class="test">One URL ranks for 4 weeks</span></dd></dl></div></section><section id="glossary"><div class="sec-head"><span class="sec-n">08</span><h2>Glossary</h2></div><dl class="gloss"><div><dt>GEO</dt><dd>Generative engine optimization.</dd></div><div><dt>INP</dt><dd>Interaction to Next Paint.</dd></div></dl></section>
+<footer>Report set — component catalogue · 2026-09-17 · Prepared by The audit team · Set: <a href="index.html">Index</a> · <a href="0-brief.html">Executive brief</a> · <a href="2-strategy.html">Content &amp; prompt strategy</a> · <a href="3-plan.html">Implementation plan</a> · <a href="4-appendix.html">Appendices</a> · Generated 2026-09-17 by render_report.py from source vsample.</footer>
+</div>
+<script>(function(){var nav=document.querySelector('nav.toc');if(!nav)return;var links=[].slice.call(nav.querySelectorAll('a[href^="#"]'));
+var secs=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));}).filter(Boolean);
+function mark(){var pos=window.pageYOffset+nav.offsetHeight+20,cur=secs[0];secs.forEach(function(s){if(s.offsetTop<=pos)cur=s;});
+links.forEach(function(a){a.classList.toggle('active',!!cur&&a.getAttribute('href')==='#'+cur.id);});}
+window.addEventListener('scroll',mark,{passive:true});mark();})();</script>
+<button type="button" style="position:fixed;right:16px;bottom:16px;z-index:30;font-family:var(--sans);font-size:13px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:3px;background:var(--surface);color:var(--ink);cursor:pointer" onclick="var h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark'">Toggle light / dark</button>
+</body>
+</html>
