@@ -277,7 +277,7 @@ When someone runs `/plugin marketplace add mykpono/ultimate-seo-geo`, the tool r
 
 ## Scripts
 
-**Bundled in the plugin:** **54** diagnostic scripts. **`check-plugin-sync.py`**, **`check_github_release.py`**, and **`check_version_sync.py`** are repo-only for CI and are not included in the bundle. Python 3.8+; install dependencies with:
+**Bundled in the plugin:** **56** diagnostic scripts. **`check-plugin-sync.py`**, **`check_github_release.py`**, and **`check_version_sync.py`** are repo-only for CI and are not included in the bundle. Python 3.8+; install dependencies with:
 
 ```bash
 pip install -r requirements.txt

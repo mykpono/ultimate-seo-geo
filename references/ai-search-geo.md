@@ -60,6 +60,8 @@ Different AI platforms prioritize different GEO dimensions. Use this matrix to a
 
 **Optimal passage length: 134-167 words** for AI citation extraction.
 
+`scripts/citability_checker.py` measures the structural side of this dimension and of Structural Readability on one page: prose walls, paragraph length, the heading outline and specific figures, plus whether it opens with a lead paragraph. It does not know the target query, so whether a passage *answers* it stays a judgment call.
+
 ### Strong Citability Signals
 - Clear, quotable sentences with specific facts, statistics, or data
 - Self-contained answer blocks (extractable without surrounding context)

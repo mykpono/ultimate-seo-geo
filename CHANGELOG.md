@@ -4,6 +4,32 @@
 
 ### Added
 
+- **`citability_checker.py` measures the structure of an article page for GEO citability.** Citability
+  is 25% of the skill's own GEO rubric, and no script measured it.
+  - **Scored (0–100):** no section over 350 words of prose without a list, table or subheading (45);
+    paragraphs of 120 words or fewer (25); one H1 and no skipped heading levels (20); paragraphs with
+    figures or attributed sources (10).
+  - **Reported, not scored:** a lead paragraph within the first 60 paragraph words after the H1 (a
+    Low finding when missing), and sections whose first sentence runs over 40 words.
+  - **Not applicable** (no score) on pages under 500 words, with fewer than two sections (unless
+    800+ words), or with under 40% of their words in paragraphs: homepages, section fronts and hubs.
+  - **Findings** are Medium or Low, with fixes written for readers (§ 19 rules 10c, 10d).
+  - **In the full report** it runs on the audited page as "Citability and structure" under GEO,
+    **shown but not weighted** until it has run on more audits.
+  - **Validated on real pages before commit.** The first version had four false-positive classes,
+    each fixed with a regression test named after the page:
+    - Paul Graham's essay parsed as one 11,802-word table (nested layout tables, `<br>` paragraphs)
+    - python.org and the Guardian's Technology front were scored as articles
+    - Wikipedia lost its H1 and its lead (the article `<header>` was stripped; the infobox used up
+      the lead window)
+    - the SRE book's table of contents and the RFC's "Abstract" heading hid real leads
+  - **Two rubric tests are reported rather than scored.** On the 13 tuning pages every article had a
+    lead and no section took over 60 words to finish its first sentence, so neither separated
+    strong pages from weak ones. A holdout of 10 unseen pages found no parsing errors: Wikipedia,
+    Effective Go and Google's SEO Starter Guide score 91–96; the BBC News front, apple.com and a
+    GitHub README are not applicable; Martin Fowler's *Microservices* scores 75 on eight
+    378–657-word prose sections, which the check marks down by design.
+
 - **The eval suite enforces the report contract.** `score_eval_transcript.py` has a `report_lint`
   assertion type: the written report in a reply must pass `report_lint.py` with no errors
   (`"strict": true` also fails on warnings, `"excerpt": true` skips required sections). Text before
