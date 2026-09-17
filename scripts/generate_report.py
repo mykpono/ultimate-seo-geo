@@ -2110,11 +2110,15 @@ def _check_panels(data: dict) -> dict:
 
     ar = get("architecture")
     if ar:
+        def _equity_cell(sct):
+            share = sct.get("equity_share")
+            return "—" if share is None else f"{share:.0%}"
+
         sec_rows = [
             f"<tr><td class=\"url\">{_esc(sct.get('path', ''))}</td><td class=\"num\">{_esc(sct.get('url_count', 0))}</td>"
             f"<td>{_esc(sct.get('dominant_label', ''))}</td><td>{_yes_no(sct.get('in_nav'))}</td><td>{_yes_no((sct.get('hub') or {}).get('exists'))}</td>"
             f"<td class=\"num\">{_esc(sct.get('avg_depth') if sct.get('avg_depth') is not None else '—')}</td>"
-            f"<td class=\"num\">{_esc(f"{sct['equity_share']:.0%}" if sct.get('equity_share') is not None else '—')}</td></tr>"
+            f"<td class=\"num\">{_esc(_equity_cell(sct))}</td></tr>"
             for sct in (ar.get("sections") or [])[:20] if not sct.get("parent")
         ]
         eq = ar.get("equity") or {}
