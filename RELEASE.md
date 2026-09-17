@@ -30,6 +30,7 @@ gh release list --limit 3                 # vX.Y.Z must appear as Latest
 
 - `SKILL.md` frontmatter → top-level `version:` and `updated:` (must match marketplace + `plugin.json`)
 - `SKILL.md` body → **Skill at a glance** table: keep **Version** / **Updated** in sync with frontmatter
+- `AGENTS.md` → the same **Skill at a glance** table (**Version** / **Updated**); `check_version_sync.py` checks it
 - `.claude-plugin/marketplace.json` → `metadata.version` **and** `plugins[0].version`
 - `plugins/ultimate-seo-geo/.claude-plugin/plugin.json` → `version`
 - Optional: `README.md` and `plugins/ultimate-seo-geo/README.md` version badges
