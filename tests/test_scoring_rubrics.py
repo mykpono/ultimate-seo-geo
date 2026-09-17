@@ -128,33 +128,3 @@ def test_geo_example_does_not_dock_for_llms_txt():
         f"audit-output-example.md deducts for a missing llms.txt, which Google ignores "
         f"(June 2026). Worked examples are copied verbatim.\nOffending: {offenders}"
     )
-
-
-def test_health_score_example_matches_its_own_deductions():
-    """The Health Score example must apply the deduction schedule it prints.
-
-    It previously computed 51 and then reported 61 -- the pre-deduction base --
-    with an unexplained "adjusted" step, so it demonstrated a procedure and then
-    did not follow it.
-    """
-    path = os.path.join(ROOT, "references", "audit-output-example.md")
-    with open(path, encoding="utf-8") as fh:
-        text = fh.read()
-
-    m = re.search(
-        r"## SEO Health Score: (\d+)/100\s*\n"
-        r"positive_signals=(\d+), deficit_signals=(\d+), base=(\d+);?\s*"
-        r"(?:deductions:)?\s*Critical −15×(\d+), High −8×(\d+), Medium −3×(\d+), Low −1×(\d+)\s*=\s*(\d+)",
-        text,
-    )
-    assert m, "Health Score worked example not found in the expected four-severity form"
-    stated, pos, deficit, base, crit, high, med, low, final = (int(g) for g in m.groups())
-
-    assert round(pos / (pos + deficit) * 100) == base, (
-        f"base_score should be {pos}/({pos}+{deficit})×100 = {pos/(pos+deficit)*100:.1f}, example says {base}"
-    )
-    expected = base - 15 * crit - 8 * high - 3 * med - 1 * low
-    assert expected == final == stated, (
-        f"Health Score example: base {base} minus its own deductions = {expected}, "
-        f"but the line ends at {final} and the headline says {stated}."
-    )

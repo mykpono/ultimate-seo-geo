@@ -695,34 +695,40 @@ def _robots_score(rob: dict) -> int:
     return max(0, min(100, score))
 
 
+# The Health Score weights. They are the single source for the category weights
+# documented in references/procedures/02-full-site-audit.md and AGENTS.md;
+# tests/test_health_score_contract.py fails if the docs drift from them.
+# llms.txt is deliberately absent: Google Search ignores it (June 2026), so
+# it is shown in the report but never weighted.
+CHECK_WEIGHTS = {
+    "security": 8,
+    "social": 5,
+    "robots": 8,
+    "broken_links": 10,
+    "internal_links": 8,
+    "redirects": 3,
+    "pagespeed": 13,
+    "onpage": 10,
+    "readability": 8,
+    "entity": 5,
+    "link_profile": 7,
+    "hreflang": 5,
+    "duplicate_content": 5,
+    "content_quality": 6,
+    "programmatic_seo": 4,
+    "schema_validation": 5,
+    "image_seo": 3,
+    "canonical": 7,
+    "sitemap": 3,
+    "local_signals": 3,
+    "indexnow_probe": 2,
+}
+
+
 def calculate_overall_score(data: dict) -> dict:
     """Calculate overall SEO score from all analyses."""
     scores = {}
-    # llms.txt is deliberately absent: Google Search ignores it (June 2026), so
-    # it is shown in the report but never weighted.
-    weights = {
-        "security": 8,
-        "social": 5,
-        "robots": 8,
-        "broken_links": 10,
-        "internal_links": 8,
-        "redirects": 3,
-        "pagespeed": 13,
-        "onpage": 10,
-        "readability": 8,
-        "entity": 5,
-        "link_profile": 7,
-        "hreflang": 5,
-        "duplicate_content": 5,
-        "content_quality": 6,
-        "programmatic_seo": 4,
-        "schema_validation": 5,
-        "image_seo": 3,
-        "canonical": 7,
-        "sitemap": 3,
-        "local_signals": 3,
-        "indexnow_probe": 2,
-    }
+    weights = dict(CHECK_WEIGHTS)
 
     # Security score
     sec = data["sections"].get("security", {})
@@ -1077,12 +1083,68 @@ def build_summary(data: dict, scores: dict) -> dict:
         "grade": _grade(scores.get("overall") or 0),
         "severity_scale": list(SEVERITY_SCALE),
         "groups": dict(CHECK_GROUPS),
+        "group_scores": {
+            group: {k: v for k, v in entry.items() if not k.startswith("_")}
+            for group, entry in group_scores(scores).items()
+        },
         "measured_categories": scores.get("measured_categories"),
         "unmeasured": scores.get("unmeasured", []),
         "categories": categories,
         "counts": counts,
         "findings": [_summary_finding(i) for i in issues],
     }
+
+
+def nominal_group_weights() -> dict:
+    """Each report group's share of the Health Score, in percent, before any check drops out.
+
+    This is the category weights table the docs print.
+    """
+    total = sum(CHECK_WEIGHTS.values())
+    return {
+        group: round(100 * sum(w for k, w in CHECK_WEIGHTS.items() if CHECK_GROUP[k] == group) / total)
+        for group in CHECK_GROUPS
+    }
+
+
+def group_scores(scores: dict) -> dict:
+    """Roll measured check scores up into the nine report groups.
+
+    A group's score is the weighted mean of its measured checks, and its share
+    is its part of the measured weight, so the overall score is the share-weighted
+    mean of the group scores (exactly before rounding, to within 1 point from the
+    published one-decimal shares): one number, whichever way it is read.
+    """
+    raw = scores.get("raw_categories") or {}
+    weights = scores.get("weights") or {}
+    # A weighted check with no score either failed to run (listed in "unmeasured")
+    # or does not apply to this site (hreflang on a one-language site). Only the
+    # first is a gap in the audit.
+    failed = set(scores.get("unmeasured") or [])
+    measured_total = sum(w for k, w in weights.items() if w and raw.get(k) is not None)
+    result = {}
+    for group, label in CHECK_GROUPS.items():
+        weighted = [k for k, w in weights.items() if w and CHECK_GROUP.get(k) == group]
+        measured = [k for k in weighted if raw.get(k) is not None]
+        weight = sum(weights[k] for k in measured)
+        if weight:
+            value = sum(raw[k] * weights[k] for k in measured) / weight
+            score = round(value)
+            status = "Strong" if score >= 80 else "Needs work" if score >= 50 else "Gap"
+        else:
+            value = score = None
+            status = "Not measured" if failed.intersection(weighted) else "Not applicable"
+        result[group] = {
+            "label": label,
+            "score": score,
+            "share": round(100 * weight / measured_total, 1) if measured_total else 0.0,
+            "status": status,
+            "checks": weighted,
+            "unmeasured": [k for k in weighted if k in failed],
+            "_value": value,
+            "_share": 100 * weight / measured_total if measured_total else 0.0,
+        }
+    return result
 
 
 def _summary_finding(issue: dict) -> dict:

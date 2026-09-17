@@ -2,7 +2,7 @@
 
 Platform-neutral definitions for delegating independent audit slices. Same routing and scripts as `references/procedures/` and `AGENTS.md` — this file only names **who runs what** when using a Task/subagent tool.
 
-Orchestration: run `site_mapper.py` if needed → spawn workers in parallel → merge JSON → `finding_verifier.py` → Health Score. Do **not** run `generate_report.py` and the same per-script workers on the same URL simultaneously.
+Orchestration: run `site_mapper.py` if needed → spawn workers in parallel → merge JSON → `finding_verifier.py` → report. Workers do not produce a /100: only `generate_report.py` computes the Health Score, so a parallel-only audit reports "not scored" with category status (§ 2). Do **not** run `generate_report.py` and the same per-script workers on the same URL simultaneously.
 
 ---
 

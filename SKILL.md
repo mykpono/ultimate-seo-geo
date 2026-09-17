@@ -159,7 +159,7 @@ Topic-to-section routing table: **`references/procedures/01-request-detection-ro
 
 ### What "Done" Looks Like per Mode
 
-**Audit complete** when: SEO Health Score delivered, all Critical and High findings documented in
+**Audit complete** when: SEO Health Score delivered (or "not scored" with the reason), all Critical and High findings documented in
 Finding/Evidence/Impact/Fix/Confidence/Falsifiability/Leading Indicator format (with First-Principle Observation and Dependency for Critical/High), Assumptions Audit section present, no section skipped without reason stated.
 
 **Plan complete** when: findings grouped into four implementation phases (Foundation / Expansion /
@@ -192,7 +192,7 @@ These rules apply to every mode. **Full tables and evaluator pass:** `references
 | LCP / INP / CLS / performance score | `pagespeed.py` ran successfully, or user pasted PageSpeed Insights / CrUX output |
 | Backlink count or referring domains | `link_profile.py` ran and returned data |
 | Organic traffic or impression numbers | GSC / GA4 access confirmed and data retrieved |
-| Health Score /100 | Internal Mode + minimum 5 scripts ran with data |
+| Health Score /100 | Internal Mode + `generate_report.py` measured at least 5 weighted checks; report its `overall` unchanged, else "not scored" |
 | Schema errors or validation status | `validate_schema.py` ran against the page |
 | Schema "not found" on a CMS site | Confirmed via Rich Results Test or browser JS — raw HTML cannot detect JS-injected schema |
 

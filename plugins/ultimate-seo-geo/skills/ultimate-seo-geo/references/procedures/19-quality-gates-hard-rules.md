@@ -12,7 +12,7 @@ After generating any Mode 1 audit output — before delivering it — run this i
 |---|---|---|---|
 | 1 | Every Critical and High finding has an **Evidence** field from actual script output or verifiable page observation | Evidence: present on each | Add evidence or downgrade severity to Medium |
 | 2 | No fabricated metrics | PSI/CrUX/LCP/CLS/INP numbers only appear if `pagespeed.py` returned JSON | Strip invented numbers; replace with "could not retrieve — verify at pagespeed.web.dev" |
-| 3 | Health Score is supported by findings distribution | Critical = −15, High = −8, Medium = −3, Low = −1 applied | Recalculate or note discrepancy |
+| 3 | Health Score comes from `generate_report.py` | The /100 equals the summary's `overall`, unmodified, with at least 5 weighted checks measured; category rows match `group_scores`; unmeasured checks are listed | Replace with the summary's numbers, or write "not scored" with the reason. Never estimate or hand-adjust a score |
 | 4 | Structured format used on every finding | Finding / Evidence / Impact / Fix / Confidence / Falsifiability / Leading Indicator all present. Critical and High findings also include First-Principle Observation and Dependency. | Add missing fields; see `references/thinking-framework.md` |
 | 5 | No duplicate findings | Run `finding_verifier.py` if available; manually check if not | Merge duplicates before scoring |
 | 6 | Scope respected | Full audit only if user confirmed they own the site; Competitive Mode labeled "External Observation Only" | Re-label or scope down |
