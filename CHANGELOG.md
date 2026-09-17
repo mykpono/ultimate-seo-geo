@@ -2,7 +2,30 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **The `generate_report.py --json` summary is `schema_version` 2, the first step toward one report
+  format.** The written audit template and the script disagreed on severities, and v1 collapsed the
+  scripts' own `high`/`medium`/`low` into three levels, losing them.
+  - **Severity:** each finding keeps its severity on one scale, `critical`, `high`, `medium`, `low`,
+    `info`. A script's older `warning` is read as `medium`. The new `severity_scale` field lists it.
+  - **Level:** the old three-level value moves to `level`. `--fail-on`, `--github-annotations` and the
+    HTML report act on it, so gates and exit codes are unchanged.
+  - **Finding fields:** `evidence`, `impact`, `confidence`, `falsifiability`, `leading_indicator`,
+    `dependency`, `source`, `tags` and `group`, named as in the § 2 Finding Format. A field the script
+    did not supply is `null`, never the generic text the HTML view shows.
+  - **Groups:** every check maps to one of the nine § 2 report categories (`group` on checks and
+    findings, `groups` at the top).
+  - **Migrating from v1:** read `level` where you read `severity`; `counts.warning` is `counts.medium`.
+- **§ 2 audit template:** a Severity Scale table matching the summary, a Low Priority section, and
+  Quick Wins / Opportunity Signals as tags rather than severities. The Health Score formula is
+  unchanged.
+
 ### Fixed
+
+- **`finding_verifier.py` ranks High, Medium and Low.** Its table knew only Critical/Warning/Info/Pass,
+  so a "High" finding ranked below Info: merged with an Info duplicate it was downgraded to Info, and
+  it sorted last. Ranking now uses the full scale, case-insensitively.
 
 - **`check_github_release.py` no longer passes a release whose tag or notes are wrong.** v1.13.0
   was published as Latest with its tag on the commit before the version bump (the tagged tree
