@@ -16,6 +16,8 @@ SKILL_MD = Path("SKILL.md")
 MARKETPLACE_JSON = Path(".claude-plugin/marketplace.json")
 PLUGIN_JSON = Path("plugins/ultimate-seo-geo/.claude-plugin/plugin.json")
 PLUGIN_SKILL = Path("plugins/ultimate-seo-geo/skills/ultimate-seo-geo/SKILL.md")
+AGENTS_MD = Path("AGENTS.md")
+PLUGIN_AGENTS = Path("plugins/ultimate-seo-geo/skills/ultimate-seo-geo/AGENTS.md")
 
 versions: dict[str, str] = {}
 
@@ -67,6 +69,17 @@ if v:
 v = extract_table_version(PLUGIN_SKILL)
 if v:
     versions["plugin SKILL.md table"] = v
+
+# AGENTS.md carries the same "Skill at a glance" table as SKILL.md. It was the
+# one declaration the v1.15.0 bump missed (check_tag_matches_version.py caught it
+# after the tag was pushed), so it is checked here, before the tag exists.
+v = extract_table_version(AGENTS_MD)
+if v:
+    versions["AGENTS.md table"] = v
+
+v = extract_table_version(PLUGIN_AGENTS)
+if v:
+    versions["plugin AGENTS.md table"] = v
 
 v = extract_json_version(MARKETPLACE_JSON, "metadata", "version")
 if v:
