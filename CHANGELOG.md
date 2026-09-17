@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+- **`scripts/site_graph.py`** — crawl a site once and save a reusable structural graph
+  (`--out site_graph.json`): sitemap discovery with `lastmod` per URL, BFS link graph, every link
+  tagged with the page region it sits in (header, nav, footer, breadcrumb, aside, main), URL
+  decomposition (`dir_1..dir_3`, depth, dates, ids, pagination), and an explicit
+  `crawl.complete` / `sitemap.complete` verdict so consumers never assume a partial crawl is the
+  whole site. Foundation for the page-type, navigation and site-architecture checks that follow;
+  not yet wired into `generate_report.py`. Regions are landmark-based: a footer built from plain
+  `<div>`s (posthog.com) reports zero footer links rather than guessing.
 
 ## [1.14.0] - 2026-09-16
 
