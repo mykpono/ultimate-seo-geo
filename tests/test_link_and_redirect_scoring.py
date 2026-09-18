@@ -148,3 +148,40 @@ def test_an_upgrade_is_not_flagged_and_a_downgrade_is(monkeypatch):
 def test_a_failed_check_is_unmeasured_not_zero():
     scores = gr.calculate_overall_score({"sections": {"redirects": {"error": "timeout", "final_url": None}}})
     assert "redirects" in scores["unmeasured"] and scores["raw_categories"]["redirects"] is None
+
+
+# --- internal links: the site's own 401 / 429 is unverified, not broken -------------------------
+
+def _crawl(monkeypatch, statuses):
+    site = {SITE: (200, _page(*statuses))}
+    site.update({f"{SITE}{path.strip('/')}": (code, "") for path, code in statuses.items()})
+    monkeypatch.setattr(internal_links.requests, "get",
+                        lambda url, **kw: _Resp(url, *site.get(url, (200, _page()))))
+    return internal_links.crawl_site(SITE, max_depth=1, max_pages=10)
+
+
+def test_a_login_page_or_a_throttled_crawl_is_not_a_broken_page(monkeypatch):
+    result = _crawl(monkeypatch, {"/account": 401, "/busy": 429, "/private": 403, "/gone": 404})
+    assert sorted(p["status"] for p in result["refused_pages"]) == [401, 429]
+    # 403 from the site's own server is still an error: it forbids its own public page.
+    assert sorted(p["status"] for p in result["broken_internal_pages"]) == [403, 404]
+    assert result["refused_pages"][0]["linked_from"] == [SITE]
+
+
+def test_refused_pages_are_one_open_question_that_costs_nothing(monkeypatch):
+    refused = _crawl(monkeypatch, {"/account": 401, "/busy": 429})
+    [gap] = [i for i in refused["issues"] if isinstance(i, dict)]
+    assert gap["kind"] == "data_gap" and gap["severity"] == "info" and "browser" in gap["fix"]
+    assert "/account -> HTTP 401" in gap["evidence"] and "/busy -> HTTP 429" in gap["evidence"]
+    assert not refused["broken_internal_pages"]
+    clean = _crawl(monkeypatch, {})
+    assert _score("internal_links", refused) == _score("internal_links", clean)
+    # The report files it under Open questions, not the plan.
+    collected = gr._collect_issues({"sections": {"internal_links": refused}})
+    assert [i["kind"] for i in collected if i["finding"] == gap["finding"]] == ["data_gap"]
+
+
+def test_an_info_note_is_never_charged_but_a_warning_line_is():
+    note = {"severity": "info", "kind": "data_gap", "finding": "1 internal page(s) could not be verified"}
+    assert _score("internal_links", {"issues": [note]}) == 100
+    assert _score("internal_links", {"issues": [note, "⚠️ 9 link(s) have no anchor text"]}) == 90

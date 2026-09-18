@@ -21,7 +21,7 @@ from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 
-from url_safety import is_crawlable_href
+from url_safety import is_crawlable_href, is_refusal
 
 try:
     import requests
@@ -126,6 +126,7 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
         "soft_404_pages": [],
         "server_error_pages": [],
         "redirected_pages": [],
+        "refused_pages": [],
         "issues": [],
         "recommendations": [],
         "error": None,
@@ -147,6 +148,7 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
     broken_pages = {}  # url -> {"status": int, "linked_from": [urls]}
     soft_404_pages = {}
     server_error_pages = {}
+    refused_pages = {}  # 401 / 429 from the site itself: unverified, not broken
     redirected_pages = {}  # url -> {"final_url": str, "linked_from": [urls]}
 
     def fetch_page(url):
@@ -189,6 +191,9 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
                 url, depth = futures[future]
                 html, final_url, status, page_status, was_redirected = future.result()
 
+                if is_refusal(status, internal=True):
+                    refused_pages[url] = {"status": status, "linked_from": []}
+                    continue
                 if status and 400 <= status < 500:
                     broken_pages[url] = {"status": status, "linked_from": []}
                     continue
@@ -233,6 +238,8 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
             broken_pages[target]["linked_from"].append(source)
         if target in soft_404_pages and source not in soft_404_pages[target]["linked_from"]:
             soft_404_pages[target]["linked_from"].append(source)
+        if target in refused_pages and source not in refused_pages[target]["linked_from"]:
+            refused_pages[target]["linked_from"].append(source)
         if target in server_error_pages and source not in server_error_pages[target]["linked_from"]:
             server_error_pages[target]["linked_from"].append(source)
         if target in redirected_pages and source not in redirected_pages[target]["linked_from"]:
@@ -249,6 +256,10 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
     result["server_error_pages"] = [
         {"url": url, "status": info["status"], "linked_from": info["linked_from"][:5]}
         for url, info in server_error_pages.items()
+    ]
+    result["refused_pages"] = [
+        {"url": url, "status": info["status"], "linked_from": info["linked_from"][:5]}
+        for url, info in refused_pages.items()
     ]
     result["redirected_pages"] = [
         {"url": url, "final_url": info["final_url"], "linked_from": info["linked_from"][:5]}
@@ -293,6 +304,21 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
         result["issues"].append(
             f"🔴 {len(sp)} internal page(s) return 5xx server errors: {urls_preview}"
         )
+
+    if result["refused_pages"]:
+        # Not a page-list summary the score charges per page: an open question.
+        rf = result["refused_pages"]
+        result["issues"].append({
+            "severity": "info",
+            "kind": "data_gap",
+            "code": "internal_links.refused",
+            "finding": f"{len(rf)} internal page(s) could not be verified: the server refused the crawler",
+            "evidence": "; ".join(f"{p['url']} -> HTTP {p['status']}" for p in rf[:5])
+                        + (f"; and {len(rf) - 5} more" if len(rf) > 5 else ""),
+            "fix": "Open each in a browser. A login-gated page (401) refusing a crawler is expected; "
+                   "a 429 means this crawl was throttled, so re-run later or with a lower --max-pages.",
+            "confidence": "Confirmed",
+        })
 
     if result["soft_404_pages"]:
         sf = result["soft_404_pages"]
@@ -412,6 +438,11 @@ def main():
         for ep in result["server_error_pages"][:10]:
             print(f"  • [{ep['status']}] {ep['url']}")
 
+    if result["refused_pages"]:
+        print(f"\nℹ️ Refused the crawler, not verified ({len(result['refused_pages'])}):")
+        for rp in result["refused_pages"][:10]:
+            print(f"  • [{rp['status']}] {rp['url']}")
+
     if result["redirected_pages"]:
         print(f"\n⚠️ Pages With Redirect ({len(result['redirected_pages'])}):")
         for rp in result["redirected_pages"][:10]:
@@ -432,7 +463,7 @@ def main():
     if result["issues"]:
         print(f"\nIssues:")
         for issue in result["issues"]:
-            print(f"  {issue}")
+            print(f"  {'ℹ️ ' + issue['finding'] if isinstance(issue, dict) else issue}")
 
     if result["recommendations"]:
         print(f"\nRecommendations:")

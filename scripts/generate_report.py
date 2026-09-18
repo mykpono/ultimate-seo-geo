@@ -757,13 +757,17 @@ def _internal_links_score(il: dict) -> int:
 
     internal_links.py summarises each non-empty page list in exactly one issue
     ("3 internal page(s) return 404/4xx"). Those are already charged per page, so
-    only the rest (anchor text, nofollow, link counts) are charged per issue. The
+    only the rest (anchor text, nofollow, link counts) are charged per issue, and
+    info-level notes (pages that refused the crawler) are not charged at all. The
     old sum charged a broken page twice, and a 5xx page once as a single issue,
     so a server error scored better than a 404.
     """
     per_page = sum(len(il.get(key) or []) * points for key, points in INTERNAL_LINK_PAGE_PENALTY.items())
     summarised = sum(1 for key in INTERNAL_LINK_PAGE_PENALTY if il.get(key))
-    other = max(0, len(il.get("issues") or []) - summarised)
+    # An info note or open question (refused pages) is not a link problem and costs nothing.
+    charged = [i for i in il.get("issues") or []
+               if not (isinstance(i, dict) and _canonical_severity(i.get("severity")) in ("info", "low"))]
+    other = max(0, len(charged) - summarised)
     return max(0, 100 - per_page - other * INTERNAL_LINK_ISSUE_PENALTY)
 
 
