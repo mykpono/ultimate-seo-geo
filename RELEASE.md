@@ -374,39 +374,71 @@ gh release create vX.Y.Z \
   --target main
 ```
 
-### 6b. Push update to local Claude terminal install (always do this)
+### 6b. The marketplace clone (nothing to run; know where it is)
 
-After every GitHub push, sync the plugin into Claude's local install directory:
+Claude Code installs the plugin from a git clone of this repo in its config directory
+(`$CLAUDE_CONFIG_DIR`, default `~/.claude`), at `plugins/marketplaces/ultimate-seo-geo`.
+`claude plugin update` (6c) fast-forwards that clone itself before it updates an install, so
+there is no separate step. Two things to know:
 
-```bash
-bash setup-plugin.sh && \
-cp -r plugins/ultimate-seo-geo/. \
-  ~/.claude/plugins/marketplaces/ultimate-seo-geo/plugins/ultimate-seo-geo/
-echo "✓ Claude terminal plugin updated — restart claude to reload"
-```
-
-Then restart Claude Code (type `exit`, reopen terminal, run `claude`).
-
-### 6c. Reinstall marketplace cache (always do this)
-
-The Claude Code marketplace cache is a local git clone. It does **not** auto-pull — you must update it manually after every push:
+- **Do not copy files into the clone or `git reset --hard` it.** Copying leaves it with local
+  changes, which break the fast-forward; a hard reset silently discards whatever was there.
+- **If 6c reports the old version**, the clone could not fast-forward. Look at it:
 
 ```bash
-cd ~/.claude/plugins/marketplaces/ultimate-seo-geo && \
-  git fetch origin && git reset --hard origin/main && \
-  echo "✓ Marketplace cache updated to $(git log --oneline -1)"
+M="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/marketplaces/ultimate-seo-geo"
+git -C "$M" status --porcelain && git -C "$M" log --oneline -1   # expect no changes, the tag's commit
 ```
 
-Then restart Claude Code to reload the plugin.
+A clone at `~/.claude/plugins/marketplaces/` when `CLAUDE_CONFIG_DIR` points elsewhere is a
+leftover that Claude Code does not read.
 
-**Verify version matches:**
+### 6c. Update every installed copy, then restart
+
+Each install scope keeps its own copy of the plugin, and the skill may also be checked out or
+copied into individual projects. None of them update when the tag is pushed.
+
+**Plugin installs.** List them, then update each scope; project and local scopes are updated
+from their own project directory. The first update also refreshes the marketplace clone (6b):
+
 ```bash
-python3 -c "
-import json
-p = json.load(open('plugins/ultimate-seo-geo/.claude-plugin/plugin.json'))
-print(f'Marketplace cache version: {p[\"version\"]}')
-"
+claude plugin list --json    # scope, version, projectPath and installPath of each install
+claude plugin update ultimate-seo-geo@ultimate-seo-geo --scope user
+(cd <projectPath> && claude plugin update ultimate-seo-geo@ultimate-seo-geo --scope project)
+(cd <projectPath> && claude plugin update ultimate-seo-geo@ultimate-seo-geo --scope local)
 ```
+
+**Other copies.** Find them first, since nothing keeps them in step. Search by the skill's name,
+not the folder's: a copy can live in a folder with any name.
+
+```bash
+find ~ -maxdepth 8 -name SKILL.md -not -path '*/plugins/*' -not -path '*/node_modules/*' \
+  -exec grep -l '^name: ultimate-seo-geo' {} + 2>/dev/null | sed 's|/SKILL.md$||'
+```
+
+The list includes this repo itself. Paths under a `plugins/` directory are plugin caches that
+Claude Code or Cursor manage, so the search skips them; Cursor's own plugin install is updated
+from Cursor.
+
+- A git clone: `git -C <dir> status --porcelain`, then `git -C <dir> pull --ff-only origin main`.
+- A plain copy: copy the tagged tree over it. If the release deleted or renamed files
+  (`git diff --name-status vPREV vX.Y.Z --diff-filter=DR` lists them), remove those from the copy
+  as well, because a copy without `--delete` leaves them behind.
+
+```bash
+mkdir -p /tmp/usg-vX.Y.Z && git archive vX.Y.Z | tar -x -C /tmp/usg-vX.Y.Z
+rsync -a /tmp/usg-vX.Y.Z/ <dir>/
+```
+
+**Verify.** Every install reports the new version, and the installed files match the tag:
+
+```bash
+claude plugin list --json | python3 -c "import json,sys; print({p['version'] for p in json.load(sys.stdin) if p['id'].startswith('ultimate-seo-geo@')})"   # {'X.Y.Z'}
+diff -rq /tmp/usg-vX.Y.Z/plugins/ultimate-seo-geo/skills/ultimate-seo-geo <installPath>/skills/ultimate-seo-geo   # no output
+```
+
+Then restart Claude Code (and reload any Cursor window that uses a copy). A running session
+keeps the version it started with.
 
 ### 6d. Verify release
 
@@ -431,7 +463,7 @@ After publishing the GitHub Release, users must remove + re-add the plugin to ge
 3. Start a new chat
 
 ### Claude Code (terminal)
-Run step 6b above after every push (it's the canonical update path).
+Run step 6c above after every release: `claude plugin update` for each install scope.
 
 For a fresh install on a new machine:
 ```bash
