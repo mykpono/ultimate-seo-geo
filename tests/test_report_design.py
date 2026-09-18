@@ -189,9 +189,9 @@ def _summary(data):
     return gr.build_summary(data, gr.calculate_overall_score(data))
 
 
-def test_compare_with_previous_matches_findings_by_wording_not_id():
+def test_compare_with_previous_matches_findings_by_code_not_id():
     now = _summary(_data(entity={"issues": [{"severity": "high", "finding": "No Wikidata entry", "fix": "x"}]},
-                         social={"score": 90}))
+                         social={"score": 90}, internal_links={"issues": [], "total_links": 40}))
     then = _summary(_data(internal_links={"issues": ["⚠️ 27 links have no anchor text"]}))
     then["timestamp"] = "2026-08-17T10:00:00"
     delta = gr.compare_with_previous(now, then)

@@ -1189,6 +1189,44 @@ def classify_finding(issue: dict) -> dict:
     return {"kind": kind, "lane": lane, "lane_reason": reason or LANE_REASONS[lane]}
 
 
+# A finding's identity across runs. IDs are renumbered every run and wording
+# carries counts ("2 broken links" becomes "1 broken link"), so neither can say
+# whether a finding is the same one as last time.
+_CODE_SLUG_RE = re.compile(r"^[a-z][a-z0-9_.-]{2,63}$")
+_URL_RE = re.compile(r"https?://[^\s'\"<>)\]]+", re.I)
+_QUOTED_RE = re.compile(r"'([^']{2,80})'|\"([^\"]{2,80})\"|`([^`]{2,80})`")
+
+
+def finding_code(section: str, issue: dict, finding: str) -> tuple:
+    """(code, key) for one finding: its class, and this instance of it.
+
+    code is the script's own "code" (or slug-shaped "type") when it gives one,
+    else the wording with every number, URL and quoted name taken out, so a
+    count that moves does not make a new finding. key adds the subject back (the
+    script's "label" or "url", else the URLs and quoted names in the wording),
+    so two pages with the same defect stay two findings.
+    """
+    text = str(finding or "")
+    supplied = next((str(issue.get(k)).strip().lower() for k in ("code", "type")
+                     if isinstance(issue.get(k), str) and _CODE_SLUG_RE.match(str(issue.get(k)).strip().lower())), None)
+    subjects = [str(issue.get(k)).strip() for k in ("label", "url", "page") if isinstance(issue.get(k), str) and issue.get(k).strip()]
+    if not subjects:
+        subjects = _URL_RE.findall(text) + [next(g for g in m if g) for m in _QUOTED_RE.findall(text)]
+    if supplied:
+        code = supplied if supplied.startswith(f"{section}.") else f"{section}.{supplied}"
+    else:
+        # Only letters are read below, so every number drops out with the punctuation.
+        bare = _QUOTED_RE.sub(" ", _URL_RE.sub(" ", text))
+        head = bare.split(" — ")[0].split(": ")[0]
+        # A short lead-in ("[info] Block 3:") names nothing: read the whole sentence.
+        words = re.findall(r"[a-z]+", head.lower())
+        if len(words) < 3:
+            words = re.findall(r"[a-z]+", bare.lower())
+        code = f"{section}." + ("-".join(words[:8]) or "finding")
+    subject = "|".join(sorted(x.lower().rstrip("/") for x in subjects))
+    return code, f"{code}#{subject}" if subject else code
+
+
 def check_score_gains(scores: dict) -> dict:
     """Points of the overall score each weighted check would add back at 100."""
     raw = scores.get("raw_categories") or {}
@@ -1325,6 +1363,8 @@ def build_summary(data: dict, scores: dict) -> dict:
             lane: [i["id"] for i in items] for lane, items in build_action_plan(issues, scores).items()
         },
         "open_questions": build_open_questions(data, scores, issues),
+        "sections_run": sorted(name for name, value in data["sections"].items()
+                               if isinstance(value, dict) and value and not value.get("error")),
     }
 
 
@@ -1405,6 +1445,10 @@ def _summary_finding(issue: dict) -> dict:
         "kind": issue.get("kind"),
         "lane": issue.get("lane"),
         "lane_reason": issue.get("lane_reason"),
+        "code": issue.get("code"),
+        "key": issue.get("key"),
+        "status": None,
+        "first_seen": None,
     }
 
 
@@ -1819,6 +1863,7 @@ def _collect_issues(data: dict) -> list:
     for number, issue in enumerate(issues, 1):
         issue["id"] = f"F{number:02d}"
         issue.update(classify_finding(issue))
+        issue["code"], issue["key"] = finding_code(issue["section"], issue.get("source_issue") or {}, issue["finding"])
     return issues
 
 
@@ -2306,21 +2351,60 @@ def _check_panels(data: dict) -> dict:
     return panels
 
 
+def _finding_key(finding: dict, from_wording: bool = False) -> str:
+    """A summary finding's identity across runs.
+
+    from_wording ignores a stored key and derives one from the text alone. A
+    summary written before keys existed can only be read that way, and then
+    both sides must be, or a finding whose script supplies a "type" would
+    look resolved and new at once.
+    """
+    if not from_wording and finding.get("key"):
+        return finding["key"]
+    return finding_code(finding.get("section") or "", {}, finding.get("finding") or "")[1]
+
+
+def _brief(finding: dict, **extra) -> dict:
+    return {"id": finding.get("id"), "section": finding.get("section"), "finding": finding.get("finding"),
+            "code": finding.get("code") or _finding_key(finding).split("#")[0], "lane": finding.get("lane"), **extra}
+
+
 def compare_with_previous(summary: dict, previous: dict) -> dict:
     """What changed since an earlier ``--json`` summary of the same site.
 
-    Findings are matched by check and wording, because IDs are renumbered on
-    every run. Returned as plain data so the JSON summary can carry it too.
+    Findings are matched by key (finding_code), not by ID or wording: IDs are
+    renumbered on every run and wording carries counts. An earlier finding whose
+    check did not run this time is "not_rechecked", never "resolved": silence
+    from a check that was rate-limited is not a fix. Returned as plain data so
+    the JSON summary can carry it too.
     """
-    def key(finding: dict) -> tuple:
-        return (finding.get("section"), str(finding.get("finding") or "").strip().lower())
+    before = [f for f in previous.get("findings") or [] if isinstance(f, dict)]
+    legacy = any(not f.get("key") for f in before)
+    current = {_finding_key(f, legacy): f for f in summary.get("findings") or [] if isinstance(f, dict)}
+    earlier = {_finding_key(f, legacy): f for f in before}
+    ran = summary.get("sections_run")
+    ran = set(ran) if isinstance(ran, list) else None
+    unmeasured = set(summary.get("unmeasured") or [])
 
-    current = {key(f): f for f in summary.get("findings") or [] if isinstance(f, dict)}
-    earlier = {key(f): f for f in previous.get("findings") or [] if isinstance(f, dict)}
-    resolved = [{"id": f.get("id"), "section": f.get("section"), "finding": f.get("finding")}
-                for k, f in earlier.items() if k not in current]
-    new = [{"id": f.get("id"), "section": f.get("section"), "finding": f.get("finding")}
-           for k, f in current.items() if k not in earlier]
+    def rechecked(finding: dict) -> bool:
+        section = finding.get("section")
+        return section not in unmeasured and (ran is None or section in ran)
+
+    resolved, not_rechecked, persisting = [], [], []
+    for k, f in earlier.items():
+        if k in current:
+            now = current[k]
+            changed = {}
+            if now.get("severity") != f.get("severity") and f.get("severity"):
+                changed["severity_was"] = f.get("severity")
+            if now.get("finding") != f.get("finding"):
+                changed["finding_was"] = f.get("finding")
+            persisting.append(_brief(now, first_seen=f.get("first_seen") or previous.get("timestamp"), **changed))
+        elif rechecked(f):
+            resolved.append(_brief(f))
+        else:
+            not_rechecked.append(_brief(f))
+    new = [_brief(f) for k, f in current.items() if k not in earlier]
     changes = []
     earlier_categories = previous.get("categories") or {}
     for check, category in (summary.get("categories") or {}).items():
@@ -2336,8 +2420,27 @@ def compare_with_previous(summary: dict, previous: dict) -> dict:
         "score_delta": delta,
         "resolved": resolved,
         "new": new,
+        "persisting": persisting,
+        "not_rechecked": not_rechecked,
         "status_changes": changes,
     }
+
+
+def apply_previous(summary: dict, previous: dict) -> dict:
+    """Attach the comparison to summary and stamp each finding with status and first_seen.
+
+    first_seen carries forward from run to run, so a chain of --previous runs
+    knows how long a finding has been open.
+    """
+    delta = compare_with_previous(summary, previous)
+    seen = {item["id"]: item.get("first_seen") for item in delta["persisting"]}
+    for finding in summary.get("findings") or []:
+        if finding.get("id") in seen:
+            finding["status"], finding["first_seen"] = "persisting", seen[finding["id"]]
+        else:
+            finding["status"], finding["first_seen"] = "new", summary.get("timestamp")
+    summary["previous"] = delta
+    return delta
 
 
 def _coverage_counts(statuses: dict, weights: dict) -> dict:
@@ -2523,25 +2626,62 @@ def build_fix_prompt(data: dict, items: list) -> str:
     return "\n".join(lines)
 
 
-def _plan_row(issue: dict, gains: dict) -> str:
+def _plan_row(issue: dict, gains: dict, since: dict = None) -> str:
     label = CHECK_LABELS.get(issue["section"], issue["section"].replace("_", " ").capitalize())
     fix = f'<p class="plan-fix">{_esc(issue["fix"])}</p>' if issue.get("fix") else (
         '<p class="plan-fix muted">The check named no fix; open the finding for its evidence.</p>')
     gain = gains.get(issue["section"])
     gain_html = (f'<span class="small mono" title="What the whole {_esc(label)} check adds back at 100">'
                  f"check: up to +{gain:g} pts</span>") if gain else ""
+    age = ""
+    if since is not None:
+        first = since.get(issue["id"])
+        age = (_chip("o", f"Open since {_short_date(first)}") if first else _chip("m", "New"))
     dependency = _supplied(issue.get("source_issue") or {}, "dependency", "depends_on")
     dep_html = f'<p class="small"><b>Depends on</b> {_esc(dependency)}</p>' if dependency else ""
     return (
         f'<li class="plan-item" data-key="{issue["id"]}">'
-        f'<div class="plan-top"><a class="pid" href="#{issue["id"]}">{issue["id"]}</a>{_severity_chip(issue["severity"])}'
+        f'<div class="plan-top"><a class="pid" href="#{issue["id"]}">{issue["id"]}</a>{_severity_chip(issue["severity"])}{age}'
         f'<strong>{_esc(_headline(issue["finding"]))}</strong></div>'
         f'{fix}{dep_html}<p class="plan-meta"><span class="chip o">{_esc(label)}</span>{gain_html}</p></li>'
     )
 
 
-def _render_action_plan(data: dict, scores: dict, issues: list) -> str:
+def _render_fixed(delta: dict) -> str:
+    """What the last run found and this run no longer does: the verify step of the loop."""
+    if not delta:
+        return ""
+    resolved = delta.get("resolved") or []
+    skipped = delta.get("not_rechecked") or []
+    if not resolved and not skipped:
+        return ""
+    then = _short_date(delta.get("timestamp"))
+    html = ""
+    if resolved:
+        rows = []
+        for item in resolved:
+            was = f" · was: {LANE_TITLES[item['lane']]}" if item.get("lane") in LANE_TITLES else ""
+            label = CHECK_LABELS.get(item.get("section"), item.get("section") or "")
+            rows.append(f'<li class="ok"><span class="mk">✓</span><div>{_esc(_headline(item.get("finding") or ""))}'
+                        f"<small>{_esc(label + was)}</small></div></li>")
+        html += (
+            '<section class="lane" id="fixed" aria-labelledby="fixed-h"><div class="lane-head">'
+            f'<h3 id="fixed-h">Fixed since the {_esc(then)} run</h3><span class="chip g">{len(resolved)}</span></div>'
+            '<p class="small prose">Found last time, re-checked this time, gone. Matched by finding code, so a count '
+            f'that only moved is not listed here.</p><ul class="qc">{"".join(rows)}</ul></section>'
+        )
+    if skipped:
+        names = _join_labels(sorted({CHECK_LABELS.get(i.get("section"), i.get("section") or "") for i in skipped}))
+        html += _notice(f"{len(skipped)} earlier {'finding was' if len(skipped) == 1 else 'findings were'} not re-checked, because "
+                        f"{_esc(names)} did not run this time. They are not counted as fixed.", "empty", "Not re-checked")
+    return html
+
+
+def _render_action_plan(data: dict, scores: dict, issues: list, delta: dict = None) -> str:
     plan = build_action_plan(issues, scores)
+    since = None
+    if delta:
+        since = {item["id"]: item.get("first_seen") for item in delta.get("persisting") or []}
     gains = check_score_gains(scores)
     total = sum(len(items) for items in plan.values())
     tally = " · ".join(f"{len(plan[lane])} {LANE_TITLES[lane].lower()}" for lane in LANES if plan[lane])
@@ -2550,7 +2690,7 @@ def _render_action_plan(data: dict, scores: dict, issues: list) -> str:
         f'<span class="small mono">{_esc(tally or "nothing to do")}</span></div>'
     )
     if not total:
-        return head + _notice("Nothing to act on. No finding in this run names work to do.", "good")
+        return head + _render_fixed(delta) + _notice("Nothing to act on. No finding in this run names work to do.", "good")
     intro = (
         '<p class="prose">Every finding that names work, sorted by who can do it. Work an agent can finish on its '
         "own comes first; inside each lane the order is severity, then the score the check can recover. "
@@ -2567,7 +2707,7 @@ def _render_action_plan(data: dict, scores: dict, issues: list) -> str:
         items = plan[lane]
         if not items:
             continue
-        rows = "".join(_plan_row(i, gains) for i in items)
+        rows = "".join(_plan_row(i, gains, since) for i in items)
         prompt_html = ""
         if lane == "Auto":
             prompt_html = (
@@ -2584,7 +2724,7 @@ def _render_action_plan(data: dict, scores: dict, issues: list) -> str:
             f'<p class="small prose">{_esc(LANE_REASONS[lane])}</p>'
             f'<ol class="plan">{rows}</ol>{prompt_html}</section>'
         )
-    return head + intro + "".join(blocks)
+    return head + intro + _render_fixed(delta) + "".join(blocks)
 
 
 def _render_open_questions(questions: list) -> str:
@@ -2769,11 +2909,14 @@ def _render_delta(delta: dict) -> str:
     resolved = delta.get("resolved") or []
     new = delta.get("new") or []
     changes = delta.get("status_changes") or []
+    skipped = len(delta.get("not_rechecked") or [])
+    skipped_note = f" · {skipped} not re-checked" if skipped else ""
     change_text = " · ".join(f'{_esc(c.get("label"))} {_esc(c.get("from"))} → {_esc(c.get("to"))}' for c in changes[:4])
     return (
         f'<div class="delta" aria-label="Change since the previous run">'
         f"<div>{score_html}</div>"
-        f'<div><b>{len(resolved)}</b><span>Findings resolved</span><span class="ids">{ids(resolved)}</span></div>'
+        f'<div><b class="{"up" if resolved else ""}">{len(resolved)}</b><span>Findings fixed{skipped_note}</span>'
+        f'<span class="small"><a href="#fixed">{"See what cleared" if resolved else ""}</a></span></div>'
         f'<div><b class="{"dn" if new else ""}">{len(new)}</b><span>New findings</span><span class="ids">{ids(new)}</span></div>'
         f'<div><b>{len(changes)}</b><span>Checks that changed status</span><span class="small">{change_text}</span></div>'
         "</div>"
@@ -3173,7 +3316,7 @@ def generate_html(data: dict, scores: dict, options=None, previous_summary=None)
         f"<p>Every finding and score on this page comes from scripts run against {_esc(url)}. "
         "Scores are a triage signal; confirm high-risk changes such as redirects, canonicals and robots.txt before acting.</p>"
         f"</div>{start}</div>{_render_delta(delta)}</section>\n"
-        f'<section id="plan" aria-labelledby="plan-h">{_render_action_plan(data, scores, issues)}</section>\n'
+        f'<section id="plan" aria-labelledby="plan-h">{_render_action_plan(data, scores, issues, delta)}</section>\n'
         f'<section id="questions" aria-labelledby="questions-h">{_render_open_questions(questions)}</section>\n'
         f'<section id="score" aria-labelledby="score-h">{_render_score(data, scores, stamp, statuses)}</section>\n'
         f'<section id="coverage" aria-labelledby="coverage-h">{_render_coverage(data, scores, issues, entries, coverage, inventory)}</section>\n'
@@ -3723,7 +3866,7 @@ def main():
     scores = calculate_overall_score(data)
     summary = build_summary(data, scores)
     if previous_summary:
-        summary["previous"] = compare_with_previous(summary, previous_summary)
+        apply_previous(summary, previous_summary)
 
     formats = [] if args.fmt == "none" else ["html", "xlsx"] if args.fmt == "all" else [args.fmt]
 
