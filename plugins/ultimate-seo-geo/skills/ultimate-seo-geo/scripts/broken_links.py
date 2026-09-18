@@ -20,7 +20,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 
-from url_safety import is_crawlable_href
+from url_safety import REFUSAL_STATUSES, is_crawlable_href, is_refusal  # noqa: F401 (REFUSAL_STATUSES re-exported)
 
 try:
     import requests
@@ -104,15 +104,9 @@ def _broken_issue(broken: list, finding: str) -> dict:
     }
 
 
-# An external host that answers one of these is refusing the crawler, not
-# missing the page: Yelp, LinkedIn (999) and most review sites do it to every
-# bot. The link is unverified, not broken. An internal URL gets no such benefit
-# of the doubt: a site that 403s its own pages has a real problem.
-REFUSAL_STATUSES = frozenset({401, 403, 429, 999})
-
-
 def is_refused(link: dict) -> bool:
-    return not link.get("is_internal") and link.get("status") in REFUSAL_STATUSES
+    """The host refused the crawler: unverified, not broken (the rule lives in url_safety.is_refusal)."""
+    return is_refusal(link.get("status"), bool(link.get("is_internal")))
 
 
 def _refused_issue(refused: list) -> dict:
@@ -121,7 +115,7 @@ def _refused_issue(refused: list) -> dict:
     return {
         "severity": "info",
         "kind": "data_gap",
-        "finding": f"{len(refused)} external link(s) could not be verified: the host refused the crawler",
+        "finding": f"{len(refused)} link(s) could not be verified: the server refused the crawler",
         "evidence": shown + more,
         "fix": "Open each in a browser. A page that loads there is fine; only then treat a failure as a broken link.",
         "confidence": "Confirmed",

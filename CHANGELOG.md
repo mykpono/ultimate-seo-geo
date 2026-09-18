@@ -4,6 +4,37 @@
 
 _Nothing yet._
 
+## [1.19.1] - 2026-09-18
+
+Two follow-ups to 1.19.0. Patch per D-020: behaviour fixes, no new capability.
+
+### Fixed
+- **A navigation link that refuses the crawler is not "broken on every page".**
+  `navigation_checker.py` reported any status of 400 or more as a High, so a header link to
+  `/account` answering 401, or the site's own rate limiter answering 429 mid-crawl, read as a
+  site-wide dead link. Those are now one info-level `data_gap` (`nav_link_unverified`) in Open
+  questions; 403, 404, 410 and 5xx are still `nav_link_broken`.
+- **One refusal rule.** `url_safety.is_refusal(status, internal)` replaces the private status set
+  1.19.0 added to `broken_links.py`, and both checkers use it: from another host 401 / 403 / 429 /
+  999 mean the crawler was refused; from the audited site only 401 and 429 do. `broken_links.py`
+  therefore also stops calling an internal 401 or 429 a broken link.
+- **One sameAs finding, not one per platform.** `entity_checker.py` raised "Missing sameAs link to
+  X" once per profile: three findings and three score penalties for a single edit to one array. It
+  now raises one (`entity.sameas_missing`, lane `Human`: only the owner knows the URLs) naming every
+  missing profile, and no longer asks for a link to Wikipedia or Wikidata when no article or item
+  exists, since that absence is already its own finding; the finding says what it left out and why.
+- **The entity score counts defects, not notes.** It subtracted 10 per issue whatever its severity,
+  so an info note or a "could not verify" data gap cost as much as a broken profile URL, and the
+  score moved with how findings were itemised. Info and low findings now cost nothing. **Entity
+  scores rise on most sites** (balloonbay.us: entity 50 to 90, overall 93 to 94); the check weighs 5.
+
+### Note
+The first `--previous` comparison across this release lists the three old sameAs findings as fixed
+and the merged one as new, because the finding itself changed. Later runs compare normally.
+
+- `tests/test_refusal_and_sameas.py` (26 tests) and two in `tests/test_navigation_checker.py`, each
+  change validated by reverting it.
+
 ## [1.19.0] - 2026-09-18
 
 The report says who can act. `generate_report.py` used to print every finding the same way,
