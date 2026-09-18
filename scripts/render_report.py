@@ -198,7 +198,14 @@ NAV_JS = """(function(){var nav=document.querySelector('nav.toc');if(!nav)return
 var secs=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));}).filter(Boolean);
 function mark(){var pos=window.pageYOffset+nav.offsetHeight+20,cur=secs[0];secs.forEach(function(s){if(s.offsetTop<=pos)cur=s;});
 links.forEach(function(a){a.classList.toggle('active',!!cur&&a.getAttribute('href')==='#'+cur.id);});}
-window.addEventListener('scroll',mark,{passive:true});mark();})();"""
+window.addEventListener('scroll',mark,{passive:true});mark();})();
+/* In-page links scroll by script. File previews in chat and IDE apps embed the report as an iframe srcdoc,
+   whose base URL is the host page's: a plain fragment link there navigates the frame away. */
+document.addEventListener('click',function(e){if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+var a=e.target.closest('a[href^="#"]');if(!a)return;var id=decodeURIComponent(a.getAttribute('href').slice(1));
+var t=id&&document.getElementById(id);if(!t)return;e.preventDefault();t.scrollIntoView({block:'start'});
+if(!t.hasAttribute('tabindex'))t.setAttribute('tabindex','-1');t.focus({preventScroll:true});
+try{history.replaceState(null,'','#'+id);}catch(err){}});"""
 
 
 def page(src: dict, doc: str, title: str, sub: str, sections, css: str, extra_meta=None) -> str:
@@ -239,7 +246,7 @@ def page(src: dict, doc: str, title: str, sub: str, sections, css: str, extra_me
 <nav class="toc" aria-label="Sections"><div class="toc-in">{toc}</div></nav>
 <div class="shell">
 {"".join(body)}
-<footer>{esc(title)} · {esc(meta.get('date', ''))} · Prepared by {esc(meta.get('prepared_by', ''))} · Set: {set_links} · Generated {esc(src.get('generated', date.today().isoformat()))} by render_report.py from source v{esc(meta.get('version', ''))}.</footer>
+<footer>{esc(title)} · {esc(meta.get('date', ''))} · Prepared by {esc(meta.get('prepared_by', ''))} · Set: {set_links} · Generated {esc(src.get('generated', date.today().isoformat()))} by render_report.py from source v{esc(meta.get('version', ''))}. If a link does nothing in a preview pane, open the file in a web browser.</footer>
 </div>
 <script>{NAV_JS}</script>
 </body>
@@ -442,11 +449,16 @@ def findings_html(ctx: Ctx) -> str:
 
 # --- recommendations -----------------------------------------------------------------
 
-def rec_cells(ctx: Ctx, r: dict, cols) -> list:
+def rec_cells(ctx: Ctx, r: dict, cols, anchor=False) -> list:
+    """anchor: this row is the one element that owns the recommendation's id.
+    Only the full register sets it; every other view links to that row."""
     cells = []
     for c in cols:
         if c == "id":
-            cells.append(f'<a id="{esc(r["id"])}" href="#{esc(r["id"])}" class="mono">{esc(r["id"])}</a>')
+            if anchor:
+                cells.append(f'<a id="{esc(r["id"])}" href="#{esc(r["id"])}" class="mono">{esc(r["id"])}</a>')
+            else:
+                cells.append(f'<a href="{esc(ctx.href(r["id"]) or "#" + r["id"])}" class="mono">{esc(r["id"])}</a>')
         elif c == "action":
             sup = r.get("supersedes")
             extra = ""
@@ -491,10 +503,10 @@ REGISTER_COLS = [("id", "ID", "q"), ("action", "Action", ""), ("fixes", "Fixes",
                  ("deps", "Dependencies", ""), ("done", "Done when", ""), ("status", "Status", "")]
 
 
-def register_table(ctx: Ctx, recs, cols=REGISTER_COLS) -> str:
+def register_table(ctx: Ctx, recs, cols=REGISTER_COLS, anchor=False) -> str:
     rows = []
     for r in recs:
-        row = {"cells": rec_cells(ctx, r, [c for c, _, _ in cols])}
+        row = {"cells": rec_cells(ctx, r, [c for c, _, _ in cols], anchor)}
         if r.get("status") == "dropped":
             row["class"] = "dropped"
         rows.append(row)
@@ -678,7 +690,7 @@ def doc_plan(src, css) -> str:
         owners.setdefault(r.get("owner_role", "—"), []).append(r)
     by_owner = "".join(f"<h3>{esc(o)}</h3>" + register_table(ctx, items, [c for c in REGISTER_COLS if c[0] in ("id", "action", "lane", "effort", "horizon", "status")]) for o, items in sorted(owners.items()))
     sections.append(("owners", "By owner", "By owner", by_owner + render_blocks(ctx, d.get("owners", []))))
-    sections.append(("register", "Register", "The full register", '<p class="small">Every recommendation, including dropped ones (struck through). IDs: T technical · M measurement · G GEO and public facts · C commercial and content · P portfolio.</p>' + register_table(ctx, recs)))
+    sections.append(("register", "Register", "The full register", '<p class="small">Every recommendation, including dropped ones (struck through). IDs: T technical · M measurement · G GEO and public facts · C commercial and content · P portfolio.</p>' + register_table(ctx, recs, anchor=True)))
     decisions = src.get("decisions", [])
     dec_rows = [[f'<a id="{esc(x["id"])}" href="#{esc(x["id"])}" class="mono">{esc(x["id"])}</a>', ctx.inline(x.get("question")), esc(x.get("owner_role")), ctx.inline(x.get("needed_by") or "—"), esc(x.get("status") or "open"),
                  ctx.ids([r["id"] for r in recs if r.get("decision") == x["id"]])] for x in decisions]
@@ -864,7 +876,7 @@ def catalogue_html(css: str) -> str:
         ("coverage", "Coverage", "Scope and coverage (generated)", coverage_html(ctx)),
         ("shape", "Site shape", "Site shape: section table and static tree", site_shape_html(ctx)),
         ("findings", "Findings", "Finding cards: defect, risk, opportunity, keep", "".join(finding_card(ctx, f) for f in src["findings"])),
-        ("register", "Register", "Recommendation register: chips, lanes, dependencies, supersedes, dropped row", register_table(Ctx(src, "plan"), src["recommendations"])),
+        ("register", "Register", "Recommendation register: chips, lanes, dependencies, supersedes, dropped row", register_table(Ctx(src, "plan"), src["recommendations"], anchor=True)),
         ("prompts", "Prompts", "Prompt tier", '<div class="ptier"><div class="ptier-h"><strong>Tier 1 · Category selection</strong><span>Improvado must appear as a named candidate.</span></div>'
          '<div class="prow"><q>What platform should a 2,000-person retailer use to unify marketing data?</q><div class="own"><b>T1.1 · /products, /reporting</b>Needs an enterprise-scale qualifier</div></div></div>'),
         ("pages", "Page card", "Page card", '<div class="pg con"><div class="pg-top">' + chip("Consolidate", "c") + '<span class="pg-url">/products/marketing-attribution</span></div>'

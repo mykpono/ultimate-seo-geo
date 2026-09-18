@@ -4,6 +4,23 @@
 
 _Nothing yet._
 
+## [1.19.5] - 2026-09-18
+
+Every link in the client report set lands on exactly one target. Patch per D-020.
+
+### Fixed
+- **`3-plan.html` gave each recommendation id to several elements.** The timeline, start-today,
+  by-owner and full-register views each wrote `<a id="T1">`, so a link to `#T1` landed on the first
+  copy, not the register row. Only the full register now owns the anchor; the other views, and the
+  brief's first actions, link to it.
+- **Links in the report set did nothing in chat and IDE previews.** `render_report.py` pages lacked
+  the click handler `generate_report.py` has (a preview's iframe `srcdoc` resolves a plain `#id`
+  link against the host page). The handler is now in every document, and the footer says to open
+  the file in a browser where a preview blocks scripts.
+- New tests in `tests/test_report_set.py` render both sample sources and fail on a duplicate id, an
+  in-page link without a target, or a cross-document link (`3-plan.html#T1`) whose target document
+  lacks the id; 4 fail against the previous renderer.
+
 ## [1.19.4] - 2026-09-18
 
 In-page links in the HTML report land on something, and the report says what to do where they
