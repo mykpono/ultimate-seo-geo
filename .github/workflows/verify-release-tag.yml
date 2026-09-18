@@ -3,14 +3,23 @@ name: Verify Release Tag
 # Runs only on release tags. Kept in its own workflow because the main one
 # filters `push` by path, and path filters never match a tag push — a tag job
 # added there would silently never run.
+#
+# After the tag passes verification this workflow CREATES the GitHub Release
+# itself, with notes cut from the CHANGELOG section at the tagged commit. The
+# Marketplace reads Releases, and 1.16.0 / 1.17.0 / 1.18.0 shipped without one
+# when the release step was manual. A tag that fails verification gets no
+# Release, so a tag on the wrong commit can never be served.
 on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
+permissions:
+  contents: write
+
 jobs:
   tag-matches-version:
-    name: Tag matches declared version
+    name: Tag matches declared version, then publish the Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,3 +37,24 @@ jobs:
 
       - name: Verify plugin bundle is in sync at this tag
         run: python3 scripts/check-plugin-sync.py
+
+      - name: Create the GitHub Release from the CHANGELOG section
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          if gh release view "$TAG" --json tagName >/dev/null 2>&1; then
+            echo "Release $TAG already exists; leaving it untouched."
+            exit 0
+          fi
+          python3 scripts/release_tools.py section "$VERSION" > notes.md
+          TITLE="$(python3 scripts/release_tools.py section "$VERSION" --title)"
+          gh release create "$TAG" --title "$TITLE" --notes-file notes.md --target "${GITHUB_SHA}" --verify-tag
+          echo "Published $TITLE ($(wc -c < notes.md) bytes of notes)"
+
+      - name: Verify the published Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/check_github_release.py --version "${GITHUB_REF_NAME#v}"
