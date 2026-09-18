@@ -16,6 +16,7 @@ SCRIPT_EXCLUDE = frozenset({
     "check_github_release.py",
     "check_version_sync.py",
     "check_tag_matches_version.py",
+    "release_tools.py",
 })
 
 

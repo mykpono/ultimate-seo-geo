@@ -16,6 +16,7 @@ on:
       - 'requirements.txt'
       - 'RELEASE.md'
       - '.github/workflows/validate-plugin.yml'
+      - 'CHANGELOG.md'
   pull_request:
     paths:
       - '.claude-plugin/**'
@@ -31,6 +32,7 @@ on:
       - 'requirements.txt'
       - 'RELEASE.md'
       - '.github/workflows/validate-plugin.yml'
+      - 'CHANGELOG.md'
 
 jobs:
   tests:
@@ -138,6 +140,11 @@ jobs:
           set -e
           for f in scripts/*.py; do python3 -m py_compile "$f"; done
           python3 scripts/score_eval_transcript.py --all-fixtures
+
+      - name: CHANGELOG is at most one version ahead of the newest tag
+        run: |
+          git fetch --tags --quiet origin
+          python3 scripts/release_tools.py lag
 
       - name: Check GitHub Marketplace Release
         run: |

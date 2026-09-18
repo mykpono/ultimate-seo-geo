@@ -4,6 +4,30 @@
 
 _Nothing yet._
 
+## [1.18.2] - 2026-09-18
+
+Releases align with tags. Three of the last four versions (1.16.0, 1.17.0, 1.18.0) reached
+main without a GitHub Release, and two of them without a tag, because both were manual steps
+after the merge. Patch per D-020: maintainer tooling only, nothing in the skill changes.
+
+### Added
+- **`.github/workflows/verify-release-tag.yml` publishes the Release.** After a `vX.Y.Z` tag
+  passes the existing checks (tag tree declares the version, plugin bundle in sync) the
+  workflow creates the GitHub Release with the `[X.Y.Z]` CHANGELOG section as notes and its
+  first sentence as the title, then verifies it with `check_github_release.py`. An existing
+  Release is left untouched; a tag that fails verification gets no Release.
+- **`scripts/release_tools.py`** (maintainer-only, excluded from the plugin bundle) —
+  `section X.Y.Z [--title]` prints a CHANGELOG section or a release title; `lag` fails when the
+  CHANGELOG is more than one version ahead of the newest tag. Tests in
+  `tests/test_release_tools.py`.
+- **`validate-plugin.yml` runs the lag check on every pull request**, so a merged release that
+  was never tagged is caught on the next PR rather than weeks later. `CHANGELOG.md` joins the
+  workflow's path filter.
+
+### Changed
+- **`RELEASE.md`** — the guarded tag push in § 6a is now the only human release step; the manual
+  `gh release create` becomes a documented fallback that reuses the workflow's notes.
+
 ## [1.18.1] - 2026-09-18
 
 Completes the 1.18.0 design refresh for the PDF path. Patch per D-020: the same visual system

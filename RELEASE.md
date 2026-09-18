@@ -6,19 +6,19 @@ Use this before tagging or publishing a new version. Run everything from the **r
 
 ---
 
-## ⚠️ REQUIRED: GitHub Release must be created every time
+## ⚠️ REQUIRED: every release is a tag, and CI publishes the Release
 
-The Claude Code Marketplace reads from **GitHub Releases**, not commits. If you push code without creating a release, users will not receive the update.
+The Claude Code Marketplace reads from **GitHub Releases**, not commits. Since 1.18.2 the
+Release is created by `.github/workflows/verify-release-tag.yml` the moment a `vX.Y.Z` tag
+passes verification, with notes cut from the `[X.Y.Z]` CHANGELOG section at the tagged commit.
+The one human step after the release PR merges is the guarded tag push in § 6a. A tag that
+fails verification gets no Release, so a tag on the wrong commit is never served.
 
-**Never skip this command:**
-```bash
-gh release create vX.Y.Z \
-  --title "vX.Y.Z — short summary" \
-  --notes "release notes" \
-  --target main
-```
+`scripts/release_tools.py lag` runs on every pull request and fails when the CHANGELOG is more
+than one version ahead of the newest tag — the signal that a merged release was never tagged
+(how 1.16.0 and 1.18.0 shipped without a Release).
 
-**Verify immediately after:**
+**Verify after the workflow finishes (about a minute after the tag push):**
 ```bash
 python3 scripts/check_github_release.py   # must exit 0: published, notes not empty, tag on GitHub declares the version
 gh release list --limit 3                 # vX.Y.Z must appear as Latest
@@ -337,11 +337,15 @@ git add -A && git commit -m "vX.Y.Z — summary"
 git push origin main
 ```
 
-### 6a. Create GitHub Release (REQUIRED — never skip)
+### 6a. Tag the merged release (REQUIRED — CI publishes the Release from the tag)
 
-The Claude.ai web app Marketplace reads from GitHub Releases, not commits or tags alone. **Without a published Release, the Marketplace will NOT serve the new version.**
+The Claude.ai web app Marketplace reads from GitHub Releases. `verify-release-tag.yml` creates
+the Release for every verified tag, so **the tag is the release**; there is nothing else to run.
 
-**Only after the release PR is merged and pulled.** Tagging before that put v1.12.2, v1.12.3, v1.12.7 and v1.13.0 on the commit before the version bump; v1.13.0 also shipped with empty notes, because the CHANGELOG had no `[X.Y.Z]` section yet. This guard fails until the bump is in your checkout:
+**Only after the release PR is merged and pulled.** Tagging before that put v1.12.2, v1.12.3,
+v1.12.7 and v1.13.0 on the commit before the version bump; v1.13.0 also shipped with empty
+notes, because the CHANGELOG had no `[X.Y.Z]` section yet. This guard fails until the bump is
+in your checkout, and the tag then points at the same commit the Release will be built from:
 
 ```bash
 git checkout main && git pull --ff-only
@@ -350,12 +354,9 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 python3 scripts/check_tag_matches_version.py vX.Y.Z
 ```
 
-```bash
-gh release create vX.Y.Z \
-  --title "vX.Y.Z — summary" \
-  --notes "release notes" \
-  --target main
-```
+Then wait for the **Verify Release Tag** workflow (`gh run watch` or the Actions tab). It
+verifies the tag, creates the Release titled from the section's first sentence with the full
+section as notes, and runs `check_github_release.py` against the result.
 
 **Verify immediately (must exit 0):**
 ```bash
@@ -363,7 +364,15 @@ python3 scripts/check_github_release.py
 gh release list --limit 3   # confirm vX.Y.Z appears as Latest
 ```
 
-> If you pushed and forgot the release: run the `gh release create` command above now. The Marketplace will pick it up within minutes.
+**Fallback only** — if the workflow could not run (Actions outage, token scope), create the
+Release by hand with the same notes the workflow would have used:
+
+```bash
+gh release create vX.Y.Z \
+  --title "$(python3 scripts/release_tools.py section X.Y.Z --title)" \
+  --notes "$(python3 scripts/release_tools.py section X.Y.Z)" \
+  --target main
+```
 
 ### 6b. Push update to local Claude terminal install (always do this)
 

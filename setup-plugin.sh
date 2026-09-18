@@ -86,7 +86,8 @@ fi
 # check_github_release.py — requires gh CLI + network; maintainer deployment tool
 # check_version_sync.py   — CI/repo version alignment tool; maintainer use only
 # check_tag_matches_version.py — release-tag verification; needs git history, maintainer use only
-SCRIPT_EXCLUDE_LIST="check-plugin-sync.py check_github_release.py check_version_sync.py check_tag_matches_version.py"
+# release_tools.py        — CHANGELOG sections + tag-lag check for the release workflow; maintainer use only
+SCRIPT_EXCLUDE_LIST="check-plugin-sync.py check_github_release.py check_version_sync.py check_tag_matches_version.py release_tools.py"
 
 mkdir -p plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts
 rm -f plugins/ultimate-seo-geo/skills/ultimate-seo-geo/scripts/*.py 2>/dev/null || true
