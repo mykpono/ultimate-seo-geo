@@ -84,6 +84,8 @@ h1{font-family:var(--sans);font-size:clamp(34px,5.2vw,54px);line-height:1.02;let
 
 /* section nav */
 nav.toc{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid var(--line)}
+/* Anchor targets clear the sticky section nav. */
+[id]{scroll-margin-top:64px}
 .toc-in{max-width:1080px;margin:0 auto;padding-inline:20px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
 .toc-in a{white-space:nowrap;font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;padding:12px 10px;border-bottom:2px solid transparent}
 .toc-in a:hover,.toc-in a.active{color:var(--accent);border-bottom-color:var(--accent)}

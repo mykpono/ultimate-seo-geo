@@ -4,6 +4,26 @@
 
 _Nothing yet._
 
+## [1.19.4] - 2026-09-18
+
+In-page links in the HTML report land on something, and the report says what to do where they
+cannot. Patch per D-020.
+
+### Fixed
+- **Two report links pointed at ids that were not on the page.** "AI can fix now" linked to
+  `#lane-auto` even when that lane was empty; it now falls back to `#plan`. The delta strip always
+  wrote an (empty) link to `#fixed`, which exists only when something cleared; it is now written
+  only then.
+- **A link to a finding hidden by the severity filter scrolled to nothing.** The click handler now
+  resets the filter to "all" before scrolling.
+- **Why report links "break": chat and IDE file previews embed the report as an iframe `srcdoc`,**
+  whose base URL is the host page, so a plain `#id` link navigates the frame away. The click
+  handler (scroll by script) covers every preview that runs scripts. Where a preview blocks
+  scripts nothing on the page can help, so the footer now says to open the file in a browser. The
+  handler's comment and `report-template.md` no longer blame `data:` URLs.
+- New `tests/test_report_anchors.py` (12 tests) renders seven report shapes and fails on any
+  `href="#…"` without a matching `id`; 8 of them fail with the two link defects reintroduced.
+
 ## [1.19.3] - 2026-09-18
 
 The last link checker follows the refusal rule. Patch per D-020.
