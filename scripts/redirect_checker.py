@@ -51,6 +51,7 @@ def check_redirects(url: str, max_redirects: int = 10, timeout: int = 10) -> dic
         "total_time_ms": 0,
         "has_loop": False,
         "has_mixed_protocol": False,
+        "has_downgrade": False,
         "issues": [],
         "error": None,
     }
@@ -138,13 +139,17 @@ def check_redirects(url: str, max_redirects: int = 10, timeout: int = 10) -> dic
 
     result["total_hops"] = max(0, len(result["chain"]) - 1)
 
-    # Check for mixed protocol
-    protocols = set()
-    for hop in result["chain"]:
-        protocols.add(urlparse(hop["url"]).scheme)
-    if "http" in protocols and "https" in protocols:
-        result["has_mixed_protocol"] = True
-        result["issues"].append("⚠️ Mixed HTTP/HTTPS in redirect chain")
+    # Mixed protocol is normal when the chain upgrades http:// to https://, which
+    # is the redirect every site should have. Only a step from https back down to
+    # http is a defect: it drops the page off TLS and hands Google an insecure URL.
+    schemes = [urlparse(hop["url"]).scheme for hop in result["chain"]]
+    result["has_mixed_protocol"] = "http" in schemes and "https" in schemes
+    downgrade = next((i for i in range(1, len(schemes)) if schemes[i - 1] == "https" and schemes[i] == "http"), None)
+    result["has_downgrade"] = downgrade is not None
+    if downgrade is not None:
+        result["issues"].append(
+            f"🔴 Redirect downgrades HTTPS to HTTP at step {downgrade} — keep every hop on https"
+        )
 
     # Check chain length
     if result["total_hops"] > 2:
