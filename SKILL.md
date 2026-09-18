@@ -1,15 +1,15 @@
 ---
 name: ultimate-seo-geo
 description: Audits and optimizes websites for search engine visibility (SEO) and AI search citation (GEO), covering technical health, E-E-A-T content scoring, domain authority, structured data, rich results, and entity signals. Use when running SEO audits, diagnosing traffic drops or ranking losses, generating Schema.org JSON-LD, checking Core Web Vitals, crawlability, robots.txt, sitemaps, hreflang, backlinks, planning content strategy or site migrations, fixing indexing issues, or optimizing for AI Overviews, ChatGPT, and Perplexity. NOT for paid ads (PPC/SEM), social media strategy, email marketing, or general web development unrelated to search.
-version: 1.18.2
+version: 1.19.0
 ---
 
 # Ultimate SEO + GEO — LLM-Agnostic SEO Agent
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.18.2 |
-| **Updated** | 2026-09-17 |
+| **Version** | 1.19.0 |
+| **Updated** | 2026-09-18 |
 | **License** | MIT |
 | **Author** | Myk Pono |
 | **Lab** | [lab.mykpono.com](https://lab.mykpono.com) |
@@ -115,6 +115,9 @@ expected outcome, and the effort required. Output: Implementation Phases table +
 Do the work. Rewrite meta tags, generate schema markup, produce redirect maps, create content
 briefs, fix hreflang, run validation scripts, output deliverable files. Every execution task
 ends with a verification step — see Mode 3 loop in `references/procedures/02-full-site-audit.md`.
+After a `generate_report.py` run, work the summary's `action_plan` in lane order: `Auto` first
+(safe, no sign-off), then `Assisted` (High-Risk gate applies), and hand `Human` / `Decision` items
+and `open_questions` back to the user. Open questions are missing data, never findings.
 
 Most requests involve all three in sequence: **Audit → Plan → Execute**. Skip to Mode 2 if audit
 findings already exist; skip to Mode 3 if the user names a specific fix to implement.

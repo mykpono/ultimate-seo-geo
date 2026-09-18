@@ -1093,6 +1093,167 @@ CHECK_GROUP = {
 DISPLAY_ONLY_CHECKS = ("page_types", "navigation", "architecture")
 CONFIDENCE_LABELS = ("Confirmed", "Likely", "Hypothesis")
 
+# Who acts on a finding. The vocabulary is the recommendation register's
+# (references/report-template/report-template.md § 5), so the automated report
+# and the client set speak one language. "Auto" means no human judgement or
+# authority is needed; whether an agent can reach the code is not known here.
+LANES = ("Auto", "Assisted", "Human", "Decision")
+LANE_TITLES = {
+    "Auto": "AI can fix now",
+    "Assisted": "AI drafts, you approve",
+    "Human": "Needs a human",
+    "Decision": "Needs a decision",
+}
+LANE_REASONS = {
+    "Auto": "Safe change class: markup, metadata or copy an agent can change and re-check.",
+    "Assisted": "High-risk change class: an agent drafts it; a person confirms before it ships.",
+    "Human": "Needs a fact, an account or off-site work an agent does not have.",
+    "Decision": "A page to create: the company decides whether to build it before anyone writes it.",
+}
+# Each check's usual lane, from the Safe / High-Risk table of
+# references/procedures/02-full-site-audit.md (Mode 3). tests pin that every
+# check has one.
+CHECK_LANE = {
+    "onpage": "Auto", "social": "Auto", "schema_validation": "Auto", "image_seo": "Auto",
+    "internal_links": "Auto", "broken_links": "Auto", "navigation": "Auto", "readability": "Auto",
+    "content_quality": "Auto", "article": "Auto", "citability": "Auto", "llms_txt": "Auto",
+    "sitemap": "Auto", "indexnow_probe": "Auto", "local_signals": "Auto",
+    "canonical": "Assisted", "robots": "Assisted", "ai_search_access": "Assisted", "ai_bot_access": "Assisted",
+    "redirects": "Assisted", "hreflang": "Assisted", "security": "Assisted", "pagespeed": "Assisted",
+    "duplicate_content": "Assisted", "programmatic_seo": "Assisted", "hidden_instructions": "Assisted",
+    "architecture": "Assisted",
+    "entity": "Human", "link_profile": "Human",
+    "page_types": "Decision",
+}
+# A finding's own words outrank its check's usual lane: a robots.txt edit raised
+# by any check is still high-risk, and no check can create a Wikipedia article.
+_HIGH_RISK_RE = re.compile(
+    r"robots\.txt|\bcanonical|\bredirect|\bnoindex\b|\bhreflang\b|\b30[1278]\b|\.htaccess|\bfirewall\b|\bWAF\b", re.I)
+_HUMAN_RE = re.compile(
+    r"wikipedia|wikidata|linkedin|crunchbase|knowledge panel|press coverage|notability|backlink|referring domain"
+    r"|google business profile|\bGBP\b|\b(?:customer|google|more|new) reviews\b|\bmanually\b|\bsameAs\b", re.I)
+# Words that mean the check could not see, not that the site is wrong.
+_DATA_GAP_RE = re.compile(
+    r"\bnot (?:measured|assessed|verified|checked|available|fetched)\b|\bcould not (?:be )?(?:verif|fetch|measur|determin|assess|check)"
+    r"|\bunable to\b|\bno data\b|\bnot enough (?:data|pages)\b|\bcrawl (?:stopped|incomplete)\b", re.I)
+# What closes an unmeasured check, when there is something more useful to say
+# than "run it again".
+_UNMEASURED_HINTS = {
+    "pagespeed": "Set PAGESPEED_API_KEY and re-run, or run `pagespeed.py` on its own; the public quota is rate-limited.",
+    "link_profile": "Re-run `link_profile.py` with a larger crawl.",
+    "duplicate_content": "Re-run `duplicate_content.py`; it needs at least two fetched pages.",
+}
+
+
+def _scale_value(value, scale):
+    """value matched to a member of scale, case-insensitively, else None."""
+    text = str(value or "").strip().lower()
+    return next((item for item in scale if item.lower() == text), None)
+
+
+def classify_finding(issue: dict) -> dict:
+    """{"kind", "lane", "lane_reason"} for one collected issue.
+
+    kind is defect, opportunity or data_gap. A data gap is the check saying it
+    could not see, so it carries no lane: it belongs in Open questions, not in
+    the plan. A script may state "kind", "lane" and "lane_reason" itself and is
+    believed. Wording alone only moves an info-level finding to data_gap, so a
+    real defect is never hidden by a phrase.
+    """
+    source = issue.get("source_issue") or {}
+    tags = [str(t) for t in source.get("tags")] if isinstance(source.get("tags"), list) else []
+    text = " ".join(str(part or "") for part in (issue.get("finding"), issue.get("fix")))
+
+    kind = _scale_value(source.get("kind"), ("defect", "opportunity", "data_gap"))
+    if not kind:
+        if "opportunity" in tags:
+            kind = "opportunity"
+        elif "data_gap" in tags or (issue.get("severity") == "info" and _DATA_GAP_RE.search(text)):
+            kind = "data_gap"
+        else:
+            kind = "defect"
+    if kind == "data_gap":
+        return {"kind": kind, "lane": None, "lane_reason": None}
+
+    lane = _scale_value(source.get("lane"), LANES)
+    reason = _supplied(source, "lane_reason")
+    if not lane:
+        if kind == "opportunity":
+            lane = "Decision"
+        elif _HUMAN_RE.search(text):
+            lane = "Human"
+        elif _HIGH_RISK_RE.search(text):
+            lane = "Assisted"
+        else:
+            lane = CHECK_LANE.get(issue.get("section"), "Assisted")
+    return {"kind": kind, "lane": lane, "lane_reason": reason or LANE_REASONS[lane]}
+
+
+def check_score_gains(scores: dict) -> dict:
+    """Points of the overall score each weighted check would add back at 100."""
+    raw = scores.get("raw_categories") or {}
+    weights = scores.get("weights") or {}
+    total = sum(w for k, w in weights.items() if w and raw.get(k) is not None)
+    if not total:
+        return {}
+    return {k: round((100 - raw[k]) * w / total, 1)
+            for k, w in weights.items() if w and raw.get(k) is not None and k not in DISPLAY_ONLY_CHECKS}
+
+
+def build_action_plan(issues: list, scores: dict) -> dict:
+    """Findings someone can act on, by lane, in the order to do them.
+
+    Within a lane: severity first, then the score its check can recover. An
+    info-level note with no fix is an observation, not an action, and a data gap
+    is a question; both stay out.
+    """
+    gains = check_score_gains(scores)
+    plan = {lane: [] for lane in LANES}
+    for issue in issues:
+        lane = issue.get("lane")
+        if lane not in plan or (issue["severity"] == "info" and not issue.get("fix")):
+            continue
+        plan[lane].append(issue)
+    for items in plan.values():
+        items.sort(key=lambda i: (SEVERITY_SCALE.index(i["canonical_severity"]), -gains.get(i["section"], 0), i["id"]))
+    return plan
+
+
+def build_open_questions(data: dict, scores: dict, issues: list) -> list:
+    """What the run could not see: unmeasured checks, then data-gap findings.
+
+    Each says what closes it. None of them is a defect, so none is counted in
+    the severity tallies or placed in the action plan.
+    """
+    questions = []
+    weights = scores.get("weights") or {}
+    for key in scores.get("unmeasured") or []:
+        section = _source_section(data["sections"], key)
+        error = section.get("error") if isinstance(section, dict) else None
+        label = CHECK_LABELS.get(key, key)
+        questions.append({
+            "id": f"Q-{key}",
+            "check": key,
+            "question": f"{label} was not measured.",
+            "why": _clip(_plain(str(error)), 240) if error else "The check returned no result.",
+            "close": _UNMEASURED_HINTS.get(key, f"Re-run the report; if it fails again, run the {label} check on its own to see the error."),
+            "unlocks": (f"{weights[key]} points of weight in {CHECK_GROUPS.get(CHECK_GROUP.get(key), 'the score')}"
+                        if weights.get(key) else None),
+        })
+    for issue in issues:
+        if issue.get("kind") != "data_gap":
+            continue
+        source = issue.get("source_issue") or {}
+        questions.append({
+            "id": issue["id"],
+            "check": issue["section"],
+            "question": issue["finding"],
+            "why": _supplied(source, "evidence"),
+            "close": issue.get("fix") or None,
+            "unlocks": None,
+        })
+    return questions
+
 
 def _canonical_severity(value) -> str:
     return _CANONICAL_SEVERITY.get(str(value or "info").strip().lower(), "info")
@@ -1160,6 +1321,10 @@ def build_summary(data: dict, scores: dict) -> dict:
         "categories": categories,
         "counts": counts,
         "findings": [_summary_finding(i) for i in issues],
+        "action_plan": {
+            lane: [i["id"] for i in items] for lane, items in build_action_plan(issues, scores).items()
+        },
+        "open_questions": build_open_questions(data, scores, issues),
     }
 
 
@@ -1237,6 +1402,9 @@ def _summary_finding(issue: dict) -> dict:
         "dependency": _supplied(source, "dependency", "depends_on"),
         "source": f"script:{issue['section']}",
         "tags": [str(t) for t in tags] if isinstance(tags, list) else [],
+        "kind": issue.get("kind"),
+        "lane": issue.get("lane"),
+        "lane_reason": issue.get("lane_reason"),
     }
 
 
@@ -1650,6 +1818,7 @@ def _collect_issues(data: dict) -> list:
     issues.sort(key=lambda x: SEVERITY_SCALE.index(x["canonical_severity"]))
     for number, issue in enumerate(issues, 1):
         issue["id"] = f"F{number:02d}"
+        issue.update(classify_finding(issue))
     return issues
 
 
@@ -2213,10 +2382,7 @@ def _short_date(timestamp) -> str:
 
 
 def _finding_kind(issue: dict) -> str:
-    tags = (issue.get("source_issue") or {}).get("tags")
-    if isinstance(tags, list) and "opportunity" in [str(t) for t in tags]:
-        return "opportunity"
-    return "defect"
+    return issue.get("kind") or classify_finding(issue)["kind"]
 
 
 def _finding_card(issue: dict) -> str:
@@ -2246,6 +2412,8 @@ def _finding_card(issue: dict) -> str:
         rows.append(("Confidence", text))
     if issue["fix"]:
         rows.append(("Fix", _esc(issue["fix"])))
+    if issue.get("lane"):
+        rows.append(("Who", f'{_lane_chip(issue["lane"])} {_esc(issue.get("lane_reason") or "")}'))
     watch = _supplied(source, "leading_indicator", "metric")
     if watch:
         rows.append(("Watch", _esc(watch)))
@@ -2275,11 +2443,14 @@ def _render_findings(issues: list) -> str:
     tally = (f'{len(defects)} · {counts["critical"]} critical · {counts["warning"]} warning · {counts["info"]} info')
     if opportunities:
         tally += f' · {len(opportunities)} {"opportunity" if len(opportunities) == 1 else "opportunities"}'
+    questions = sum(1 for i in issues if _finding_kind(i) == "data_gap")
+    if questions:
+        tally += f' · {questions} moved to open questions'
     head = (
-        '<div class="sec-head"><span class="sec-n">05</span><h2 id="findings-h">Findings</h2>'
+        '<div class="sec-head"><span class="sec-n">07</span><h2 id="findings-h">Findings</h2>'
         f'<span class="small mono">{tally}</span></div>'
     )
-    if not issues:
+    if not defects and not opportunities:
         return head + _notice("No findings. Every check came back without an issue.", "good")
 
     filters = "".join(
@@ -2293,9 +2464,11 @@ def _render_findings(issues: list) -> str:
         )
     )
     intro = (
-        '<p class="prose">Ordered by severity, then by the check that raised them. Every card names its '
-        "evidence when the check supplied it, the fix, and the check to open for detail. "
-        "Opportunities (pages to create) are listed separately and never count against the score.</p>"
+        '<p class="prose">The evidence register behind the <a href="#plan">action plan</a>, ordered by severity, '
+        "then by the check that raised them. Every card names its evidence when the check supplied it, the fix, "
+        "who can act on it, and the check to open for detail. Opportunities (pages to create) are listed separately "
+        "and never count against the score; things a check could not see are under "
+        '<a href="#questions">open questions</a>.</p>'
         f'<div class="filters" id="finding-filter" role="group" aria-label="Filter by severity">{filters}</div>'
     )
 
@@ -2326,6 +2499,121 @@ def _render_findings(issues: list) -> str:
             + "".join(_finding_card(i) for i in opportunities)
         )
     return head + intro + index + f'<div id="finding-cards">{cards}</div>' + opp_html
+
+
+def _lane_chip(lane) -> str:
+    return f'<span class="chip lane-{_esc(lane)}">{_esc(LANE_TITLES.get(lane, lane))}</span>' if lane else ""
+
+
+def build_fix_prompt(data: dict, items: list) -> str:
+    """The request that hands the Auto lane back to an agent, as plain text."""
+    lines = [
+        f"Using the ultimate-seo-geo skill in Mode 3 (Execute), fix these findings from the "
+        f"{_short_date(data.get('timestamp'))} report for {data.get('url')}.",
+        "All are in the Safe change class. Show each change before applying it, skip any that turns out "
+        "to need a robots.txt, canonical, redirect, noindex or hreflang edit, and afterwards re-run "
+        "generate_report.py with --previous pointing at this run's JSON summary to confirm they are gone.",
+        "",
+    ]
+    for issue in items:
+        line = f"- {issue['id']} [{issue['section']}] {issue['finding']}"
+        if issue.get("fix"):
+            line += f" Fix: {issue['fix']}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _plan_row(issue: dict, gains: dict) -> str:
+    label = CHECK_LABELS.get(issue["section"], issue["section"].replace("_", " ").capitalize())
+    fix = f'<p class="plan-fix">{_esc(issue["fix"])}</p>' if issue.get("fix") else (
+        '<p class="plan-fix muted">The check named no fix; open the finding for its evidence.</p>')
+    gain = gains.get(issue["section"])
+    gain_html = (f'<span class="small mono" title="What the whole {_esc(label)} check adds back at 100">'
+                 f"check: up to +{gain:g} pts</span>") if gain else ""
+    dependency = _supplied(issue.get("source_issue") or {}, "dependency", "depends_on")
+    dep_html = f'<p class="small"><b>Depends on</b> {_esc(dependency)}</p>' if dependency else ""
+    return (
+        f'<li class="plan-item" data-key="{issue["id"]}">'
+        f'<div class="plan-top"><a class="pid" href="#{issue["id"]}">{issue["id"]}</a>{_severity_chip(issue["severity"])}'
+        f'<strong>{_esc(_headline(issue["finding"]))}</strong></div>'
+        f'{fix}{dep_html}<p class="plan-meta"><span class="chip o">{_esc(label)}</span>{gain_html}</p></li>'
+    )
+
+
+def _render_action_plan(data: dict, scores: dict, issues: list) -> str:
+    plan = build_action_plan(issues, scores)
+    gains = check_score_gains(scores)
+    total = sum(len(items) for items in plan.values())
+    tally = " · ".join(f"{len(plan[lane])} {LANE_TITLES[lane].lower()}" for lane in LANES if plan[lane])
+    head = (
+        '<div class="sec-head"><span class="sec-n">02</span><h2 id="plan-h">Action plan</h2>'
+        f'<span class="small mono">{_esc(tally or "nothing to do")}</span></div>'
+    )
+    if not total:
+        return head + _notice("Nothing to act on. No finding in this run names work to do.", "good")
+    intro = (
+        '<p class="prose">Every finding that names work, sorted by who can do it. Work an agent can finish on its '
+        "own comes first; inside each lane the order is severity, then the score the check can recover. "
+        "&ldquo;AI can fix now&rdquo; means the change needs no human judgement or sign-off; it still needs an agent "
+        "with access to the site&rsquo;s code or CMS. Evidence for every item is in the "
+        '<a href="#findings">findings register</a>.</p>'
+    )
+    notes = sum(1 for i in issues if i.get("lane") and i["severity"] == "info" and not i.get("fix"))
+    if notes:
+        intro += (f'<p class="small prose">{notes} informational {"note names" if notes == 1 else "notes name"} no fix and '
+                  "stay in the findings register only.</p>")
+    blocks = []
+    for lane in LANES:
+        items = plan[lane]
+        if not items:
+            continue
+        rows = "".join(_plan_row(i, gains) for i in items)
+        prompt_html = ""
+        if lane == "Auto":
+            prompt_html = (
+                '<details class="fix-prompt" open><summary>Hand this lane to an agent</summary>'
+                '<p class="small">Paste this into Claude Code, Cursor or any agent that has the skill and the site&rsquo;s code.</p>'
+                f'<pre class="mono" id="fix-prompt-text">{_esc(build_fix_prompt(data, items))}</pre>'
+                '<button type="button" class="copy-btn" id="fix-prompt-copy" data-copy="fix-prompt-text">Copy fix prompt</button>'
+                "</details>"
+            )
+        blocks.append(
+            f'<section class="lane" id="lane-{lane.lower()}" aria-labelledby="lane-{lane.lower()}-h">'
+            f'<div class="lane-head"><h3 id="lane-{lane.lower()}-h">{_esc(LANE_TITLES[lane])}</h3>'
+            f'<span class="chip lane-{lane}">{len(items)}</span></div>'
+            f'<p class="small prose">{_esc(LANE_REASONS[lane])}</p>'
+            f'<ol class="plan">{rows}</ol>{prompt_html}</section>'
+        )
+    return head + intro + "".join(blocks)
+
+
+def _render_open_questions(questions: list) -> str:
+    head = (
+        '<div class="sec-head"><span class="sec-n">03</span><h2 id="questions-h">Open questions</h2>'
+        f'<span class="small mono">{len(questions)} open</span></div>'
+    )
+    if not questions:
+        return head + _notice("Nothing open. Every check ran and none reported a blind spot.", "good")
+    intro = (
+        '<p class="prose">What this run could not see. These are not defects and are not in the plan or the '
+        "severity counts: each one is information to get before the matching part of the audit can be trusted.</p>"
+    )
+    rows = []
+    for q in questions:
+        label = CHECK_LABELS.get(q["check"], q["check"])
+        why = f'<small>{_esc(q["why"])}</small>' if q.get("why") else ""
+        unlocks = f'<small>Unlocks: {_esc(q["unlocks"])}</small>' if q.get("unlocks") else ""
+        rows.append(
+            f'<tr data-key="{_esc(q["id"])}" id="{_esc(q["id"])}"><td class="q">{_esc(q["id"])}</td>'
+            f'<td>{_esc(q["question"])}{why}</td>'
+            f'<td>{_esc(q.get("close") or "No next step named by the check.")}{unlocks}</td>'
+            f'<td class="small"><a href="#check-{_esc(q["check"])}">{_esc(label)}</a></td></tr>'
+        )
+    return head + intro + (
+        '<div class="tw"><table class="questions" aria-label="Open questions"><thead><tr>'
+        '<th scope="col">ID</th><th scope="col">What is not known</th><th scope="col">What closes it</th>'
+        f'<th scope="col">Check</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
+    )
 
 
 def _check_entries(data: dict, scores: dict) -> list:
@@ -2454,7 +2742,7 @@ def _render_score(data: dict, scores: dict, stamp: str, statuses: dict) -> str:
             source += f" · {not_run} weighted {'check' if not_run == 1 else 'checks'} did not run"
         source += ". Shown unmodified; display-only checks carry no weight."
     return (
-        '<div class="sec-head"><span class="sec-n">02</span><h2 id="score-h">Health Score</h2></div>'
+        '<div class="sec-head"><span class="sec-n">04</span><h2 id="score-h">Health Score</h2></div>'
         f'<div class="score">{number}<p class="score-src">Source: generate_report.py · {_esc(stamp)}<br>{source}</p>'
         f'<div class="bars" role="img" aria-label="Score by category">{"".join(bars)}</div></div>'
         '<p class="small prose">Category shares are the weights of the checks that ran, renormalised. A category with '
@@ -2512,7 +2800,7 @@ def _render_coverage(data: dict, scores: dict, issues: list, entries: list, coun
     else:
         claim = _notice("No site graph: the structure checks did not run, so absence claims are withheld.", "flag")
     return (
-        '<div class="sec-head"><span class="sec-n">03</span><h2 id="coverage-h">Scope and coverage</h2></div>'
+        '<div class="sec-head"><span class="sec-n">05</span><h2 id="coverage-h">Scope and coverage</h2></div>'
         f'<div class="cov" aria-label="Inventory and completeness">{tiles_html}</div>{claim}'
         '<p class="small prose">Every check with its status, sorted weakest first. Weighted checks score 0 to 100 and '
         "carry a weight; display-only checks are reviewed but never move the score; a check that failed to run is "
@@ -2533,7 +2821,7 @@ def _render_site_shape(data: dict) -> str:
     sm = sm if isinstance(sm, dict) else {}
     if not (pt or nv or ar):
         return ""
-    parts = ['<div class="sec-head"><span class="sec-n">04</span><h2 id="shape-h">Site shape</h2></div>',
+    parts = ['<div class="sec-head"><span class="sec-n">06</span><h2 id="shape-h">Site shape</h2></div>',
              '<p class="prose">Measured by the structure checks on the shared crawl. Shown, not weighted.</p>']
 
     by_intent = pt.get("by_intent") or {}
@@ -2656,7 +2944,7 @@ def _render_geo(statuses: dict) -> str:
         items.append(f'<li class="{css}"><span class="mk">{mark}</span><div>{_esc(question)}'
                      f'<small>{_esc(CHECK_LABELS.get(key, key))} · {_esc(label)} · <a href="#check-{key}">detail</a></small></div></li>')
     return (
-        '<div class="sec-head"><span class="sec-n">06</span><h2 id="geo-h">GEO readiness</h2></div>'
+        '<div class="sec-head"><span class="sec-n">08</span><h2 id="geo-h">GEO readiness</h2></div>'
         '<p class="prose">Whether AI assistants can reach, read and cite this site. Each line is the status of one check.</p>'
         f'<ul class="qc">{"".join(items)}</ul>'
     )
@@ -2678,7 +2966,7 @@ def _render_platform(data: dict) -> str:
     )
     plan_title = "Fix plan" if platform == "Unknown" else f"Fix plan for {platform}"
     return (
-        '<div class="sec-head"><span class="sec-n">08</span><h2 id="platform-h">Platform</h2></div>'
+        '<div class="sec-head"><span class="sec-n">09</span><h2 id="platform-h">Platform</h2></div>'
         '<p class="prose">Inferred from signals in the HTML source. Fixes are phrased for the detected platform.</p>'
         f'<div class="two-col"><div>{left}</div>'
         f'<div>{_subhead(plan_title)}{render_environment_fixes(data.get("environment_fixes", []))}</div></div>'
@@ -2720,9 +3008,9 @@ def generate_html(data: dict, scores: dict, options=None, previous_summary=None)
     """Generate the HTML report: the report-set design system, one page, the spine.
 
     Masthead with coverage bar → verdict and figures → delta since the previous
-    run → Health Score by category → scope and coverage → site shape → findings
-    by kind → GEO readiness → recommendations → platform → appendix of check
-    details. Every section is in the markup; JavaScript only filters and
+    run → action plan by lane (who can act) → open questions (what the run could
+    not see) → Health Score by category → scope and coverage → site shape →
+    findings by kind → GEO readiness → platform → appendix of check details. Every section is in the markup; JavaScript only filters and
     scroll-spies, so print and PDF show everything.
     """
     opts = _report_options(options)
@@ -2756,10 +3044,16 @@ def generate_html(data: dict, scores: dict, options=None, previous_summary=None)
     if previous_summary:
         delta = compare_with_previous(build_summary(data, scores), previous_summary)
 
+    plan = build_action_plan(issues, scores)
+    questions = build_open_questions(data, scores, issues)
     lede = (
-        f"{len(issues)} findings: {counts['critical']} critical, {counts['warning']} warnings "
+        f"{len(defects)} findings: {counts['critical']} critical, {counts['warning']} warnings "
         f"and {counts['info']} informational."
     )
+    if plan["Auto"]:
+        lede += f" An agent can fix {len(plan['Auto'])} of them without sign-off."
+    if questions:
+        lede += f" {len(questions)} open {'question' if len(questions) == 1 else 'questions'} about what the run could not see."
     if gaps:
         lede += " Weakest checks: " + _join_labels([CHECK_LABELS[k] for k in gaps]) + "."
     if inventory.get("site_type"):
@@ -2767,14 +3061,23 @@ def generate_html(data: dict, scores: dict, options=None, previous_summary=None)
 
     lead = next((i for i in defects if i["severity"] == "critical"), None) or next(
         (i for i in defects if i["severity"] == "warning"), None)
-    if lead:
-        lead_label = CHECK_LABELS.get(lead["section"], lead["section"])
-        lead_fix = f'<p>{_esc(lead["fix"])}</p>' if lead["fix"] else ""
+    # Work an agent can finish alone goes first; the most severe finding is
+    # still named when it is someone else's to do.
+    first = next((i for i in plan["Auto"] if i["severity"] in ("critical", "warning")), None) or lead
+    if first:
+        first_label = CHECK_LABELS.get(first["section"], first["section"])
+        first_fix = f'<p>{_esc(first["fix"])}</p>' if first["fix"] else ""
+        also = ""
+        if lead and lead is not first:
+            also = (f'<p class="small">Most severe, and not an agent&rsquo;s to fix alone: '
+                    f'<span class="ids"><a href="#{lead["id"]}">{lead["id"]}</a></span>'
+                    f'{_esc(_headline(lead["finding"], 80))}</p>')
         start = (
-            '<div class="start"><span class="label">Start here</span>'
-            f'<h3>{_esc(_headline(lead["finding"]))}</h3>{lead_fix}'
-            f'<p><span class="ids"><a href="#{lead["id"]}">{lead["id"]}</a>'
-            f'<a href="#check-{lead["section"]}">{_esc(lead_label)}</a></span></p></div>'
+            f'<div class="start{" auto" if first.get("lane") == "Auto" else ""}"><span class="label">Start here</span>'
+            f'{_lane_chip(first.get("lane"))}'
+            f'<h3>{_esc(_headline(first["finding"]))}</h3>{first_fix}'
+            f'<p><span class="ids"><a href="#{first["id"]}">{first["id"]}</a>'
+            f'<a href="#check-{first["section"]}">{_esc(first_label)}</a></span></p>{also}</div>'
         )
     else:
         start = (
@@ -2793,6 +3096,15 @@ def generate_html(data: dict, scores: dict, options=None, previous_summary=None)
         f'<div><div class="fig {"dn" if counts["critical"] else ""}">{counts["critical"]}</div><span class="label">Critical findings</span></div>'
         f'<div><div class="fig {"dn" if counts["warning"] else ""}">{counts["warning"]}</div><span class="label">Warning findings</span></div>'
         f'<div><div class="fig">{counts["info"]}</div><span class="label">Informational findings</span></div></div>'
+    )
+
+    need_you = len(plan["Human"]) + len(plan["Decision"])
+    lane_figs = (
+        '<div class="figs lanes" aria-label="Who acts">'
+        f'<div><div class="fig {"up" if plan["Auto"] else ""}">{len(plan["Auto"])}</div><a class="label" href="#lane-auto">AI can fix now</a></div>'
+        f'<div><div class="fig">{len(plan["Assisted"])}</div><a class="label" href="#{"lane-assisted" if plan["Assisted"] else "plan"}">AI drafts, you approve</a></div>'
+        f'<div><div class="fig">{need_you}</div><a class="label" href="#plan">Need a person or a decision</a></div>'
+        f'<div><div class="fig">{len(questions)}</div><a class="label" href="#questions">Open questions</a></div></div>'
     )
 
     meta_rows = []
@@ -2823,12 +3135,12 @@ def generate_html(data: dict, scores: dict, options=None, previous_summary=None)
     css = _load_template_asset("report.css", _FALLBACK_CSS) + _REPORT_EXTRA_CSS + accent_css
     print_css = _load_template_asset("print.css", "")
 
-    nav_items = [("verdict", "Verdict"), ("score", "Score"), ("coverage", "Coverage")]
+    nav_items = [("verdict", "Verdict"), ("plan", "Action plan"), ("questions", "Open questions"),
+                 ("score", "Score"), ("coverage", "Coverage")]
     shape_html = _render_site_shape(data)
     if shape_html:
         nav_items.append(("shape", "Site shape"))
-    nav_items += [("findings", "Findings"), ("geo", "GEO readiness"), ("recommendations", "Recommendations"),
-                  ("platform", "Platform"), ("appendix", "Appendix")]
+    nav_items += [("findings", "Findings"), ("geo", "GEO readiness"), ("platform", "Platform"), ("appendix", "Appendix")]
     nav_html = "".join(
         f'<a href="#{key}" class="active">{label}</a>' if i == 0 else f'<a href="#{key}">{label}</a>'
         for i, (key, label) in enumerate(nav_items)
@@ -2855,25 +3167,24 @@ def generate_html(data: dict, scores: dict, options=None, previous_summary=None)
         '<main class="shell">\n'
         '<section id="verdict" aria-labelledby="verdict-h">'
         '<div class="sec-head"><span class="sec-n">01</span><h2 id="verdict-h">Verdict</h2></div>'
-        f"{figs}"
+        f"{figs}{lane_figs}"
         '<div class="two"><div class="verdict">'
         f'<p class="lead">{_esc(lede)}</p>'
         f"<p>Every finding and score on this page comes from scripts run against {_esc(url)}. "
         "Scores are a triage signal; confirm high-risk changes such as redirects, canonicals and robots.txt before acting.</p>"
         f"</div>{start}</div>{_render_delta(delta)}</section>\n"
+        f'<section id="plan" aria-labelledby="plan-h">{_render_action_plan(data, scores, issues)}</section>\n'
+        f'<section id="questions" aria-labelledby="questions-h">{_render_open_questions(questions)}</section>\n'
         f'<section id="score" aria-labelledby="score-h">{_render_score(data, scores, stamp, statuses)}</section>\n'
         f'<section id="coverage" aria-labelledby="coverage-h">{_render_coverage(data, scores, issues, entries, coverage, inventory)}</section>\n'
         f"{shape_section}\n"
         f'<section id="findings" aria-labelledby="findings-h">{_render_findings(issues)}</section>\n'
         f'<section id="geo" aria-labelledby="geo-h">{_render_geo(statuses)}</section>\n'
-        '<section id="recommendations" aria-labelledby="recommendations-h">'
-        '<div class="sec-head"><span class="sec-n">07</span><h2 id="recommendations-h">Recommendations</h2></div>'
-        '<p class="prose">Every recommendation the checks returned, grouped by check.</p>'
-        f'<div class="rec-grid">{render_all_recommendations(data)}</div></section>\n'
         f'<section id="platform" aria-labelledby="platform-h">{_render_platform(data)}</section>\n'
         '<section id="appendix" aria-labelledby="appendix-h">'
         '<div class="sec-head"><span class="sec-n">A</span><h2 id="appendix-h">Appendix · check details</h2></div>'
-        '<p class="prose">What each check measured, in full. Sorted weakest first, like the coverage table.</p>'
+        '<p class="prose">What each check measured, in full, with every recommendation it returned. '
+        'Sorted weakest first, like the coverage table.</p>'
         f'<div class="check-details" id="check-detail">{_render_check_details(data, scores, issues, entries)}</div>'
         "</section>\n"
         "</main>\n"
@@ -2930,6 +3241,27 @@ section[id]{scroll-margin-top:56px}
 .start p{margin:0 0 6px;font-size:15.5px;color:var(--ink-2)}
 .start p:last-child{margin-bottom:0}
 .fig small{font-size:16px;color:var(--muted)}
+.start.auto{border-left-color:var(--good)}
+.start .chip{margin-bottom:8px}
+.figs.lanes{margin-top:-10px}
+.figs.lanes a.label{text-decoration:none}
+.figs.lanes a.label:hover{color:var(--ink)}
+.lane{margin:0 0 26px}
+.lane-head{display:flex;align-items:center;gap:10px;margin:22px 0 2px}
+.lane-head h3{margin:0}
+.plan{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px;counter-reset:plan}
+.plan-item{border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);padding:12px 16px;font-family:var(--sans)}
+.plan-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.plan-top strong{flex:1 1 320px;font-size:15.5px}
+.plan-fix{margin:6px 0 0;font-size:14.5px;color:var(--ink-2)}
+.plan-item .small{margin:4px 0 0}
+.plan-meta{margin:8px 0 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.fix-prompt{margin:14px 0 0;border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);padding:12px 16px}
+.fix-prompt summary{font-family:var(--sans);font-weight:600;font-size:14.5px;cursor:pointer}
+.fix-prompt pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0}
+.copy-btn{display:none;font:inherit;font-family:var(--sans);font-size:12.5px;font-weight:500;padding:6px 12px;border:1px solid var(--accent);border-radius:var(--r-chip);background:var(--accent-soft);color:var(--accent-ink);cursor:pointer}
+.js .copy-btn{display:inline-block}
+table.questions small{display:block;color:var(--muted);margin-top:3px}
 .score{display:grid;grid-template-columns:220px 1fr;gap:20px 28px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);padding:24px 26px;margin:0 0 22px}
 .score-n{font-family:var(--sans);font-size:64px;line-height:1;font-weight:700;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
 .score-n small{font-size:22px;color:var(--muted);font-weight:500;letter-spacing:0}
@@ -3011,7 +3343,7 @@ footer.shell{margin-top:60px;padding-top:22px;padding-bottom:40px;border-top:1px
   .delta>div{border-bottom:1px solid var(--line)}
   .delta>div:nth-child(2n){border-right:0}
 }
-@media print{.theme-toggle,.filters{display:none}}
+@media print{.theme-toggle,.filters,.copy-btn{display:none}}
 """
 
 _REPORT_JS = """
@@ -3052,6 +3384,20 @@ _REPORT_JS = """
       buttons.forEach(function (b) { b.setAttribute('aria-pressed', b === button ? 'true' : 'false'); });
       targets.forEach(function (t) { t.hidden = !(value === 'all' || t.getAttribute('data-filter') === value); });
     });
+  }
+
+  var copyBtn = document.getElementById('fix-prompt-copy');
+  if (copyBtn && navigator.clipboard) {
+    copyBtn.addEventListener('click', function () {
+      var source = document.getElementById(copyBtn.getAttribute('data-copy'));
+      if (!source) return;
+      navigator.clipboard.writeText(source.textContent).then(function () {
+        copyBtn.textContent = 'Copied';
+        setTimeout(function () { copyBtn.textContent = 'Copy fix prompt'; }, 1800);
+      }, function () { copyBtn.textContent = 'Copy failed: select the text above'; });
+    });
+  } else if (copyBtn) {
+    copyBtn.hidden = true;
   }
 
   var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
@@ -3166,6 +3512,30 @@ def export_xlsx(data: dict, scores: dict, output_path: str) -> str:
         ws2.cell(row=row, column=4, value=fix_item.get("fix", "")).border = thin_border
         row += 1
     _auto_width(ws2)
+
+    # --- Sheet: Action plan (who acts, in order) and open questions ---
+    collected = _collect_issues(data)
+    ws_plan = wb.create_sheet("Action plan", 1)
+    _write_header(ws_plan, ["Order", "Lane", "ID", "Severity", "Check", "Finding", "Fix", "Why this lane"])
+    row = 2
+    for lane, items in build_action_plan(collected, scores).items():
+        for issue in items:
+            values = [row - 1, LANE_TITLES[lane], issue["id"], issue["canonical_severity"].upper(),
+                      CHECK_LABELS.get(issue["section"], issue["section"]), issue["finding"], issue.get("fix", ""),
+                      issue.get("lane_reason", "")]
+            for col, value in enumerate(values, 1):
+                ws_plan.cell(row=row, column=col, value=value).border = thin_border
+            row += 1
+    _auto_width(ws_plan)
+
+    ws_q = wb.create_sheet("Open questions", 2)
+    _write_header(ws_q, ["ID", "Check", "What is not known", "Why", "What closes it", "Unlocks"])
+    for row, q in enumerate(build_open_questions(data, scores, collected), 2):
+        values = [q["id"], CHECK_LABELS.get(q["check"], q["check"]), q["question"], q.get("why") or "",
+                  q.get("close") or "", q.get("unlocks") or ""]
+        for col, value in enumerate(values, 1):
+            ws_q.cell(row=row, column=col, value=value).border = thin_border
+    _auto_width(ws_q)
 
     # --- Sheet 3: Links ---
     ws3 = wb.create_sheet("Links")

@@ -96,7 +96,8 @@ def test_summary_contract():
         "id": "F01", "severity": "critical", "level": "critical", "section": "security", "group": "technical",
         "finding": "Strict-Transport-Security header missing", "evidence": None, "impact": None, "fix": "",
         "confidence": None, "falsifiability": None, "leading_indicator": None, "dependency": None,
-        "source": "script:security", "tags": []}
+        "source": "script:security", "tags": [],
+        "kind": "defect", "lane": "Assisted", "lane_reason": gr.LANE_REASONS["Assisted"]}
     assert summary["findings"][1]["severity"] == "medium" and summary["findings"][1]["level"] == "warning"
     json.dumps(summary)  # serialisable as-is
 

@@ -1,9 +1,10 @@
 """The generate_report.py HTML follows the report design (references/report-template).
 
 One spine for every report the skill produces: masthead with a coverage bar,
-verdict and figures, what changed since the previous run, the Health Score by
-category, scope and coverage, site shape, findings by kind, GEO readiness,
-recommendations, platform, and the check details as an appendix. The page uses
+verdict and figures, what changed since the previous run, the action plan by
+lane, open questions, the Health Score by category, scope and coverage, site
+shape, findings by kind, GEO readiness, platform, and the check details as an
+appendix. The page uses
 report.css from the template package so the generator, the agent's HTML and the
 client set share one design system.
 """
@@ -98,7 +99,7 @@ def test_sections_follow_the_spine_in_order():
     html = _html(_data(page_types=PAGE_TYPES, navigation={"status": "measured", "primary_nav": {"count": 3}, "footer_nav": {"count": 1},
                                                           "breadcrumbs": {"with_visible": 2, "with_jsonld": 2}, "issues": []},
                        architecture=ARCHITECTURE))
-    order = ["verdict", "score", "coverage", "shape", "findings", "geo", "recommendations", "platform", "appendix"]
+    order = ["verdict", "plan", "questions", "score", "coverage", "shape", "findings", "geo", "platform", "appendix"]
     positions = [html.index(f'<section id="{sid}"') for sid in order]
     assert positions == sorted(positions)
     nav = re.search(r'<nav class="toc".*?</nav>', html, re.S).group(0)

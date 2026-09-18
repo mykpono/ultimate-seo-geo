@@ -121,6 +121,11 @@ python scripts/generate_report.py https://staging.example.com --format none --js
     | `confidence` | `Confirmed` / `Likely` / `Hypothesis`, or `null` when the script gave none of these |
     | `source` | `script:<section>` |
     | `tags` | e.g. `quick_win`; `[]` when none |
+    | `kind` | `defect` · `opportunity` (a page to create) · `data_gap` (the check could not see; listed under `open_questions`, never a defect). A script may set it; wording alone only moves an `info` finding to `data_gap` |
+    | `lane`, `lane_reason` | Who acts: `Auto` (safe change, an agent can finish it) · `Assisted` (high-risk change class: agent drafts, a person confirms) · `Human` (needs a fact, account or off-site work) · `Decision` (a page to create). `null` on a `data_gap`. The scale is the recommendation register's (`references/report-template/report-template.md` § 5). A script may set both; otherwise the finding's wording, then `CHECK_LANE`, decides |
+
+  - `action_plan`: finding IDs per lane, `Auto` first, each lane in the order to work it (severity, then the score its check can recover). Info notes with no `fix` and data gaps are left out. **Mode 3 reads this**: work `Auto`, confirm each `Assisted` item with the user before producing it, hand `Human` and `Decision` to the user
+  - `open_questions`: what the run could not see. Unmeasured checks first (`id` `Q-<check>`, with `why`, `close` and the weight it `unlocks`), then `data_gap` findings by their `F` ID. Additive in `schema_version` 2: `counts`, `level` and the gates still see every finding
 
   **Migrating from `schema_version` 1:** v1 `severity` is v2 `level`. Counts are keyed by the full scale, so `counts.warning` is now `counts.medium`. Gate behaviour and exit codes are unchanged.
 - **Unmeasured checks don't count.** A check that errors or never runs (a rate-limited PageSpeed call, a timeout) is left out of the overall score and listed as unmeasured, so it cannot fail the gate on its own.
