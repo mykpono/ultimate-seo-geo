@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """
-Lint a report source (the JSON behind the client report set) against
+Lint a report source (the JSON behind the client report, report.html) against
 references/report-template/report-template.md § 10.
 
 The source is what render_report.py renders. Nothing but this checks that
 findings and recommendations carry their fields, that every ID they point at
 exists, that the blocked-by graph is acyclic, that display-only evidence never
 carries a score, that opportunities stay out of the severity list, and that an
-absence claim is only made from a complete inventory.
+absence claim is only made from a complete inventory. Because the report is one
+page, it also checks that every id the page will carry is unique, that the
+Summary stays short enough to stop at, and that no authored text is silently
+dropped.
 
 Stdlib only. Exit 0 when clean, 1 on errors (or on warnings with --strict),
 2 on usage errors.
@@ -51,6 +54,34 @@ STRUCTURE_WORDS = re.compile(r"\b(page type|comparison pages?|alternatives pages
 CWV_NUMBER = re.compile(r"\b(?:LCP|INP|CLS|TTFB|FCP)\b[^\n.;]{0,25}?\d", re.I)
 BACKLINK_NUMBER = re.compile(r"\d[\d,.]*\s*(?:k\s*)?(?:referring domains|backlinks)\b", re.I)
 ID_RE = re.compile(r"^[A-Z]{1,2}\d{1,3}[a-z]?$")
+SECTION_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+
+# The report is one page (render_report.py): author sections are rendered as "<part>-<id>" next to
+# the sections the renderer generates, so an author id must not reuse a generated one.
+GENERATED_SECTIONS = {"audit": {"coverage", "shape", "findings", "strengths", "opportunities", "geo", "questions"},
+                      "strategy": {"prompts", "pages"}}
+SUMMARY_WORDS = 700      # leadership reads the Summary and can stop there
+LEAD_WORDS = 60          # a part's verdict is one or two sentences; the argument goes in its sections
+# Keys the six-file set rendered that the single page no longer does: the text would vanish silently.
+DROPPED_DOC_KEYS = {"brief": ("title",), "audit": ("title", "sub"), "strategy": ("title", "sub"), "plan": ("title", "sub"),
+                    "appendix": ("title", "sub"), "index": ("how",)}
+
+
+def words(value) -> int:
+    """Words of prose in a string or a list of narrative blocks (tables and figures excluded)."""
+    if value is None:
+        return 0
+    if isinstance(value, str):
+        return len(value.split())
+    if isinstance(value, list):
+        return sum(words(v) for v in value)
+    if isinstance(value, dict) and value.get("type", "p") in ("p", "lead", "h3", "h4", "callout", "note"):
+        return words(value.get("text"))
+    if isinstance(value, dict) and value.get("type") in ("ul", "ol"):
+        return words(value.get("items"))
+    if isinstance(value, dict) and value.get("type") == "ba":
+        return words(value.get("now")) + words(value.get("fix"))
+    return 0
 
 
 class Linter:
@@ -273,6 +304,58 @@ class Linter:
                     self.error("missing-field", where, f'"{key}" is required')
             self._enum(where, "owner_role", d.get("owner_role"), OWNER_ROLES, required=False)
 
+    def check_docs(self):
+        docs = self.src.get("docs") or {}
+        if not isinstance(docs, dict):
+            self.error("shape", "docs", '"docs" must be an object')
+            return
+        for part in ("audit", "strategy"):
+            seen = set()
+            for i, s in enumerate((docs.get(part) or {}).get("sections") or []):
+                where = f"docs.{part}.sections[{i}]"
+                if not isinstance(s, dict) or not s.get("id") or not s.get("title"):
+                    self.error("section-shape", where, 'a section needs "id" and "title"')
+                    continue
+                sid = str(s["id"])
+                if not SECTION_ID_RE.match(sid):
+                    self.error("section-id", where, f'id "{sid}" must start with a letter and use only letters, digits, - and _')
+                elif sid in seen:
+                    self.error("duplicate-id", where, f'section id "{sid}" is used twice in docs.{part}')
+                elif sid in GENERATED_SECTIONS[part]:
+                    self.error("duplicate-id", where, f'section id "{sid}" is a section the renderer writes in the {part} part')
+                seen.add(sid)
+        brief, audit = docs.get("brief") or {}, docs.get("audit") or {}
+        summary = words(brief.get("verdict") or audit.get("verdict")) + words(brief.get("blocks"))
+        if summary > SUMMARY_WORDS:
+            self.warn("summary-length", "docs.brief", f"the Summary's verdict and blocks run to {summary} words; keep them to {SUMMARY_WORDS}")
+        for part in ("audit", "strategy", "plan"):
+            if part == "audit" and not brief.get("verdict"):
+                continue  # with no brief, the audit verdict is the Summary's and the check above covers it
+            n = words((docs.get(part) or {}).get("verdict"))
+            if n > LEAD_WORDS:
+                self.warn("lead-length", f"docs.{part}.verdict", f"{n} words; a part's verdict leads it in one or two sentences ({LEAD_WORDS} words at most)")
+        for part, keys in DROPPED_DOC_KEYS.items():
+            for key in keys:
+                if (docs.get(part) or {}).get(key):
+                    self.warn("not-rendered", f"docs.{part}.{key}", "the report is one page and no longer renders this; use meta.title "
+                                                                   "and meta.purpose for the page, docs.index.blocks for reading notes")
+
+    def check_prompts(self):
+        taken = self._ids(self._list("findings")) | self._ids(self._list("recommendations")) | self._ids(self._list("decisions"))
+        seen = set()
+        for t in (self.src.get("prompts") or {}).get("tiers") or []:
+            for row in (t.get("rows") or []) if isinstance(t, dict) else []:
+                pid = str(row.get("id") or "") if isinstance(row, dict) else ""
+                if not pid:
+                    continue
+                where = f"prompt {pid}"
+                if pid in seen:
+                    self.error("duplicate-id", where, "duplicate prompt id")
+                elif pid in taken:
+                    self.error("duplicate-id", where, "a prompt id cannot reuse a finding, recommendation or decision id "
+                                                      "(it is an anchor on the same page); use T1.1, T1.2 …")
+                seen.add(pid)
+
     def run(self):
         self.check_shape()
         self.check_findings()
@@ -280,6 +363,8 @@ class Linter:
         self.check_coverage()
         self.check_score()
         self.check_decisions()
+        self.check_docs()
+        self.check_prompts()
         return {"errors": self.errors, "warnings": self.warnings,
                 "findings": len(self._list("findings")), "recommendations": len(self._list("recommendations"))}
 
