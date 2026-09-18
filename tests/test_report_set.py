@@ -265,7 +265,8 @@ def test_start_today_lists_only_unblocked_agent_work():
 def test_brief_has_decisions_and_first_actions(rendered):
     brief = rendered["0-brief.html"]
     assert "Publish pricing?" in brief
-    assert 'id="T1"' in brief and "M1" in brief
+    assert 'href="3-plan.html#T1"' in brief and "M1" in brief
+    assert 'id="T1"' not in brief                                             # the plan's register owns the anchor
     assert "What is not known yet" in brief
 
 
@@ -347,3 +348,36 @@ def test_html_escapes_source_text():
     src2 = copy.deepcopy(_source())
     src2["docs"]["audit"]["sections"][0]["blocks"][0]["rows"] = [["<script>x</script>"]]
     assert "<script>x</script>" not in render_report.doc_audit(src2, render_report.load_css())
+
+
+# --- anchors ------------------------------------------------------------------------
+
+def _ids(html):
+    markup = re.sub(r"<script\b.*?</script>", "", html, flags=re.S)
+    return re.findall(r'\bid="([^"]+)"', markup), markup
+
+
+@pytest.mark.parametrize("source", [_source, render_report.sample_source], ids=["test source", "sample source"])
+def test_every_id_is_unique_and_every_link_lands(source):
+    """A repeated id sends a link to the first copy; a missing one goes nowhere. Links into
+    another document of the set must name an id that document has."""
+    out = render_report.render_all(source())
+    ids = {}
+    for name, html in out.items():
+        found, _ = _ids(html)
+        dupes = sorted({i for i in found if found.count(i) > 1})
+        assert dupes == [], f"{name}: duplicate ids {dupes}"
+        ids[name] = set(found)
+    for name, html in out.items():
+        _, markup = _ids(html)
+        for doc, frag in re.findall(r'href="([\w.-]*)#([^"]*)"', markup):
+            target = doc or name
+            assert target in out, f"{name}: link to unknown document {doc}"
+            assert frag in ids[target], f"{name}: link to {target}#{frag} has no target"
+
+
+def test_in_page_links_scroll_by_script_and_the_footer_says_what_to_do(rendered):
+    for name, html in rendered.items():
+        script = re.search(r"<script>(.*?)</script>", html, re.S).group(1)
+        assert "scrollIntoView" in script and "preventDefault" in script, name
+        assert "open the file in a web browser" in re.search(r"<footer>.*?</footer>", html, re.S).group(0), name
