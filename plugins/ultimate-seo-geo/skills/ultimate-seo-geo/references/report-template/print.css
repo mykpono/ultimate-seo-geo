@@ -1,4 +1,4 @@
-/* Print stylesheet for the client report set — inlined after report.css. */
+/* Print stylesheet for the client report — inlined after report.css. */
 @media print{
   @page{size:A4;margin:18mm 16mm}
   html{color-scheme:light}

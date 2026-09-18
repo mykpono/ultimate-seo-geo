@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.20.0] - 2026-09-18
+
+The client report is one file. `render_report.py` writes `report.html` in five parts instead of a
+six-file set, and each thing in it renders once. Minor per D-020: the output file names change.
+
 ### Changed
 - **The client report is one file.** `render_report.py` now writes a single `report.html` instead of
   `index.html`, `0-brief.html`, `1-audit.html`, `2-strategy.html`, `3-plan.html` and
@@ -29,6 +36,13 @@
   - It warns when the Summary's verdict and blocks pass 700 words, or when a part's verdict passes
     60 words.
   - It warns on `docs.*.title`, `docs.*.sub` and `docs.index.how`, which the page no longer renders.
+
+### Docs
+- `report-template.md` describes the one-page report: parts and readers (§ 1), the spine (§ 2),
+  where coverage and each register view render (§ 4, § 5), fold and print behaviour and length
+  targets (§ 8), and the new lint checks (§ 10). `SKILL.md`, `AGENTS.md`, the script matrix and
+  procedures 02 and 21 name `report.html` instead of the set. The unused `.set` styles (the old
+  index page) are removed from `report.css`.
 
 ## [1.19.5] - 2026-09-18
 
