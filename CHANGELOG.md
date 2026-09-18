@@ -4,6 +4,36 @@
 
 _Nothing yet._
 
+## [1.18.0] - 2026-09-18
+
+The report set adopts the Tobto design system. `report.css` kept the palette and faces extracted
+from the Improvado deliverable (teal accent, IBM Plex, Source Serif); the client set and the
+automated report now use Tobto's tokens so every document the skill produces looks like the
+brand that ships it. Approved from a side-by-side comparison of the same markup under both token
+sets. Minor per D-020: a visual-system refresh, no behaviour or contract change; the token
+*names* are unchanged, so `render_report.py`, `generate_report.py --accent` white-labelling and
+every pinned test key still work.
+
+### Changed
+- **`references/report-template/report.css` tokens** — accent is the brand blue `#0057B7`
+  (`blue-300` on dark), neutrals are Tobto's ink ladder on a white page, and each semantic hue
+  (`critical`, `warn`, `good`) uses the -700 step as type on light and the -300 step on dark, with
+  soft fills at about 12% of the -500 hue. Surfaces separate with hairlines: `--shadow` is `none`.
+  Cards round to `--r-card` (14px) and chips to `--r-chip` (6px). Type is Instrument Sans for
+  everything and JetBrains Mono for IDs, numbers, code and eyebrows; `--serif` is kept as an alias
+  of `--sans` so existing markup resolves. The eyebrow becomes the Tobto mono label (muted, not
+  accent-coloured) and `h1` drops to weight 600.
+- **`scripts/generate_report.py`** and **`scripts/render_report.py`** — the Google Fonts link
+  requests Instrument Sans and JetBrains Mono; the embedded fallback stylesheet carries the same
+  tokens as `report.css`.
+- **`references/report-template/components.html`** — regenerated from the new stylesheet.
+- **`report-template.md` § 8** — records the Tobto sources and the colour rules.
+
+### Added
+- **`--opp` token** — Blaze orange `#FF6A1A`, Tobto's secondary accent, used only as the border of
+  opportunity findings and "new page" cards, never as small type (the Tobto rule). Both light and
+  dark use the same value.
+
 ## [1.17.0] - 2026-09-17
 
 The automated report joins the design system. `generate_report.py` produced a third visual

@@ -78,9 +78,9 @@ def test_report_inlines_the_template_design_system():
     html = _html(_data())
     with open(os.path.join(ROOT, "references", "report-template", "report.css"), encoding="utf-8") as fh:
         css = fh.read()
-    assert "--accent:#0D6E74" in css and "--accent:#0D6E74" in html
+    assert "--accent:#0057B7" in css and "--accent:#0057B7" in html
     assert "@media print" in html
-    assert "fonts.googleapis.com" in html and "IBM+Plex+Sans" in html
+    assert "fonts.googleapis.com" in html and "Instrument+Sans" in html
     # No CDN scripts: the only script is the inline one.
     assert re.search(r"<script[^>]+src=", html) is None
 
@@ -88,7 +88,7 @@ def test_report_inlines_the_template_design_system():
 def test_missing_template_css_falls_back_and_warns(monkeypatch, capsys):
     monkeypatch.setattr(gr.os.path, "join", lambda *parts: "/nonexistent/" + "/".join(parts) if "report-template" in parts else os.path.join(*parts))
     html = _html(_data())
-    assert "--accent:#0D6E74" in html  # the fallback carries the same tokens
+    assert "--accent:#0057B7" in html  # the fallback carries the same tokens
     assert "using the embedded fallback stylesheet" in capsys.readouterr().err
 
 
@@ -137,7 +137,7 @@ def test_white_label_slots_are_rendered_escaped_and_accent_overrides_the_token()
     html = _html(_data(), options={"prepared_for": "Acme <b>Ltd</b>", "prepared_by": "Jo & Co", "accent": "#B83F00"})
     assert "Acme &lt;b&gt;Ltd&lt;/b&gt;" in html and "Jo &amp; Co" in html
     assert ":root{--accent:#B83F00}" in html
-    assert html.index("--accent:#0D6E74") < html.index(":root{--accent:#B83F00}")
+    assert html.index("--accent:#0057B7") < html.index(":root{--accent:#B83F00}")
 
 
 def test_invalid_accent_is_rejected():
