@@ -4,6 +4,20 @@
 
 _Nothing yet._
 
+## [1.18.1] - 2026-09-18
+
+Completes the 1.18.0 design refresh for the PDF path. Patch per D-020: the same visual system
+applied to the last renderer that still carried its own palette, no new capability.
+
+### Changed
+- **`scripts/pdf_template.py`** and **`scripts/pdf_charts.py`** — the WeasyPrint report and its
+  SVG charts (gauge, radar, Core Web Vitals bars, severity donut) use the Tobto tokens that
+  `report.css` adopted in 1.18.0: brand blue for heading rules, links and the medium severity,
+  the ink ladder for text and lines, red-500 / amber-500 / green-500 for fills and strokes with
+  the -700 steps as type on soft tints for the score badges, ink-400 for low severity. Type is
+  Instrument Sans where installed, with the system stack as fallback. Finding cards round to
+  10pt; tags and badges to 4pt.
+
 ## [1.18.0] - 2026-09-18
 
 The report set adopts the Tobto design system. `report.css` kept the palette and faces extracted

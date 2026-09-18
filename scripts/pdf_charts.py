@@ -7,15 +7,17 @@ import math
 from typing import Any
 
 
+# Tobto design-system tokens (tokens/colors.css). Hues at the -500 step carry fills
+# and strokes, matching references/report-template/report.css.
 COLORS = {
-    "red": "#e74c3c",
-    "orange": "#f39c12",
-    "yellow": "#f1c40f",
-    "green": "#27ae60",
-    "blue": "#3498db",
-    "grey": "#bdc3c7",
-    "dark": "#2c3e50",
-    "light_grey": "#ecf0f1",
+    "red": "#c2334f",         # red-500
+    "orange": "#996a08",      # amber-500
+    "yellow": "#e5c86a",      # amber-300
+    "green": "#3f7d20",       # green-500
+    "blue": "#0057b7",        # blue-500, the brand blue
+    "grey": "#b4bac3",        # ink-300
+    "dark": "#0b0d10",        # ink-900
+    "light_grey": "#eaedf1",  # ink-100
     "white": "#ffffff",
 }
 
@@ -26,10 +28,10 @@ CWV_THRESHOLDS = {
 }
 
 SEVERITY_COLORS = {
-    "critical": "#e74c3c",
-    "high": "#f39c12",
-    "medium": "#f1c40f",
-    "low": "#3498db",
+    "critical": "#c2334f",  # red-500
+    "high": "#996a08",      # amber-500
+    "medium": "#0057b7",    # blue-500
+    "low": "#838a95",       # ink-400
 }
 
 
