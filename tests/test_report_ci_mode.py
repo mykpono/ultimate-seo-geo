@@ -97,7 +97,9 @@ def test_summary_contract():
         "finding": "Strict-Transport-Security header missing", "evidence": None, "impact": None, "fix": "",
         "confidence": None, "falsifiability": None, "leading_indicator": None, "dependency": None,
         "source": "script:security", "tags": [],
-        "kind": "defect", "lane": "Assisted", "lane_reason": gr.LANE_REASONS["Assisted"]}
+        "kind": "defect", "lane": "Assisted", "lane_reason": gr.LANE_REASONS["Assisted"],
+        "code": "security.strict-transport-security-header-missing",
+        "key": "security.strict-transport-security-header-missing", "status": None, "first_seen": None}
     assert summary["findings"][1]["severity"] == "medium" and summary["findings"][1]["level"] == "warning"
     json.dumps(summary)  # serialisable as-is
 

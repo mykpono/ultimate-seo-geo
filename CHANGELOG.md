@@ -33,7 +33,18 @@ on its own first. Minor per D-020: new report capability; the JSON additions are
 - **JSON summary**: `action_plan` (finding IDs per lane, in working order) and `open_questions`.
   SKILL.md and the Mode 3 loop tell the agent to work them in lane order.
 - **XLSX**: `Action plan` and `Open questions` sheets.
-- `tests/test_report_action_plan.py` (29 tests), validated by reintroducing three defects.
+- **Stable finding identity** — every finding carries `code` (its class: the script's own `code` /
+  slug `type`, else its wording with numbers, URLs and quoted names removed) and `key` (the class
+  plus its subject). `--previous` now matches on the key: "2 broken links" becoming "1 broken link"
+  is one persisting finding with `finding_was`, where it used to read as one fix plus one new defect.
+- **Fixed since the last run** — with `--previous`, the action plan opens with what cleared, and
+  every remaining item is marked New or Open since a date. `first_seen` carries forward through a
+  chain of runs. An earlier finding whose check did not run this time is `not_rechecked`, called
+  out in the report and never counted as fixed. The summary's `previous` block gains `persisting`
+  and `not_rechecked`; findings gain `status` and `first_seen`; the summary gains `sections_run`.
+  Summaries written before this release still compare (keys are derived from their wording).
+- `tests/test_report_action_plan.py` (29 tests) and `tests/test_finding_codes.py` (18 tests), each
+  validated by reintroducing defects.
 
 ### Changed
 - **Section 07 "Recommendations" is gone.** It restated what each check's appendix panel and the
