@@ -4,6 +4,20 @@
 
 _Nothing yet._
 
+## [1.19.3] - 2026-09-18
+
+The last link checker follows the refusal rule. Patch per D-020.
+
+### Fixed
+- **`internal_links.py` filed the site's own 401 and 429 under "404/4xx".** A login-gated page in
+  the menu (`/account` answering 401), or the site's rate limiter throttling the crawl (429), was a
+  broken page costing 15 points. It now uses `url_safety.is_refusal()`, like `broken_links.py` and
+  `navigation_checker.py` since 1.19.1: those pages go to a new `refused_pages` list and one
+  info-level open question ("open each in a browser"), and cost nothing. A 403 from the site's own
+  server is still a broken page. The internal-links score skips info-level notes, so the open
+  question cannot be charged as a link problem.
+- `tests/test_link_and_redirect_scoring.py` gains 3 tests; both changes validated by reverting them.
+
 ## [1.19.2] - 2026-09-18
 
 The internal-links and redirects scores measure the site, not the report's wording. Both counted
