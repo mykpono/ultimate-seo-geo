@@ -4,6 +4,36 @@
 
 _Nothing yet._
 
+## [1.19.2] - 2026-09-18
+
+The internal-links and redirects scores measure the site, not the report's wording. Both counted
+issue lines. Patch per D-020: behaviour fixes, no new capability.
+
+### Fixed
+- **Internal links charged a broken page twice and a server error once.** The score subtracted 10
+  per issue line *and* 15 per broken page, so one 404 page cost 25, while a 5xx page (which had no
+  per-page charge) cost 10, the same as "9 links have no anchor text". Pages are now charged once
+  each: 404/4xx and 5xx 15, soft 404 10, redirected 5. Only issue lines that are not a page-list
+  summary (anchor text, nofollow, link counts) cost 10 each, as before.
+- **Redirects scored a loop like a single 302.** The score was 100 less 25 per issue line, so a
+  redirect loop (the page never loads) scored 75, one 302 also 75, and two 302 hops 25, because
+  `redirect_checker.py` writes one line per 302 hop. The score now reads the chain: no final URL
+  (loop, too many hops, no Location, refused hop) is 0; three or more hops -40; two hops -15; any 302
+  -15 once; an HTTPS-to-HTTP downgrade -40.
+- **The http-to-https upgrade is not "mixed protocol".** `redirect_checker.py` flagged any chain
+  containing both schemes, so auditing an `http://` URL penalised the one redirect every site
+  should have (balloonbay.us: redirects 75 on the http URL, 100 now). It flags only a step from
+  https down to http, now as a critical finding: that hop drops the page off TLS. `has_mixed_protocol`
+  keeps its meaning; `has_downgrade` is new.
+
+### Score effect
+Sites with broken internal pages score higher on internal links; sites with 5xx internal pages
+score lower. Redirect scores rise for 302s, fall to 0 for loops and dead chains. On balloonbay.us over
+https nothing moves (no broken pages, no redirects). Internal links weigh 8, redirects 3.
+
+- `tests/test_link_and_redirect_scoring.py` (19 tests), which drives `internal_links.crawl_site` and
+  `redirect_checker.check_redirects` offline; each change validated by reverting it.
+
 ## [1.19.1] - 2026-09-18
 
 Two follow-ups to 1.19.0. Patch per D-020: behaviour fixes, no new capability.

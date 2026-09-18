@@ -744,6 +744,56 @@ def _ai_search_access_score(rob: dict) -> int:
 
 
 # Checks scored from another check's data: they have no section of their own.
+# Internal links: points per affected page, by what the page returns. A page that
+# errors costs the same whether it is a 404 or a 5xx.
+INTERNAL_LINK_PAGE_PENALTY = {
+    "broken_internal_pages": 15, "server_error_pages": 15, "soft_404_pages": 10, "redirected_pages": 5,
+}
+INTERNAL_LINK_ISSUE_PENALTY = 10
+
+
+def _internal_links_score(il: dict) -> int:
+    """100 less a penalty per affected page, and a flat one per other link problem.
+
+    internal_links.py summarises each non-empty page list in exactly one issue
+    ("3 internal page(s) return 404/4xx"). Those are already charged per page, so
+    only the rest (anchor text, nofollow, link counts) are charged per issue. The
+    old sum charged a broken page twice, and a 5xx page once as a single issue,
+    so a server error scored better than a 404.
+    """
+    per_page = sum(len(il.get(key) or []) * points for key, points in INTERNAL_LINK_PAGE_PENALTY.items())
+    summarised = sum(1 for key in INTERNAL_LINK_PAGE_PENALTY if il.get(key))
+    other = max(0, len(il.get("issues") or []) - summarised)
+    return max(0, 100 - per_page - other * INTERNAL_LINK_ISSUE_PENALTY)
+
+
+# Redirects: scored from the chain redirect_checker.py walked, not from how many
+# lines it printed. One 302 per hop used to add one issue per hop, so two 302s
+# scored 25 while a redirect loop, a page that never loads, scored 75.
+REDIRECT_PENALTY = {"long_chain": 40, "two_hops": 15, "temporary": 15, "downgrade": 40}
+
+
+def _redirects_score(red: dict) -> int:
+    """0 when the chain never reaches a page; otherwise 100 less each problem, once.
+
+    No final URL means a loop, too many hops, a redirect with no Location, or a
+    hop the fetcher refused: the audited URL does not load, for a crawler either.
+    """
+    if not red.get("final_url"):
+        return 0
+    hops = red.get("total_hops") or 0
+    penalty = 0
+    if hops > 2:
+        penalty += REDIRECT_PENALTY["long_chain"]
+    elif hops == 2:
+        penalty += REDIRECT_PENALTY["two_hops"]
+    if any(hop.get("status") == 302 for hop in red.get("chain") or []):
+        penalty += REDIRECT_PENALTY["temporary"]
+    if red.get("has_downgrade"):
+        penalty += REDIRECT_PENALTY["downgrade"]
+    return max(0, 100 - penalty)
+
+
 SCORE_SOURCE = {"ai_search_access": "robots"}
 
 
@@ -817,20 +867,8 @@ def calculate_overall_score(data: dict) -> dict:
     soft_404s = summary.get("soft_404s", 0)
     scores["broken_links"] = max(0, 100 - int(((broken + soft_404s) / total) * 300))
 
-    # Internal links score (penalize broken/soft-404/redirect pages)
-    il = data["sections"].get("internal_links", {})
-    il_issues = len(il.get("issues", []))
-    il_broken_pages = len(il.get("broken_internal_pages", []))
-    il_soft_404_pages = len(il.get("soft_404_pages", []))
-    il_redirected_pages = len(il.get("redirected_pages", []))
-    il_penalty = (il_issues * 10 + il_broken_pages * 15
-                  + il_soft_404_pages * 10 + il_redirected_pages * 5)
-    scores["internal_links"] = max(0, 100 - il_penalty)
-
-    # Redirects score
-    red = data["sections"].get("redirects", {})
-    red_issues = len(red.get("issues", []))
-    scores["redirects"] = max(0, 100 - red_issues * 25)
+    scores["internal_links"] = _internal_links_score(data["sections"].get("internal_links", {}))
+    scores["redirects"] = _redirects_score(data["sections"].get("redirects", {}))
 
     # AI bot access: displayed only, not in `weights`. The test sends a crawler's
     # user agent from the audit machine, which a firewall may treat differently
