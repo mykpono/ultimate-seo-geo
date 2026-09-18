@@ -183,6 +183,66 @@ def test_lint_cli_exit_codes(tmp_path):
     assert subprocess.run([sys.executable, script, str(tmp_path / "missing.json")], capture_output=True).returncode == 2
 
 
+
+def _warnings(src):
+    return {w["rule"] for w in report_data_lint.lint(src)["warnings"]}
+
+
+def _duplicate_ids(src):
+    markup = re.sub(r"<script\b.*?</script>", "", render_report.render(src), flags=re.S)
+    found = re.findall(r'\bid="([^"]+)"', markup)
+    return sorted({i for i in found if found.count(i) > 1})
+
+
+@pytest.mark.parametrize("change", [
+    lambda s: s["docs"]["audit"]["sections"].append({"id": "what", "title": "Again", "blocks": []}),        # twice in one part
+    lambda s: s["docs"]["audit"]["sections"].append({"id": "findings", "title": "Mine", "blocks": []}),    # the renderer's own section
+    lambda s: s["docs"].setdefault("strategy", {}).setdefault("sections", []).append({"id": "prompts", "title": "Mine"}),
+    lambda s: s["prompts"]["tiers"][0]["rows"].append({"id": "T1", "prompt": "Clashes with rec T1"}),       # prompt id = rec id
+    lambda s: s["prompts"]["tiers"][0]["rows"].append({"id": "T1.1", "prompt": "Same prompt id twice"}),
+], ids=["section twice", "generated section id", "generated strategy id", "prompt reuses rec id", "prompt twice"])
+def test_lint_catches_every_id_the_page_would_repeat(change):
+    """Each case really does put two elements with one id on the page, and the lint says so first."""
+    src = _source()
+    change(src)
+    assert _duplicate_ids(src) != []
+    assert "duplicate-id" in _errors(src)
+
+
+def test_section_without_id_or_title_is_an_error_not_a_crash():
+    src = _source()
+    src["docs"]["audit"]["sections"].append({"title": "No id"})
+    with pytest.raises(KeyError):
+        render_report.render(copy.deepcopy(src))
+    assert "section-shape" in _errors(src)
+    src = _source()
+    src["docs"]["audit"]["sections"].append({"id": "has space", "title": "Bad id"})
+    assert "section-id" in _errors(src)
+
+
+def test_summary_and_part_leads_stay_short():
+    src = _source()
+    assert not _warnings(src) & {"summary-length", "lead-length"}
+    src["docs"]["brief"]["blocks"] = [{"type": "p", "text": "word " * 695}]
+    assert "summary-length" in _warnings(src)                                  # 695 + the 8-word verdict
+    src = _source()
+    src["docs"]["plan"]["verdict"] = "word " * 61
+    assert "lead-length" in _warnings(src)
+    src = _source()
+    del src["docs"]["brief"]
+    src["docs"]["audit"]["verdict"] = "word " * 200                            # the audit verdict is the Summary now
+    assert "lead-length" not in _warnings(src) and "summary-length" not in _warnings(src)
+
+
+def test_text_the_page_no_longer_renders_is_flagged():
+    src = _source()
+    src["docs"]["plan"]["title"] = "Implementation Plan"
+    src["docs"]["index"] = {"how": ["Findings live only in the Audit."]}
+    flagged = {w["where"] for w in report_data_lint.lint(src)["warnings"] if w["rule"] == "not-rendered"}
+    assert flagged == {"docs.plan.title", "docs.index.how"}
+    assert "Implementation Plan" not in render_report.render(src)
+
+
 # --- render ---------------------------------------------------------------------
 
 @pytest.fixture(scope="module")

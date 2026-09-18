@@ -18,6 +18,18 @@
 - The source format is unchanged (`schema_version` 1). `docs.strategy` and `docs.plan` verdicts now
   lead their part; `docs.index.blocks` render as "How to read this report" in the Summary.
 
+### Added
+- **`report_data_lint.py` checks what the single page needs.**
+  - It errors on an author section id used twice in a part, one that reuses a section the renderer
+    writes (`findings`, `prompts` …), or one that is not a valid HTML id.
+  - It errors on a prompt id that repeats or reuses a finding, recommendation or decision id. Each
+    of these would put two elements with one id on the page.
+  - A section without `id` or `title` is now a lint error; the renderer used to crash with a
+    `KeyError`.
+  - It warns when the Summary's verdict and blocks pass 700 words, or when a part's verdict passes
+    60 words.
+  - It warns on `docs.*.title`, `docs.*.sub` and `docs.index.how`, which the page no longer renders.
+
 ## [1.19.5] - 2026-09-18
 
 Every link in the client report set lands on exactly one target. Patch per D-020.
