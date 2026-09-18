@@ -1141,7 +1141,7 @@ CONFIDENCE_LABELS = ("Confirmed", "Likely", "Hypothesis")
 
 # Who acts on a finding. The vocabulary is the recommendation register's
 # (references/report-template/report-template.md § 5), so the automated report
-# and the client set speak one language. "Auto" means no human judgement or
+# and the client report speak one language. "Auto" means no human judgement or
 # authority is needed; whether an agent can reach the code is not known here.
 LANES = ("Auto", "Assisted", "Human", "Decision")
 LANE_TITLES = {

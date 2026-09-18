@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
-/* Report set design system — references/report-template/report.css
-   Tokens and components for the client report set (report-template.md § 8).
+/* Report design system — references/report-template/report.css
+   Tokens and components for the client report (report.html) and generate_report.py (report-template.md § 8).
    Colour, type and radius follow the Tobto design system (tokens/colors.css,
    semantic.css, theme-dark.css, radius.css): brand blue #0057B7 as the accent,
    the ink ladder for neutrals, the -700 semantic steps as type on light and the
@@ -230,11 +230,6 @@ a.chip{text-decoration:none}
 .gloss dd{margin:2px 0 14px;font-size:15.5px;color:var(--ink-2);max-width:72ch}
 
 /* index / set list */
-.set{list-style:none;padding:0;margin:20px 0;display:grid;gap:12px}
-.set li{border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);padding:16px 18px;display:grid;grid-template-columns:52px 1fr;gap:14px;align-items:baseline}
-.set .n{font-family:var(--mono);color:var(--faint);font-size:14px}
-.set a{font-family:var(--sans);font-weight:600;font-size:17px;text-decoration:none}
-.set p{margin:4px 0 0;font-size:14.5px;color:var(--muted)}
 
 footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line-strong);font-size:13px;color:var(--faint);font-family:var(--sans)}
 
@@ -270,7 +265,7 @@ details.wave{border-top:1px solid var(--line);padding-block:14px}
 details.wave>summary h3{margin:0}
 section.fold{padding-block:20px 0;margin-top:20px}
 
-/* Print stylesheet for the client report set — inlined after report.css. */
+/* Print stylesheet for the client report — inlined after report.css. */
 @media print{
   @page{size:A4;margin:18mm 16mm}
   html{color-scheme:light}

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.20.0] - 2026-09-18
+
+The client report is one file. `render_report.py` writes `report.html` in five parts instead of a
+six-file set, and each thing in it renders once. Minor per D-020: the output file names change.
+Includes the link fixes prepared as 1.19.5, which was never tagged.
+
 ### Changed
 - **The client report is one file.** `render_report.py` now writes a single `report.html` instead of
   `index.html`, `0-brief.html`, `1-audit.html`, `2-strategy.html`, `3-plan.html` and
@@ -30,22 +38,23 @@
     60 words.
   - It warns on `docs.*.title`, `docs.*.sub` and `docs.index.how`, which the page no longer renders.
 
-## [1.19.5] - 2026-09-18
-
-Every link in the client report set lands on exactly one target. Patch per D-020.
-
 ### Fixed
-- **`3-plan.html` gave each recommendation id to several elements.** The timeline, start-today,
-  by-owner and full-register views each wrote `<a id="T1">`, so a link to `#T1` landed on the first
-  copy, not the register row. Only the full register now owns the anchor; the other views, and the
-  brief's first actions, link to it.
-- **Links in the report set did nothing in chat and IDE previews.** `render_report.py` pages lacked
-  the click handler `generate_report.py` has (a preview's iframe `srcdoc` resolves a plain `#id`
-  link against the host page). The handler is now in every document, and the footer says to open
-  the file in a browser where a preview blocks scripts.
-- New tests in `tests/test_report_set.py` render both sample sources and fail on a duplicate id, an
-  in-page link without a target, or a cross-document link (`3-plan.html#T1`) whose target document
-  lacks the id; 4 fail against the previous renderer.
+- **Recommendation ids were anchored several times.** The plan's timeline, start-today, by-owner
+  and register views each wrote `<a id="T1">`, so a link to `#T1` landed on the first copy, not the
+  register row. Only the full register owns the anchor now; every other view links to it.
+- **Links did nothing in chat and IDE previews.** `render_report.py` pages lacked the click handler
+  `generate_report.py` has (a preview's iframe `srcdoc` resolves a plain `#id` link against the host
+  page). The report now has it, and the footer says to open the file in a browser where a preview
+  blocks scripts.
+- Tests render the test source, the sample source and the component catalogue and fail on any
+  duplicate id or any in-page link without a target.
+
+### Docs
+- `report-template.md` describes the one-page report: parts and readers (§ 1), the spine (§ 2),
+  where coverage and each register view render (§ 4, § 5), fold and print behaviour and length
+  targets (§ 8), and the new lint checks (§ 10). `SKILL.md`, `AGENTS.md`, the script matrix and
+  procedures 02 and 21 name `report.html` instead of the set. The unused `.set` styles (the old
+  index page) are removed from `report.css`.
 
 ## [1.19.4] - 2026-09-18
 

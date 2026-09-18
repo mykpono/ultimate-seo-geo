@@ -1,14 +1,14 @@
 ---
 name: ultimate-seo-geo
 description: Audits and optimizes websites for search engine visibility (SEO) and AI search citation (GEO), covering technical health, E-E-A-T content scoring, domain authority, structured data, rich results, and entity signals. Use when running SEO audits, diagnosing traffic drops or ranking losses, generating Schema.org JSON-LD, checking Core Web Vitals, crawlability, robots.txt, sitemaps, hreflang, backlinks, planning content strategy or site migrations, fixing indexing issues, or optimizing for AI Overviews, ChatGPT, and Perplexity. NOT for paid ads (PPC/SEM), social media strategy, email marketing, or general web development unrelated to search.
-version: 1.19.5
+version: 1.20.0
 ---
 
 # Ultimate SEO + GEO — LLM-Agnostic SEO Agent
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.19.5 |
+| **Version** | 1.20.0 |
 | **Updated** | 2026-09-18 |
 | **License** | MIT |
 | **Author** | Myk Pono |
@@ -45,7 +45,7 @@ clear fix directive — not just diagnosis.
 | E-commerce SEO | `references/procedures/24-ecommerce-seo.md` | `ecommerce_schema.py`, `validate_schema.py` |
 | Advanced local / maps | `references/procedures/25-maps-intelligence.md` | `maps_checker.py`, `local_signals_checker.py` |
 | Site structure / content-type coverage / navigation / sitemap vs crawl | `references/procedures/26-site-structure-content-types.md` | `references/page-types.md`, `site_graph.py`, `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py`, `sitemap_checker.py --reconcile` |
-| Client report set (brief, audit, strategy, plan, appendices) | `references/report-template/report-template.md` | `render_report.py`, `report_data_lint.py`, `report.css` |
+| Client report (`report.html`: summary, audit, strategy, plan, appendix) | `references/report-template/report-template.md` | `render_report.py`, `report_data_lint.py`, `report.css` |
 | Google API credentials | `references/procedures/21-script-toolbox.md` | `google_api_tier.py`, `crux_history.py`, `gsc_query.py`, `ga4_report.py` |
 
 Section numbers **§1–§26** match `AGENTS.md` and the filenames in `references/procedures/`. Full index: [`references/procedures/README.md`](references/procedures/README.md).

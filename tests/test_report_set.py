@@ -1,4 +1,4 @@
-"""The client report set is rendered from one source and checked by one lint.
+"""The client report is rendered from one source and checked by one lint.
 
 Pins the contract in references/report-template/report-template.md: findings and
 recommendations carry their fields and point at IDs that exist, the blocked-by
