@@ -4,6 +4,43 @@
 
 _Nothing yet._
 
+## [1.19.0] - 2026-09-18
+
+The report says who can act. `generate_report.py` used to print every finding the same way,
+restate the fix in up to four places, and list "this was not measured" beside real defects.
+It now separates the plan from the missing information and puts the work an agent can finish
+on its own first. Minor per D-020: new report capability; the JSON additions are additive
+(`schema_version` stays 2) and `counts`, `level`, `--fail-on` and `--fail-under` are unchanged.
+
+### Added
+- **Lanes on every finding** — `lane` (`Auto` · `Assisted` · `Human` · `Decision`, the
+  recommendation register's vocabulary from `report-template.md` § 5) and `lane_reason`. Set by
+  `classify_finding()`: the script's own `lane` wins, then the finding's wording (a robots.txt,
+  canonical, redirect, noindex or hreflang change is `Assisted` whichever check raised it; Wikipedia,
+  sameAs, backlinks and profiles are `Human`), then the new `CHECK_LANE` table, which follows the
+  Mode 3 Safe / High-Risk gate. `Auto` means no human judgement or sign-off is needed, not that an
+  agent has access to the site.
+- **`kind: data_gap`** beside `defect` and `opportunity`: a check saying it could not see. A
+  script may set it (`"kind": "data_gap"` or the `data_gap` tag); wording alone only moves an
+  info-level finding, so a phrase can never hide a real defect.
+- **Action plan section (02)**, straight after the verdict: lanes in order with "AI can fix now"
+  first, each ordered by severity then by the score its check can recover, with a copyable
+  **fix prompt** that hands the `Auto` lane back to an agent (Mode 3, then a `--previous` re-run).
+- **Open questions section (03)**: unmeasured checks (why, what closes it, the weight it unlocks)
+  and data-gap findings. They leave the findings register and the HTML severity tallies.
+- **Verdict**: a second figure strip counts who acts; "Start here" is the top agent-fixable item
+  and still names the most severe finding when that one is a person's to do.
+- **JSON summary**: `action_plan` (finding IDs per lane, in working order) and `open_questions`.
+  SKILL.md and the Mode 3 loop tell the agent to work them in lane order.
+- **XLSX**: `Action plan` and `Open questions` sheets.
+- `tests/test_report_action_plan.py` (29 tests), validated by reintroducing three defects.
+
+### Changed
+- **Section 07 "Recommendations" is gone.** It restated what each check's appendix panel and the
+  Platform section already print; nothing is lost. Sections renumber: Health Score 04, Scope and
+  coverage 05, Site shape 06, Findings 07, GEO readiness 08, Platform 09.
+- Finding cards carry a **Who** row. The findings intro points to the plan and open questions.
+
 ## [1.18.2] - 2026-09-18
 
 Releases align with tags. Three of the last four versions (1.16.0, 1.17.0, 1.18.0) reached
