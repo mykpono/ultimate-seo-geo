@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Render the client report set from a report source.
+Render the client report from a report source.
 
 The source (JSON, schema_version 1) holds the narrative, findings, recommendations,
 coverage, prompts, page cards, validity review and glossary of one engagement. It
@@ -10,9 +10,9 @@ completeness verdict from site_graph.py, and --structure to render the measured
 site shape from page_type_classifier.py, navigation_checker.py, site_architecture.py
 and sitemap_checker.py --reconcile outputs.
 
-Output: index.html, 0-brief.html, 1-audit.html, 2-strategy.html, 3-plan.html,
-4-appendix.html, each self-contained (CSS inlined from
-references/report-template/). The design contract is report-template.md.
+Output: report.html, one self-contained document (CSS inlined from
+references/report-template/) in five parts: Summary, Audit, Strategy, Plan and a
+folded Appendix. The design contract is report-template.md.
 
 The source is linted first (report_data_lint.py); errors stop the render unless
 --force is given.
@@ -37,15 +37,7 @@ import report_data_lint  # noqa: E402
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "references", "report-template"))
 
-DOCS = [
-    ("index", "index.html", "Index", "Every document in the set, with its reader and data window."),
-    ("brief", "0-brief.html", "Executive brief", "The verdict, five figures, the decisions needed and the first actions."),
-    ("audit", "1-audit.html", "Audit", "What happened, what it cost, the measured site shape, findings, strengths and opportunities."),
-    ("strategy", "2-strategy.html", "Content & prompt strategy", "Lanes, what to stop, upgrade, rebuild and create, the AI prompt roster and the page cards."),
-    ("plan", "3-plan.html", "Implementation plan", "The recommendation register with tiers, owners, automation lanes and dependencies."),
-    ("appendix", "4-appendix.html", "Appendices", "Validity review, corrections, open tests, machine checks and glossary."),
-]
-DOC_FILES = {k: f for k, f, _, _ in DOCS}
+REPORT_FILE = "report.html"
 
 SEV_CLASS = {"critical": "c", "high": "h", "medium": "m", "low": "l", "info": "i"}
 SEV_LABEL = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low", "info": "Info"}
@@ -69,9 +61,9 @@ def esc(value) -> str:
 
 
 class Ctx:
-    """Rendering context: which document we are in and which IDs exist."""
+    """Rendering context: the source and which IDs exist. Every ID resolves on the one page."""
 
-    def __init__(self, src: dict, doc: str):
+    def __init__(self, src: dict, doc: str = "report"):
         self.src = src
         self.doc = doc
         self.finding_ids = {f["id"] for f in src.get("findings", []) if f.get("id")}
@@ -79,18 +71,11 @@ class Ctx:
         self.decision_ids = {d["id"] for d in src.get("decisions", []) if d.get("id")}
 
     def href(self, ident: str):
-        anchor = ident
-        if ident in self.finding_ids:
-            target = "audit"
-        elif ident in self.rec_ids:
-            target = "plan"
-        elif ident in self.decision_ids:
-            target = "plan"
-        elif ident + "a" in self.rec_ids:
-            target, anchor = "plan", ident + "a"          # "G7" resolves to the first of G7a, G7b
-        else:
-            return None
-        return ("" if target == self.doc else DOC_FILES[target]) + "#" + anchor
+        if ident in self.finding_ids or ident in self.rec_ids or ident in self.decision_ids:
+            return "#" + ident
+        if ident + "a" in self.rec_ids:
+            return "#" + ident + "a"                        # "G7" resolves to the first of G7a, G7b
+        return None
 
     def inline(self, text) -> str:
         """Escape, then apply `code`, **bold** and ID links."""
@@ -200,29 +185,59 @@ function mark(){var pos=window.pageYOffset+nav.offsetHeight+20,cur=secs[0];secs.
 links.forEach(function(a){a.classList.toggle('active',!!cur&&a.getAttribute('href')==='#'+cur.id);});}
 window.addEventListener('scroll',mark,{passive:true});mark();})();
 /* In-page links scroll by script. File previews in chat and IDE apps embed the report as an iframe srcdoc,
-   whose base URL is the host page's: a plain fragment link there navigates the frame away. */
+   whose base URL is the host page's: a plain fragment link there navigates the frame away.
+   A target inside a folded appendix section is unfolded first. */
 document.addEventListener('click',function(e){if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
 var a=e.target.closest('a[href^="#"]');if(!a)return;var id=decodeURIComponent(a.getAttribute('href').slice(1));
-var t=id&&document.getElementById(id);if(!t)return;e.preventDefault();t.scrollIntoView({block:'start'});
+var t=id&&document.getElementById(id);if(!t)return;e.preventDefault();
+for(var p=t;p;p=p.parentElement){if(p.tagName==='DETAILS')p.open=true;}
+var d=t.querySelector(':scope>details');if(d)d.open=true;
+t.scrollIntoView({block:'start'});
 if(!t.hasAttribute('tabindex'))t.setAttribute('tabindex','-1');t.focus({preventScroll:true});
-try{history.replaceState(null,'','#'+id);}catch(err){}});"""
+try{history.replaceState(null,'','#'+id);}catch(err){}});
+/* Print every folded section, then restore what the reader had open. */
+(function(){var shut=[];window.addEventListener('beforeprint',function(){shut=[].slice.call(document.querySelectorAll('details:not([open])'));
+shut.forEach(function(d){d.open=true;});});window.addEventListener('afterprint',function(){shut.forEach(function(d){d.open=false;});shut=[];});})();"""
 
 
-def page(src: dict, doc: str, title: str, sub: str, sections, css: str, extra_meta=None) -> str:
-    """sections: list of (id, nav label, heading, body html)."""
+def section_html(sid, number, heading, inner, fold=False) -> str:
+    head = f'<span class="sec-n">{esc(number)}</span><h2>{esc(heading)}</h2>'
+    if fold:
+        return f'<section id="{esc(sid)}" class="fold"><details class="fold"><summary class="sec-head">{head}</summary>{inner}</details></section>'
+    return f'<section id="{esc(sid)}"><div class="sec-head">{head}</div>{inner}</section>'
+
+
+def page(src: dict, title: str, sub: str, parts, css: str, extra_meta=None) -> str:
+    """parts: list of (id, label, intro html, sections, fold); sections: list of (id, nav label, heading, body html).
+
+    The sticky nav lists the parts; each part opens with its own contents line. A report of one
+    part (the component catalogue) lists its sections in the nav instead. `fold` renders every
+    section of the part as a closed <details> that the link handler and printing open.
+    """
     meta = src.get("meta", {})
-    n = [k for k, *_ in DOCS].index(doc)
-    position = f"{n} of {len(DOCS) - 2}" if doc not in ("index", "appendix") else ("Appendix" if doc == "appendix" else "Index")
     meta_items = [("Prepared for", meta.get("prepared_for")), ("Prepared by", meta.get("prepared_by")), ("Date", meta.get("date")),
                   ("Data window", meta.get("data_window")), ("Site type", meta.get("site_type")), ("Version", meta.get("version"))]
     meta_items += extra_meta or []
     meta_html = "".join(f"<div><dt>{esc(k)}</dt><dd>{esc(v)}</dd></div>" for k, v in meta_items if v)
-    toc = "".join(f'<a href="#{esc(sid)}">{esc(label)}</a>' for sid, label, _, _ in sections)
+    if len(parts) == 1:
+        toc = "".join(f'<a href="#{esc(sid)}">{esc(label)}</a>' for sid, label, _, _ in parts[0][3])
+    else:
+        toc = "".join(f'<a href="#{esc(pid)}">{esc(label)}</a>' for pid, label, _, _, _ in parts)
     body = []
-    for i, (sid, _, heading, inner) in enumerate(sections, 1):
-        body.append(f'<section id="{esc(sid)}"><div class="sec-head"><span class="sec-n">{i:02d}</span><h2>{esc(heading)}</h2></div>{inner}</section>')
-    set_links = " · ".join(f'<a href="{f}">{esc(t)}</a>' for k, f, t, _ in DOCS if k != doc)
-    eyebrow = f"{esc(meta.get('client', ''))} · SEO &amp; GEO · {esc(position)}"
+    for n, (pid, label, intro, sections, fold) in enumerate(parts, 1):
+        secs = []
+        contents = []
+        for i, (sid, nav, heading, inner) in enumerate(sections, 1):
+            number = f"{n}.{i}" if len(parts) > 1 else f"{i:02d}"
+            secs.append(section_html(sid, number, heading, inner, fold))
+            contents.append(f'<li><a href="#{esc(sid)}"><span class="n">{esc(number)}</span>{esc(nav)}</a></li>')
+        if len(parts) == 1:
+            body.append("".join(secs))
+            continue
+        toc_html = f'<ol class="part-toc">{"".join(contents)}</ol>' if contents else ""
+        body.append(f'<div class="part" id="{esc(pid)}"><div class="part-head"><span class="part-n">Part {n}</span><h2>{esc(label)}</h2></div>'
+                    f'{toc_html}{intro}{"".join(secs)}</div>')
+    eyebrow = f"{esc(meta.get('client', ''))} · SEO &amp; GEO"
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -243,10 +258,10 @@ def page(src: dict, doc: str, title: str, sub: str, sections, css: str, extra_me
 <p class="sub">{esc(sub)}</p>
 <dl class="meta">{meta_html}</dl>
 </div></header>
-<nav class="toc" aria-label="Sections"><div class="toc-in">{toc}</div></nav>
+<nav class="toc" aria-label="Parts"><div class="toc-in">{toc}</div></nav>
 <div class="shell">
 {"".join(body)}
-<footer>{esc(title)} · {esc(meta.get('date', ''))} · Prepared by {esc(meta.get('prepared_by', ''))} · Set: {set_links} · Generated {esc(src.get('generated', date.today().isoformat()))} by render_report.py from source v{esc(meta.get('version', ''))}. If a link does nothing in a preview pane, open the file in a web browser.</footer>
+<footer>{esc(title)} · {esc(meta.get('date', ''))} · Prepared by {esc(meta.get('prepared_by', ''))} · Generated {esc(src.get('generated', date.today().isoformat()))} by render_report.py from source v{esc(meta.get('version', ''))}. If a link does nothing in a preview pane, open the file in a web browser.</footer>
 </div>
 <script>{NAV_JS}</script>
 </body>
@@ -449,9 +464,10 @@ def findings_html(ctx: Ctx) -> str:
 
 # --- recommendations -----------------------------------------------------------------
 
-def rec_cells(ctx: Ctx, r: dict, cols, anchor=False) -> list:
+def rec_cells(ctx: Ctx, r: dict, cols, anchor=False, today=frozenset()) -> list:
     """anchor: this row is the one element that owns the recommendation's id.
-    Only the full register sets it; every other view links to that row."""
+    Only the full register sets it; every other view links to that row.
+    today: IDs an agent can start now, marked in the action cell."""
     cells = []
     for c in cols:
         if c == "id":
@@ -464,7 +480,8 @@ def rec_cells(ctx: Ctx, r: dict, cols, anchor=False) -> list:
             extra = ""
             if sup:
                 extra = f'<p class="small">Overrides {esc(sup.get("check"))} finding {esc(sup.get("finding_id", ""))}: {ctx.inline(sup.get("reason"))}</p>'
-            cells.append(ctx.inline(r.get("action")) + extra)
+            mark = chip("Start today", "g") + " " if r.get("id") in today else ""
+            cells.append(mark + ctx.inline(r.get("action")) + extra)
         elif c == "fixes":
             cells.append(ctx.ids(r.get("fixes")))
         elif c == "basis":
@@ -503,10 +520,10 @@ REGISTER_COLS = [("id", "ID", "q"), ("action", "Action", ""), ("fixes", "Fixes",
                  ("deps", "Dependencies", ""), ("done", "Done when", ""), ("status", "Status", "")]
 
 
-def register_table(ctx: Ctx, recs, cols=REGISTER_COLS, anchor=False) -> str:
+def register_table(ctx: Ctx, recs, cols=REGISTER_COLS, anchor=False, today=frozenset()) -> str:
     rows = []
     for r in recs:
-        row = {"cells": rec_cells(ctx, r, [c for c, _, _ in cols], anchor)}
+        row = {"cells": rec_cells(ctx, r, [c for c, _, _ in cols], anchor, today)}
         if r.get("status") == "dropped":
             row["class"] = "dropped"
         rows.append(row)
@@ -547,124 +564,141 @@ def start_today(src) -> list:
     return out
 
 
-# --- documents -------------------------------------------------------------------------
+# --- parts -------------------------------------------------------------------------------
+#
+# One report, five parts. Each thing renders once: the verdict and decisions in the Summary,
+# coverage and findings in the Audit, prompts and page cards in the Strategy, the register in
+# the Plan, method and machine checks in the Appendix. Every other mention links by ID.
 
-def doc_index(src, css) -> str:
-    ctx = Ctx(src, "index")
-    meta = src.get("meta", {})
-    items = "".join(f'<li><span class="n">{i}</span><div><a href="{f}">{esc(t)}</a><p>{esc(d)}</p></div></li>'
-                    for i, (k, f, t, d) in enumerate(DOCS) if k != "index")
-    body = f'<ul class="set">{items}</ul>' + render_blocks(ctx, src.get("docs", {}).get("index", {}).get("blocks", []))
-    counts = (f'{len(src.get("findings", []))} findings · {len(active_recs(src))} recommendations · '
-              f'{sum(len(t.get("rows", [])) for t in src.get("prompts", {}).get("tiers", []))} prompts · {len(src.get("pages", []))} page cards')
-    sections = [("set", "The set", "The set", body), ("how", "How to read", "How to read it",
-                                                        f"<p class=\"small\">{esc(counts)}.</p>" + render_blocks(ctx, src.get("docs", {}).get("index", {}).get("how", [
-                                                            "Findings live only in the Audit, recommendations only in the Implementation plan, prompts only in the Strategy, machine checks only in the Appendices. Every other document links to them by ID.",
-                                                            "Every document opens with a verdict and its scope and coverage; every finding carries an evidence status; every recommendation carries a tier, an owner role and an automation lane."])))]
-    return page(src, "index", f"{meta.get('client', '')} SEO & GEO report set", meta.get("purpose", ""), sections, css)
+def lead(ctx: Ctx, text) -> str:
+    return f'<div class="verdict"><p class="lead">{ctx.inline(text)}</p></div>' if text else ""
 
 
-def doc_brief(src, css) -> str:
-    ctx = Ctx(src, "brief")
-    d = src.get("docs", {}).get("brief", {})
-    verdict = f'<div class="verdict"><p class="lead">{ctx.inline(d.get("verdict"))}</p></div>' + render_figs(d.get("figures", [])) + render_blocks(ctx, d.get("blocks", []))
-    decisions = src.get("decisions", [])
-    dec_html = table(["ID", "Decision", "Owner", "Needed by", "Unblocks"],
-                     [[f'<a href="{ctx.href(x["id"]) or "#"}" class="mono">{esc(x["id"])}</a>', ctx.inline(x.get("question")), esc(x.get("owner_role")), ctx.inline(x.get("needed_by") or "—"),
-                       ctx.ids([r["id"] for r in src.get("recommendations", []) if r.get("decision") == x["id"]])] for x in decisions], ["q", "", "", "", ""]) if decisions else "<p>None.</p>"
+def decisions_table(ctx: Ctx) -> str:
+    """The one place each decision ID is anchored."""
+    decisions = ctx.src.get("decisions", [])
+    if not decisions:
+        return "<p>None.</p>"
+    recs = ctx.src.get("recommendations", [])
+    rows = [[f'<a id="{esc(x["id"])}" href="#{esc(x["id"])}" class="mono">{esc(x["id"])}</a>', ctx.inline(x.get("question")), esc(x.get("owner_role")),
+             ctx.inline(x.get("needed_by") or "—"), esc(x.get("status") or "open"), ctx.ids([r["id"] for r in recs if r.get("decision") == x["id"]])] for x in decisions]
+    return table(["ID", "Decision", "Owner", "Needed by", "Status", "Unblocks"], rows, ["q", "", "", "", "", ""])
+
+
+def part_summary(ctx: Ctx, used: set):
+    """Leadership reads this part and can stop. Falls back to the audit's verdict and figures
+    when the source has no brief, and records what it borrowed so the Audit does not repeat it."""
+    src = ctx.src
+    docs = src.get("docs", {})
+    b, a = docs.get("brief", {}), docs.get("audit", {})
+    verdict = b.get("verdict")
+    if not verdict and a.get("verdict"):
+        verdict = a["verdict"]
+        used.add("audit.verdict")
+    figures = b.get("figures")
+    if not figures and a.get("figures"):
+        figures = a["figures"]
+        used.add("audit.figures")
+    sections = [("summary-verdict", "Verdict", "Verdict", lead(ctx, verdict) + render_figs(figures or []) + render_blocks(ctx, b.get("blocks", [])))]
+    sections.append(("summary-decisions", "Decisions", "Decisions needed", decisions_table(ctx)))
     top = [r for r in active_recs(src) if r.get("brief")] or [r for r in active_recs(src) if r.get("horizon") == "now"][:6]
-    actions = table(["ID", "Action", "Owner", "Lane", "Done when"],
-                    [rec_cells(ctx, r, ["id", "action", "owner", "lane", "done"]) for r in top], ["q", "", "", "", ""])
-    unknown = "<ul class=\"tight\">" + "".join(f"<li><strong>{esc(n.get('name'))}</strong> — {ctx.inline(n.get('reason'))}</li>" for n in src.get("coverage", {}).get("not_examined", [])) + "</ul>"
-    sections = [("verdict", "Verdict", "Verdict", verdict), ("decisions", "Decisions", "Decisions needed", dec_html),
-                ("actions", "First actions", "First actions", actions + f'<p class="small">The full register, with dependencies and tiers, is in the <a href="{DOC_FILES["plan"]}">Implementation plan</a>.</p>'),
-                ("unknown", "Not known", "What is not known yet", unknown + coverage_html(ctx, full=False))]
-    return page(src, "brief", d.get("title", "Executive brief"), d.get("sub", "The verdict, the decisions needed and the first actions."), sections, css)
+    actions = table(["ID", "Action", "Owner", "Lane", "Done when"], [rec_cells(ctx, r, ["id", "action", "owner", "lane", "done"]) for r in top], ["q", "", "", "", ""]) if top else "<p>Nothing is scheduled for this week.</p>"
+    sections.append(("summary-actions", "This week", "This week",
+                     actions + f'<p class="small">All {len(active_recs(src))} recommendations, in order, with dependencies and tiers: <a href="#plan-register">the register</a>.</p>'))
+    ne = src.get("coverage", {}).get("not_examined", [])
+    if ne:
+        unknown = '<ul class="tight">' + "".join(f"<li><strong>{esc(n.get('name'))}</strong> — {ctx.inline(n.get('reason'))}</li>" for n in ne) + "</ul>"
+        sections.append(("summary-unknown", "Not known", "What is not known yet",
+                         unknown + '<p class="small">What would close each gap, and what was measured: <a href="#audit-coverage">Scope and coverage</a>.</p>'))
+    how = docs.get("index", {}).get("blocks")
+    if how:
+        sections.append(("summary-how", "How to read", "How to read this report", render_blocks(ctx, how)))
+    return ("summary", "Summary", "", sections, False)
 
 
-def doc_audit(src, css) -> str:
-    ctx = Ctx(src, "audit")
+def part_audit(ctx: Ctx, used: set):
+    src = ctx.src
     d = src.get("docs", {}).get("audit", {})
-    sections = []
-    summary = f'<div class="verdict"><p class="lead">{ctx.inline(d.get("verdict"))}</p></div>' + render_blocks(ctx, d.get("summary", [])) + render_figs(d.get("figures", []))
-    sections.append(("summary", "Summary", "Executive summary", summary))
-    sections.append(("coverage", "Coverage", "Scope and coverage", coverage_html(ctx)))
+    intro = ("" if "audit.verdict" in used else lead(ctx, d.get("verdict"))) + render_blocks(ctx, d.get("summary", [])) \
+        + ("" if "audit.figures" in used else render_figs(d.get("figures", [])))
+    sections = [("audit-coverage", "Coverage", "Scope and coverage", coverage_html(ctx))]
     for s in d.get("sections", []):
-        sections.append((s["id"], s.get("nav", s["title"]), s["title"], render_blocks(ctx, s.get("blocks", []))))
+        sections.append(("audit-" + s["id"], s.get("nav", s["title"]), s["title"], render_blocks(ctx, s.get("blocks", []))))
     shape = site_shape_html(ctx) + render_blocks(ctx, d.get("site_shape", []))
     if shape:
-        sections.append(("shape", "Site shape", "Site shape", shape))
-    intro = render_blocks(ctx, d.get("findings_intro", []))
-    sections.append(("findings", "Findings", "Findings", intro + findings_html(ctx)))
+        sections.append(("audit-shape", "Site shape", "Site shape", shape))
+    sections.append(("audit-findings", "Findings", "Findings", render_blocks(ctx, d.get("findings_intro", [])) + findings_html(ctx)))
     keeps = [f for f in src.get("findings", []) if f.get("kind") == "keep"]
     if keeps:
-        sections.append(("strengths", "Strengths", "Strengths to protect", "".join(finding_card(ctx, f) for f in keeps)))
+        sections.append(("audit-strengths", "Strengths", "Strengths to protect", "".join(finding_card(ctx, f) for f in keeps)))
     opps = [f for f in src.get("findings", []) if f.get("kind") == "opportunity"]
     if opps:
-        sections.append(("opportunities", "Opportunities", "Opportunity signals",
+        sections.append(("audit-opportunities", "Opportunities", "Opportunity signals",
                          '<p class="small">Pages or assets to create rather than defects to fix. They carry a severity for sizing but never sit in the findings list, and a missing page type is only claimed from a complete inventory.</p>'
                          + "".join(finding_card(ctx, f) for f in opps)))
     if d.get("geo"):
-        sections.append(("geo", "GEO / AEO", d.get("geo_title", "GEO / AEO: being the source AI assistants cite"), render_blocks(ctx, d["geo"])))
+        sections.append(("audit-geo", "GEO / AEO", d.get("geo_title", "GEO / AEO: being the source AI assistants cite"), render_blocks(ctx, d["geo"])))
     if d.get("questions"):
-        sections.append(("questions", "Key questions", "Answers to the key questions", render_blocks(ctx, d["questions"])))
-    recs_now = [r for r in active_recs(src) if r.get("horizon") == "now"]
-    sections.append(("next", "What next", "What happens next",
-                     f'<p>The full register — {len(active_recs(src))} recommendations with tiers, owners, automation lanes and dependencies — is the <a href="{DOC_FILES["plan"]}">Implementation plan</a>. This week:</p>'
-                     + table(["ID", "Action", "Owner", "Lane"], [rec_cells(ctx, r, ["id", "action", "owner", "lane"]) for r in recs_now], ["q", "", "", ""])))
-    return page(src, "audit", d.get("title", "SEO & GEO Audit"), d.get("sub", ""), sections, css)
+        sections.append(("audit-questions", "Key questions", "Answers to the key questions", render_blocks(ctx, d["questions"])))
+    return ("audit", "Audit", intro, sections, False)
 
 
-def doc_strategy(src, css) -> str:
-    ctx = Ctx(src, "strategy")
+def pages_html(ctx: Ctx, d: dict) -> str:
+    """Page cards grouped by wave; each wave folds, since only the content team works through them."""
+    out = [render_blocks(ctx, d.get("pages_intro", []))]
+    waves = {}
+    for p in ctx.src.get("pages", []):
+        waves.setdefault(p.get("wave", ""), []).append(p)
+    for wave, items in waves.items():
+        cards = [render_blocks(ctx, items[0].get("wave_intro", []))]
+        for p in items:
+            cls = {"Consolidate": "con", "Rebuild": "reb", "Add block": "add", "New": "new", "Differentiate": "reb"}.get(p.get("type"), "")
+            rows = [("Owns", " ".join(f'<span class="pid">{esc(x)}</span>' for x in p.get("prompts", [])))]
+            if p.get("page_type"):
+                rows.append(("Page type", esc(p["page_type"])))
+            for k in ("Today", "Data", "Change", "Test"):
+                if p.get("fields", {}).get(k):
+                    cls_dd = {"Today": "state", "Data": "state", "Test": "test"}.get(k, "")
+                    rows.append((k, f'<span class="{cls_dd}">' + ctx.inline(p["fields"][k]) + "</span>"))
+            for k, v in p.get("fields", {}).items():
+                if k not in ("Owns", "Today", "Data", "Change", "Test"):
+                    rows.append((k, ctx.inline(v)))
+            if p.get("recs"):
+                rows.append(("Recs", ctx.ids(p["recs"])))
+            dl = "".join(f"<dt>{esc(k)}</dt><dd>{v}</dd>" for k, v in rows)
+            cards.append(f'<div class="pg {cls}"><div class="pg-top">{chip(p.get("type"), {"con": "c", "reb": "h", "add": "m", "new": "g"}.get(cls, "o"))}<span class="pg-url">{ctx.inline(p.get("url"))}</span></div><dl>{dl}</dl></div>')
+        n = len(items)
+        out.append(f'<details class="fold wave"><summary><h3>{esc(wave)}</h3><span class="small">{n} page{"s" if n != 1 else ""}</span></summary>{"".join(cards)}</details>')
+    return "".join(out)
+
+
+def part_strategy(ctx: Ctx):
+    src = ctx.src
     d = src.get("docs", {}).get("strategy", {})
-    sections = [("summary", "Summary", "Summary", f'<div class="verdict"><p class="lead">{ctx.inline(d.get("verdict"))}</p></div>' + render_blocks(ctx, d.get("summary", [])) + render_figs(d.get("figures", [])))]
-    sections.append(("coverage", "Coverage", "Scope and coverage", coverage_html(ctx, full=False) + render_blocks(ctx, d.get("coverage_note", []))))
-    for s in d.get("sections", []):
-        sections.append((s["id"], s.get("nav", s["title"]), s["title"], render_blocks(ctx, s.get("blocks", []))))
+    intro = lead(ctx, d.get("verdict")) + render_blocks(ctx, d.get("summary", [])) + render_figs(d.get("figures", [])) + render_blocks(ctx, d.get("coverage_note", []))
+    sections = [("strategy-" + s["id"], s.get("nav", s["title"]), s["title"], render_blocks(ctx, s.get("blocks", []))) for s in d.get("sections", [])]
     prompts = src.get("prompts", {})
     if prompts.get("tiers"):
         tiers = []
         for t in prompts["tiers"]:
             rows = "".join(f'<div class="prow" id="{esc(r.get("id", ""))}"><q>{ctx.inline(r.get("prompt"))}</q><div class="own"><b>{esc(r.get("id", ""))} · {ctx.inline(r.get("owner"))}</b>{ctx.inline(r.get("note"))}</div></div>' for r in t.get("rows", []))
             tiers.append(f'<div class="ptier"><div class="ptier-h"><strong>{ctx.inline(t.get("tier"))}</strong><span>{ctx.inline(t.get("note"))}</span></div>{rows}</div>')
-        sections.append(("prompts", "Prompt roster", "The AI prompt roster", render_blocks(ctx, prompts.get("intro", [])) + "".join(tiers)))
-    pages = src.get("pages", [])
-    if pages:
-        out = [render_blocks(ctx, d.get("pages_intro", []))]
-        waves = {}
-        for p in pages:
-            waves.setdefault(p.get("wave", ""), []).append(p)
-        for wave, items in waves.items():
-            out.append(f"<h3>{esc(wave)}</h3>" + render_blocks(ctx, items[0].get("wave_intro", [])))
-            for p in items:
-                cls = {"Consolidate": "con", "Rebuild": "reb", "Add block": "add", "New": "new", "Differentiate": "reb"}.get(p.get("type"), "")
-                rows = [("Owns", " ".join(f'<span class="pid">{esc(x)}</span>' for x in p.get("prompts", [])))]
-                if p.get("page_type"):
-                    rows.append(("Page type", esc(p["page_type"])))
-                for k in ("Today", "Data", "Change", "Test"):
-                    if p.get("fields", {}).get(k):
-                        cls_dd = {"Today": "state", "Data": "state", "Test": "test"}.get(k, "")
-                        rows.append((k, f'<span class="{cls_dd}">' + ctx.inline(p["fields"][k]) + "</span>"))
-                for k, v in p.get("fields", {}).items():
-                    if k not in ("Owns", "Today", "Data", "Change", "Test"):
-                        rows.append((k, ctx.inline(v)))
-                if p.get("recs"):
-                    rows.append(("Recs", ctx.ids(p["recs"])))
-                dl = "".join(f"<dt>{esc(k)}</dt><dd>{v}</dd>" for k, v in rows)
-                out.append(f'<div class="pg {cls}"><div class="pg-top">{chip(p.get("type"), {"con": "c", "reb": "h", "add": "m", "new": "g"}.get(cls, "o"))}<span class="pg-url">{ctx.inline(p.get("url"))}</span></div><dl>{dl}</dl></div>')
-        sections.append(("pages", "Page cards", "Annex · Page-to-prompt map", "".join(out)))
-    return page(src, "strategy", d.get("title", "Content & Prompt Strategy"), d.get("sub", ""), sections, css)
+        sections.append(("strategy-prompts", "Prompt roster", "The AI prompt roster", render_blocks(ctx, prompts.get("intro", [])) + "".join(tiers)))
+    if src.get("pages"):
+        sections.append(("strategy-pages", "Page cards", "Page-to-prompt map", pages_html(ctx, d)))
+    if not (intro or sections):
+        return None
+    return ("strategy", "Strategy", intro, sections, False)
 
 
-def doc_plan(src, css) -> str:
-    ctx = Ctx(src, "plan")
+def part_plan(ctx: Ctx):
+    src = ctx.src
     d = src.get("docs", {}).get("plan", {})
-    recs = src.get("recommendations", [])
     live = active_recs(src)
-    sections = [("summary", "Summary", "Summary", f'<div class="verdict"><p class="lead">{ctx.inline(d.get("verdict"))}</p></div>' + render_blocks(ctx, d.get("summary", [])))]
+    intro = lead(ctx, d.get("verdict")) + render_blocks(ctx, d.get("summary", []))
+    sections = []
     if d.get("guardrails"):
-        sections.append(("guardrails", "Guardrails", "Guardrails", render_blocks(ctx, d["guardrails"])))
+        sections.append(("plan-guardrails", "Guardrails", "Guardrails", render_blocks(ctx, d["guardrails"])))
     rule = d.get("prioritisation") or [
         {"type": "ol", "items": ["**Measurement prerequisites** — exports with expiry dates, the site graph, the prompt baseline.",
                                  "**Stop-loss and public-fact fixes** — wrong claims, broken redirects, corrupted assets.",
@@ -672,60 +706,55 @@ def doc_plan(src, css) -> str:
                                  "**Tested changes** (Track B), one test per page set, ordered by value at stake × confidence ÷ effort.",
                                  "**Bets** (Track C), including page-type opportunities, gated on a test read or the baseline."]},
         {"type": "p", "text": "Within a level, ties break by value at stake × confidence ÷ effort. The risk tier is a gate, not a score input. Every row shows what blocks it and what it unblocks."}]
-    sections.append(("rule", "Priority rule", "How the order was decided", render_blocks(ctx, rule)))
-    timeline = []
+    sections.append(("plan-rule", "Priority rule", "How the order was decided", render_blocks(ctx, rule)))
+    today = {r["id"] for r in start_today(src)}
+    timeline = ['<p class="small">' + (f'{chip("Start today", "g")} marks the {len(today)} Auto or Assisted item{"s" if len(today) != 1 else ""} with nothing left to wait for: an agent can begin now. '
+                                        if today else "No item is unblocked for an agent yet. ")
+                + "Auto items ship under the Free tier with automated checks; Assisted items are drafted by the agent and merged by a human.</p>"]
+    cols = [c for c in REGISTER_COLS if c[0] in ("id", "action", "fixes", "tier", "owner", "lane", "effort", "deps", "done", "status")]
     for h in HORIZON_ORDER:
         items = [r for r in live if r.get("horizon") == h]
-        if not items:
-            continue
-        timeline.append(f'<div class="plan-h"><h3>{esc(HORIZON_LABEL[h])}</h3><p class="small">{len(items)} items</p></div>'
-                        + register_table(ctx, items, [c for c in REGISTER_COLS if c[0] in ("id", "action", "fixes", "tier", "owner", "lane", "effort", "deps", "done", "status")]))
-    sections.append(("timeline", "Timeline", "Timeline", "".join(timeline)))
-    st = start_today(src)
-    sections.append(("today", "Start today", "Start today — what an agent can begin now",
-                     '<p class="small">Every Auto or Assisted item with no unmet Human or Decision blocker. Auto items ship under the Free tier with automated checks; Assisted items are drafted by the agent and merged by a human.</p>'
-                     + (register_table(ctx, st, [c for c in REGISTER_COLS if c[0] in ("id", "action", "tier", "lane", "effort", "done")]) if st else "<p>Nothing is unblocked yet.</p>")))
-    owners = {}
-    for r in live:
-        owners.setdefault(r.get("owner_role", "—"), []).append(r)
-    by_owner = "".join(f"<h3>{esc(o)}</h3>" + register_table(ctx, items, [c for c in REGISTER_COLS if c[0] in ("id", "action", "lane", "effort", "horizon", "status")]) for o, items in sorted(owners.items()))
-    sections.append(("owners", "By owner", "By owner", by_owner + render_blocks(ctx, d.get("owners", []))))
-    sections.append(("register", "Register", "The full register", '<p class="small">Every recommendation, including dropped ones (struck through). IDs: T technical · M measurement · G GEO and public facts · C commercial and content · P portfolio.</p>' + register_table(ctx, recs, anchor=True)))
-    decisions = src.get("decisions", [])
-    dec_rows = [[f'<a id="{esc(x["id"])}" href="#{esc(x["id"])}" class="mono">{esc(x["id"])}</a>', ctx.inline(x.get("question")), esc(x.get("owner_role")), ctx.inline(x.get("needed_by") or "—"), esc(x.get("status") or "open"),
-                 ctx.ids([r["id"] for r in recs if r.get("decision") == x["id"]])] for x in decisions]
-    sections.append(("decisions", "Decisions", "Decisions needed", table(["ID", "Decision", "Owner", "Needed by", "Status", "Unblocks"], dec_rows, ["q", "", "", "", "", ""]) if decisions else "<p>None.</p>"))
+        if items:
+            timeline.append(f'<div class="plan-h"><h3>{esc(HORIZON_LABEL[h])}</h3><p class="small">{len(items)} items</p></div>' + register_table(ctx, items, cols, today=today))
+    sections.append(("plan-timeline", "Timeline", "Timeline", "".join(timeline)))
+    if d.get("owners"):
+        sections.append(("plan-owners", "Owners", "Owners", render_blocks(ctx, d["owners"])))
+    sections.append(("plan-register", "Register", "The full register",
+                     '<p class="small">Every recommendation, including dropped ones (struck through). IDs: T technical · M measurement · G GEO and public facts · C commercial and content · P portfolio. '
+                     'Decisions are listed in the <a href="#summary-decisions">Summary</a>.</p>' + register_table(ctx, src.get("recommendations", []), anchor=True)))
     for key, nav, title in (("monitoring", "Monitoring", "Monitoring"), ("standards", "Standards", "Standards to build"), ("loop", "Monthly loop", "Monthly loop"), ("needed", "Still needed", "Still needed")):
         if d.get(key):
-            sections.append((key, nav, title, render_blocks(ctx, d[key])))
-    return page(src, "plan", d.get("title", "Implementation Plan"), d.get("sub", ""), sections, css)
+            sections.append(("plan-" + key, nav, title, render_blocks(ctx, d[key])))
+    return ("plan", "Plan", intro, sections, False)
 
 
-def doc_appendix(src, css) -> str:
-    ctx = Ctx(src, "appendix")
+def part_appendix(ctx: Ctx):
+    """Reviewers' material, folded: the page stays readable, and links and printing unfold it."""
+    src = ctx.src
     d = src.get("docs", {}).get("appendix", {})
     v = src.get("validity", {})
     sections = []
     recs = src.get("recommendations", [])
-    counts = {k: sum(1 for r in recs if r.get("validity") == k) for k in ("Confirmed", "Revised", "Dropped", "Added")}
-    figs = render_figs([{"value": counts["Confirmed"], "label": "Confirmed as written", "tone": "up"}, {"value": counts["Revised"], "label": "Revised — kept, with changes", "tone": "neutral"},
-                        {"value": counts["Dropped"], "label": "Dropped", "tone": "down"}, {"value": counts["Added"], "label": "Added", "tone": "up"}])
-    val_rows = []
-    for r in recs:
-        if not r.get("validity"):
-            continue
-        val_rows.append({"cells": [f'<a href="{ctx.href(r["id"])}" class="mono">{esc(r["id"])}</a>', ctx.inline(r.get("validity_original") or r.get("action")), chip(r["validity"], VALIDITY_CLASS.get(r["validity"], "o")),
-                                   ctx.inline(r.get("validity_reason") or "—"), ctx.inline(r.get("validity_now") or r.get("action"))], "class": "dropped" if r.get("status") == "dropped" else ""})
-    validity = (render_blocks(ctx, v.get("summary", [])) + figs + ("<h3>Method</h3>" + render_blocks(ctx, v["method"]) if v.get("method") else "")
-                + "<h3>Verdicts</h3>" + table(["ID", "Recommendation as first stated", "Verdict", "Why", "Now stands as"], val_rows, ["q", "", "", "", ""]))
-    sections.append(("validity", "Validity review", "Recommendation validity review", validity))
+    if any(r.get("validity") for r in recs) or v.get("summary") or v.get("method"):
+        counts = {k: sum(1 for r in recs if r.get("validity") == k) for k in ("Confirmed", "Revised", "Dropped", "Added")}
+        figs = render_figs([{"value": counts["Confirmed"], "label": "Confirmed as written", "tone": "up"}, {"value": counts["Revised"], "label": "Revised — kept, with changes", "tone": "neutral"},
+                            {"value": counts["Dropped"], "label": "Dropped", "tone": "down"}, {"value": counts["Added"], "label": "Added", "tone": "up"}])
+        val_rows = []
+        for r in recs:
+            if not r.get("validity"):
+                continue
+            val_rows.append({"cells": [f'<a href="{ctx.href(r["id"])}" class="mono">{esc(r["id"])}</a>', ctx.inline(r.get("validity_original") or r.get("action")), chip(r["validity"], VALIDITY_CLASS.get(r["validity"], "o")),
+                                       ctx.inline(r.get("validity_reason") or "—"), ctx.inline(r.get("validity_now") or r.get("action"))], "class": "dropped" if r.get("status") == "dropped" else ""})
+        validity = (render_blocks(ctx, v.get("summary", [])) + figs + ("<h3>Method</h3>" + render_blocks(ctx, v["method"]) if v.get("method") else "")
+                    + "<h3>Verdicts</h3>" + table(["ID", "Recommendation as first stated", "Verdict", "Why", "Now stands as"], val_rows, ["q", "", "", "", ""]))
+        sections.append(("appendix-validity", "Validity review", "Recommendation validity review", validity))
     if v.get("corrections"):
-        sections.append(("corrections", "Corrections", "Corrected findings and figures", render_blocks(ctx, v["corrections"])))
+        sections.append(("appendix-corrections", "Corrections", "Corrected findings and figures", render_blocks(ctx, v["corrections"])))
     if v.get("evidence_levels"):
-        sections.append(("evidence", "Evidence levels", "Evidence levels for the GEO tactics", render_blocks(ctx, v["evidence_levels"])))
+        sections.append(("appendix-evidence", "Evidence levels", "Evidence levels for the GEO tactics", render_blocks(ctx, v["evidence_levels"])))
     tests = src.get("tests", [])
     if tests:
-        sections.append(("tests", "Open tests", "Open tests", render_blocks(ctx, d.get("tests_intro", [])) + table(["Claim", "Would be disproved by", "Design"], [[ctx.inline(t.get("claim")), ctx.inline(t.get("disproved_by")), ctx.inline(t.get("design"))] for t in tests]) + render_blocks(ctx, d.get("tests_outro", []))))
+        sections.append(("appendix-tests", "Open tests", "Open tests", render_blocks(ctx, d.get("tests_intro", [])) + table(["Claim", "Would be disproved by", "Design"], [[ctx.inline(t.get("claim")), ctx.inline(t.get("disproved_by")), ctx.inline(t.get("design"))] for t in tests]) + render_blocks(ctx, d.get("tests_outro", []))))
     machine = src.get("machine") or {}
     if machine.get("findings") or machine.get("categories"):
         cats = machine.get("categories") or {}
@@ -741,14 +770,30 @@ def doc_appendix(src, css) -> str:
         else:
             intro += "Not scored."
         intro += " Structure checks are shown, never weighted.</p>"
-        sections.append(("machine", "Machine checks", "Machine checks", intro + (table(["Check", "Group", "Status", "Score", "Weight"], rows, ["", "", "", "n", "n"]) if rows else "") + "".join(mf)))
+        sections.append(("appendix-machine", "Machine checks", "Machine checks", intro + (table(["Check", "Group", "Status", "Score", "Weight"], rows, ["", "", "", "n", "n"]) if rows else "") + "".join(mf)))
     ar = (src.get("structure") or {}).get("architecture") or {}
     if ar.get("mermaid"):
-        sections.append(("mermaid", "Section tree", "Section tree (Mermaid source)", f'<pre class="mono">{esc(ar["mermaid"])}</pre>'))
+        sections.append(("appendix-mermaid", "Section tree", "Section tree (Mermaid source)", f'<pre class="mono">{esc(ar["mermaid"])}</pre>'))
     gl = src.get("glossary", [])
     if gl:
-        sections.append(("glossary", "Glossary", "Glossary", '<dl class="gloss">' + "".join(f"<div><dt>{esc(g.get('term'))}</dt><dd>{ctx.inline(g.get('definition'))}</dd></div>" for g in gl) + "</dl>"))
-    return page(src, "appendix", d.get("title", "Appendices"), d.get("sub", "Validity review, corrections, open tests, machine checks and glossary."), sections, css)
+        sections.append(("appendix-glossary", "Glossary", "Glossary", '<dl class="gloss">' + "".join(f"<div><dt>{esc(g.get('term'))}</dt><dd>{ctx.inline(g.get('definition'))}</dd></div>" for g in gl) + "</dl>"))
+    if not sections:
+        return None
+    intro = render_blocks(ctx, d.get("intro", [])) or '<p class="small">Method and evidence for reviewers. Each section opens on click, and all of them open when the page is printed.</p>'
+    return ("appendix", "Appendix", intro, sections, True)
+
+
+def render(src: dict, css=None) -> str:
+    """The whole report as one self-contained HTML page."""
+    css = load_css() if css is None else css
+    src.setdefault("generated", date.today().isoformat())
+    ctx = Ctx(src)
+    used = set()
+    parts = [part_summary(ctx, used), part_audit(ctx, used), part_strategy(ctx), part_plan(ctx), part_appendix(ctx)]
+    meta = src.get("meta", {})
+    title = meta.get("title") or f"{meta.get('client', '')} SEO & GEO report".strip()
+    sub = meta.get("purpose") or src.get("docs", {}).get("brief", {}).get("sub", "The verdict, the audit, the strategy and the plan in one document.")
+    return page(src, title, sub, [p for p in parts if p], css)
 
 
 # --- assembly ------------------------------------------------------------------------------
@@ -868,7 +913,7 @@ def catalogue_html(css: str) -> str:
     """One page showing every component once, with a light / dark toggle."""
     src = sample_source()
     src.setdefault("generated", date.today().isoformat())
-    ctx = Ctx(src, "audit")
+    ctx = Ctx(src)
     d = src["docs"]["audit"]
     sections = [
         ("verdict", "Verdict", "Verdict, figures, prose, callout, before / after, table",
@@ -876,28 +921,27 @@ def catalogue_html(css: str) -> str:
         ("coverage", "Coverage", "Scope and coverage (generated)", coverage_html(ctx)),
         ("shape", "Site shape", "Site shape: section table and static tree", site_shape_html(ctx)),
         ("findings", "Findings", "Finding cards: defect, risk, opportunity, keep", "".join(finding_card(ctx, f) for f in src["findings"])),
-        ("register", "Register", "Recommendation register: chips, lanes, dependencies, supersedes, dropped row", register_table(Ctx(src, "plan"), src["recommendations"], anchor=True)),
+        ("register", "Register", "Recommendation register: chips, lanes, dependencies, supersedes, dropped row", register_table(ctx, src["recommendations"], anchor=True) + "<h3>Decisions</h3>" + decisions_table(ctx)),
         ("prompts", "Prompts", "Prompt tier", '<div class="ptier"><div class="ptier-h"><strong>Tier 1 · Category selection</strong><span>Improvado must appear as a named candidate.</span></div>'
          '<div class="prow"><q>What platform should a 2,000-person retailer use to unify marketing data?</q><div class="own"><b>T1.1 · /products, /reporting</b>Needs an enterprise-scale qualifier</div></div></div>'),
         ("pages", "Page card", "Page card", '<div class="pg con"><div class="pg-top">' + chip("Consolidate", "c") + '<span class="pg-url">/products/marketing-attribution</span></div>'
          '<dl><dt>Owns</dt><dd><span class="pid">T1.1</span></dd><dt>Page type</dt><dd>product_feature</dd><dt>Today</dt><dd><span class="state">551 words</span></dd><dt>Change</dt><dd>301 the duplicate (' + ctx.inline("T1") + ')</dd><dt>Test</dt><dd><span class="test">One URL ranks for 4 weeks</span></dd></dl></div>'),
         ("glossary", "Glossary", "Glossary", '<dl class="gloss"><div><dt>GEO</dt><dd>Generative engine optimization.</dd></div><div><dt>INP</dt><dd>Interaction to Next Paint.</dd></div></dl>'),
     ]
-    html = page(src, "audit", "Report set — component catalogue", "Every component of references/report-template/report.css rendered once. Toggle the theme with the button; print to see print.css.", sections, css)
+    html = page(src, "Report — component catalogue", "Every component of references/report-template/report.css rendered once. Toggle the theme with the button; print to see print.css.",
+                [("catalogue", "Components", "", sections, False)], css)
     toggle = ('<button type="button" style="position:fixed;right:16px;bottom:16px;z-index:30;font-family:var(--sans);font-size:13px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:3px;background:var(--surface);color:var(--ink);cursor:pointer" '
               'onclick="var h=document.documentElement;h.dataset.theme=h.dataset.theme===\'dark\'?\'light\':\'dark\'">Toggle light / dark</button>')
     return html.replace("</body>", toggle + "\n</body>")
 
 
 def render_all(src: dict) -> dict:
-    css = load_css()
-    src.setdefault("generated", date.today().isoformat())
-    return {DOC_FILES["index"]: doc_index(src, css), DOC_FILES["brief"]: doc_brief(src, css), DOC_FILES["audit"]: doc_audit(src, css),
-            DOC_FILES["strategy"]: doc_strategy(src, css), DOC_FILES["plan"]: doc_plan(src, css), DOC_FILES["appendix"]: doc_appendix(src, css)}
+    """{file name: html} for everything the renderer writes: one file."""
+    return {REPORT_FILE: render(src)}
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Render the client report set from a report source")
+    parser = argparse.ArgumentParser(description="Render the client report (report.html) from a report source")
     parser.add_argument("source", nargs="?", help="report source JSON (schema_version 1)")
     parser.add_argument("--out", "-o", help="output directory")
     parser.add_argument("--catalogue", help="write the component catalogue (from the built-in sample source) to this HTML file and exit")
