@@ -18,6 +18,9 @@ from typing import Any
 
 from pdf_charts import category_radar, cwv_bars, health_score_gauge, severity_donut
 
+# Colours are Tobto design-system tokens (tokens/colors.css), the same values as
+# references/report-template/report.css: -500 hues for fills and borders, -700 steps
+# for type on a soft tint, the ink ladder for neutrals.
 _CSS = r"""
 @page {
     size: A4;
@@ -25,14 +28,14 @@ _CSS = r"""
     @bottom-center {
         content: "Page " counter(page) " of " counter(pages);
         font-size: 9pt;
-        color: #7f8c8d;
-        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: #5b626d;
+        font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
     @top-right {
         content: "SEO Audit Report";
         font-size: 8pt;
-        color: #bdc3c7;
-        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: #838a95;
+        font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
 }
 
@@ -44,62 +47,62 @@ _CSS = r"""
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
     font-size: 11pt;
     line-height: 1.55;
-    color: #2c3e50;
+    color: #16191e;
     background: #fff;
 }
 
-h1 { font-size: 28pt; font-weight: 700; margin-bottom: 0.3em; color: #2c3e50; }
-h2 { font-size: 18pt; font-weight: 700; margin: 1em 0 0.4em; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 4pt; }
-h3 { font-size: 13pt; font-weight: 600; margin: 0.8em 0 0.3em; color: #34495e; }
+h1 { font-size: 28pt; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.3em; color: #0b0d10; }
+h2 { font-size: 18pt; font-weight: 600; letter-spacing: -0.02em; margin: 1em 0 0.4em; color: #0b0d10; border-bottom: 2px solid #0057b7; padding-bottom: 4pt; }
+h3 { font-size: 13pt; font-weight: 600; margin: 0.8em 0 0.3em; color: #16191e; }
 
 p { margin-bottom: 0.6em; }
-a { color: #3498db; text-decoration: none; }
+a { color: #0057b7; text-decoration: none; }
 
 table { width: 100%; border-collapse: collapse; margin: 0.6em 0 1em; font-size: 10pt; }
-th, td { padding: 6pt 10pt; text-align: left; border-bottom: 1px solid #ecf0f1; }
-th { background: #f8f9fa; font-weight: 600; color: #2c3e50; }
-tr:nth-child(even) td { background: #fdfdfe; }
+th, td { padding: 6pt 10pt; text-align: left; border-bottom: 1px solid #d7dbe1; }
+th { background: #f5f6f8; font-weight: 600; color: #0b0d10; }
+tr:nth-child(even) td { background: #fafbfc; }
 
 .cover { page-break-after: always; text-align: center; padding-top: 25%; }
-.cover h1 { font-size: 36pt; color: #2c3e50; }
-.cover .subtitle { font-size: 14pt; color: #7f8c8d; margin-top: 0.5em; }
-.cover .score-big { font-size: 72pt; font-weight: 800; margin: 0.4em 0 0.1em; }
-.cover .score-label { font-size: 14pt; color: #7f8c8d; }
-.cover .meta { font-size: 11pt; color: #95a5a6; margin-top: 2em; }
+.cover h1 { font-size: 36pt; color: #0b0d10; }
+.cover .subtitle { font-size: 14pt; color: #5b626d; margin-top: 0.5em; }
+.cover .score-big { font-size: 72pt; font-weight: 700; letter-spacing: -0.04em; margin: 0.4em 0 0.1em; }
+.cover .score-label { font-size: 14pt; color: #5b626d; }
+.cover .meta { font-size: 11pt; color: #838a95; margin-top: 2em; }
 .cover .meta span { display: inline-block; margin: 0 12pt; }
 
 .toc { page-break-after: always; }
 .toc ul { list-style: none; padding: 0; }
-.toc li { padding: 4pt 0; border-bottom: 1px dotted #ecf0f1; font-size: 11pt; }
-.toc li a { color: #2c3e50; }
+.toc li { padding: 4pt 0; border-bottom: 1px dotted #d7dbe1; font-size: 11pt; }
+.toc li a { color: #0b0d10; }
 
 .section { page-break-before: always; }
 
-.finding { margin-bottom: 1.2em; padding: 10pt 14pt; border-left: 4px solid #bdc3c7; background: #fafafa; border-radius: 0 4pt 4pt 0; page-break-inside: avoid; }
-.finding.critical { border-left-color: #e74c3c; background: #fdf0ef; }
-.finding.high { border-left-color: #f39c12; background: #fef9ed; }
-.finding.medium { border-left-color: #f1c40f; background: #fefce8; }
-.finding.low { border-left-color: #3498db; background: #eef6fc; }
+.finding { margin-bottom: 1.2em; padding: 10pt 14pt; border-left: 4px solid #b4bac3; background: #f5f6f8; border-radius: 0 10pt 10pt 0; page-break-inside: avoid; }
+.finding.critical { border-left-color: #c2334f; background: #f9e9ed; }
+.finding.high { border-left-color: #996a08; background: #fdf6e3; }
+.finding.medium { border-left-color: #0057b7; background: #eef4fc; }
+.finding.low { border-left-color: #838a95; background: #f5f6f8; }
 
-.finding .severity-tag { display: inline-block; font-size: 9pt; font-weight: 700; text-transform: uppercase; padding: 2pt 6pt; border-radius: 3pt; color: #fff; margin-right: 8pt; vertical-align: middle; }
-.finding .severity-tag.critical { background: #e74c3c; }
-.finding .severity-tag.high { background: #f39c12; }
-.finding .severity-tag.medium { background: #f1c40f; color: #2c3e50; }
-.finding .severity-tag.low { background: #3498db; }
+.finding .severity-tag { display: inline-block; font-size: 9pt; font-weight: 700; text-transform: uppercase; padding: 2pt 6pt; border-radius: 4pt; color: #fff; margin-right: 8pt; vertical-align: middle; }
+.finding .severity-tag.critical { background: #c2334f; }
+.finding .severity-tag.high { background: #996a08; }
+.finding .severity-tag.medium { background: #0057b7; }
+.finding .severity-tag.low { background: #5b626d; }
 
-.finding dt { font-weight: 600; font-size: 10pt; color: #7f8c8d; margin-top: 4pt; }
+.finding dt { font-weight: 600; font-size: 10pt; color: #5b626d; margin-top: 4pt; }
 .finding dd { margin-left: 0; margin-bottom: 4pt; }
 
 .chart-row { display: flex; gap: 20pt; flex-wrap: wrap; justify-content: center; margin: 1em 0; }
 .chart-row > div { flex: 0 1 auto; }
 
-.badge { display: inline-block; padding: 2pt 8pt; border-radius: 3pt; font-size: 9pt; font-weight: 600; }
-.badge-green { background: #d4efdf; color: #1e8449; }
-.badge-orange { background: #fdebd0; color: #b9770e; }
-.badge-red { background: #fadbd8; color: #922b21; }
+.badge { display: inline-block; padding: 2pt 8pt; border-radius: 4pt; font-size: 9pt; font-weight: 600; }
+.badge-green { background: #e9f1e3; color: #2f5e18; }
+.badge-orange { background: #fdf6e3; color: #6e4c05; }
+.badge-red { background: #f9e9ed; color: #a2213a; }
 
 .appendix-table th { font-size: 9pt; }
 .appendix-table td { font-size: 9pt; }
@@ -121,10 +124,10 @@ def _score_class(score: int) -> str:
 
 def _score_color_hex(score: int) -> str:
     if score >= 80:
-        return "#27ae60"
+        return "#3f7d20"
     if score >= 50:
-        return "#f39c12"
-    return "#e74c3c"
+        return "#996a08"
+    return "#c2334f"
 
 
 def _render_cover(data: dict) -> str:
