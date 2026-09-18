@@ -53,7 +53,7 @@ except ImportError:
     sys.exit(1)
 
 import jsonld
-from url_safety import validate_url
+from url_safety import is_crawlable_href, validate_url
 
 GRAPH_SCHEMA_VERSION = 2
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-SiteGraph/1.15; +https://github.com/mykpono/ultimate-seo-geo)"
@@ -503,7 +503,7 @@ def extract_page(html: str, url: str, site_host: str) -> dict:
     region_counts = {r: 0 for r in REGIONS}
     for a in soup.find_all("a", href=True):
         href = (a.get("href") or "").strip()
-        if not href or href.startswith(("#", "javascript:", "mailto:", "tel:", "data:")):
+        if not is_crawlable_href(href):
             continue
         full = urljoin(url, href)
         parsed = urlparse(full)

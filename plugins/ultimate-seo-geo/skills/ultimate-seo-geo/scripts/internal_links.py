@@ -21,6 +21,8 @@ from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 
+from url_safety import is_crawlable_href
+
 try:
     import requests
 except ImportError:
@@ -54,7 +56,7 @@ def extract_internal_links(html: str, page_url: str, domain: str) -> list:
 
     for tag in soup.find_all("a", href=True):
         href = tag["href"].strip()
-        if href.startswith(("#", "javascript:", "mailto:", "tel:", "data:")):
+        if not is_crawlable_href(href):
             continue
 
         absolute = urljoin(page_url, href)

@@ -251,10 +251,15 @@ def _parse_robots(content: str, result: dict):
     for token, successors in LEGACY_AI_TOKENS.items():
         declared = agents_by_lower.get(token.lower())
         if declared is not None:
-            result["issues"].append(
-                f"ℹ️ robots.txt names {declared}, which its vendor no longer documents — "
-                f"write the rule for {successors} instead"
-            )
+            result["issues"].append({
+                "severity": "info",
+                "code": "robots.retired_agent_token",
+                "label": declared,
+                "finding": f"robots.txt names {declared}, which its vendor no longer documents.",
+                "evidence": f"User-agent: {declared}",
+                "fix": f"Write the rule for {successors} instead; keep the same allow or block the {declared} group had.",
+                "confidence": "Confirmed",
+            })
 
     if not result["sitemaps"]:
         result["issues"].append("⚠️ No Sitemap directive found in robots.txt")
@@ -312,7 +317,7 @@ def main():
     if result["issues"]:
         print(f"\nIssues ({len(result['issues'])}):")
         for issue in result["issues"]:
-            print(f"  {issue}")
+            print(f"  {'ℹ️ ' + issue['finding'] + ' ' + issue['fix'] if isinstance(issue, dict) else issue}")
 
 
 if __name__ == "__main__":

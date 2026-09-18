@@ -98,8 +98,9 @@ def test_legacy_tokens_are_not_scored(token):
 def test_legacy_token_gets_a_note_naming_the_current_tokens():
     result = robots_section("User-agent: anthropic-ai\nDisallow: /\n")
 
-    notes = [i for i in result["issues"] if "anthropic-ai" in i]
-    assert notes and "Claude-SearchBot" in notes[0]
+    # The note is a structured finding: the successors are its fix, so the report can plan it.
+    notes = [i for i in result["issues"] if isinstance(i, dict) and i.get("label") == "anthropic-ai"]
+    assert notes and "Claude-SearchBot" in notes[0]["fix"] and notes[0]["severity"] == "info"
     assert result["ai_crawler_status"]["ClaudeBot"] == "not managed (allowed by default)"
 
 

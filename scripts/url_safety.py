@@ -209,3 +209,19 @@ def validate_redirect_chain(urls: Iterable[str]) -> UrlSafetyResult:
             return result
     return UrlSafetyResult(True, last, last)
 
+
+# Link crawlers: an href that is not a page to fetch.
+_NON_PAGE_SCHEMES = ("#", "javascript:", "mailto:", "tel:", "sms:", "data:")
+# Cloudflare Email Obfuscation rewrites every mailto: into a link to this path,
+# decoded by script in a browser. It answers 404 to anything else by design, so
+# a crawler that follows it reports a broken link on every page that shows an
+# email address.
+_OBFUSCATED_EMAIL_PATH = "/cdn-cgi/l/email-protection"
+
+
+def is_crawlable_href(href: str) -> bool:
+    """False for fragments, non-HTTP schemes and Cloudflare's obfuscated mailto links."""
+    value = (href or "").strip()
+    if not value or value.lower().startswith(_NON_PAGE_SCHEMES):
+        return False
+    return _OBFUSCATED_EMAIL_PATH not in urlparse(value).path

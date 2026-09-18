@@ -20,6 +20,8 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 
+from url_safety import is_crawlable_href
+
 try:
     import requests
 except ImportError:
@@ -52,7 +54,7 @@ def extract_links(html: str, base_url: str) -> list:
         href = tag["href"].strip()
 
         # Skip anchors, javascript, mailto, tel
-        if href.startswith(("#", "javascript:", "mailto:", "tel:", "data:")):
+        if not is_crawlable_href(href):
             continue
 
         absolute = urljoin(base_url, href)
@@ -79,6 +81,57 @@ def is_redirect_chain(link_result: dict) -> bool:
     link that was not redirected.
     """
     return (link_result.get("redirect") or {}).get("hops", 0) > 1
+
+
+def _broken_issue(broken: list, finding: str) -> dict:
+    """The broken-links finding, naming the links: a Critical with no evidence cannot be acted on."""
+    shown = []
+    for link in broken[:5]:
+        status = f"HTTP {link['status']}" if link.get("status") else (link.get("error") or "no response")
+        text = (link.get("anchor_text") or "").strip()[:40]
+        anchor = f' ("{text}")' if text else ""
+        shown.append(f"{link['url']}{anchor} -> {status}")
+    more = f"; and {len(broken) - 5} more" if len(broken) > 5 else ""
+    return {
+        "severity": "critical",
+        "lane": "Auto",
+        "finding": finding,
+        "evidence": "; ".join(shown) + more,
+        "impact": "Visitors and crawlers hit dead ends, and the links pass no value to their targets.",
+        "fix": "Point each link at the live URL, or remove it. If the target moved, link to its new address directly.",
+        "confidence": "Confirmed",
+        "falsifiability": "Wrong if the target answers 200 to a normal browser: some hosts refuse crawlers.",
+    }
+
+
+# An external host that answers one of these is refusing the crawler, not
+# missing the page: Yelp, LinkedIn (999) and most review sites do it to every
+# bot. The link is unverified, not broken. An internal URL gets no such benefit
+# of the doubt: a site that 403s its own pages has a real problem.
+REFUSAL_STATUSES = frozenset({401, 403, 429, 999})
+
+
+def is_refused(link: dict) -> bool:
+    return not link.get("is_internal") and link.get("status") in REFUSAL_STATUSES
+
+
+def _refused_issue(refused: list) -> dict:
+    shown = "; ".join(f"{link['url']} -> HTTP {link['status']}" for link in refused[:5])
+    more = f"; and {len(refused) - 5} more" if len(refused) > 5 else ""
+    return {
+        "severity": "info",
+        "kind": "data_gap",
+        "finding": f"{len(refused)} external link(s) could not be verified: the host refused the crawler",
+        "evidence": shown + more,
+        "fix": "Open each in a browser. A page that loads there is fine; only then treat a failure as a broken link.",
+        "confidence": "Confirmed",
+    }
+
+
+def _issue_text(issue) -> str:
+    if not isinstance(issue, dict):
+        return issue
+    return f"{'🔴' if issue.get('severity') == 'critical' else 'ℹ️'} {issue['finding']}"
 
 
 def check_link(link: dict, timeout: int = 10, detect_soft_404: bool = True) -> dict:
@@ -162,6 +215,7 @@ def check_broken_links(url: str, internal_only: bool = False,
         "broken": [],
         "redirected": [],
         "timeout": [],
+        "refused": [],
         "soft_404s": [],
         "healthy": 0,
         "summary": {},
@@ -207,6 +261,8 @@ def check_broken_links(url: str, internal_only: bool = False,
                 result["broken"].append(link)
         elif link.get("soft_404"):
             result["soft_404s"].append(link)
+        elif is_refused(link):
+            result["refused"].append(link)
         elif status and status >= 400:
             result["broken"].append(link)
         elif link["redirect"]:
@@ -221,12 +277,13 @@ def check_broken_links(url: str, internal_only: bool = False,
         "redirected": len(result["redirected"]),
         "timeout": len(result["timeout"]),
         "soft_404s": len(result["soft_404s"]),
+        "refused": len(result["refused"]),
     }
 
     if result["broken"]:
-        result["issues"].append(
-            f"🔴 {len(result['broken'])} broken link(s) found"
-        )
+        result["issues"].append(_broken_issue(result["broken"], f"{len(result['broken'])} broken link(s) found"))
+    if result["refused"]:
+        result["issues"].append(_refused_issue(result["refused"]))
     if result["soft_404s"]:
         result["issues"].append(
             f"⚠️ {len(result['soft_404s'])} soft 404(s) found (page returns 200 but shows 'not found')"
@@ -264,6 +321,7 @@ def crawl_broken_links(start_url: str, max_depth: int = 2, max_pages: int = 50,
         "soft_404s": [],
         "redirected_chains": [],
         "timeout": [],
+        "refused": [],
         "summary": {},
         "issues": [],
         "error": None,
@@ -276,6 +334,7 @@ def crawl_broken_links(start_url: str, max_depth: int = 2, max_pages: int = 50,
     all_soft_404s = []
     all_chains = []
     all_timeouts = []
+    all_refused = []
     links_checked_count = 0
     healthy_count = 0
     broken_by_target = defaultdict(list)
@@ -319,6 +378,9 @@ def crawl_broken_links(start_url: str, max_depth: int = 2, max_pages: int = 50,
                         broken_by_target[link_result["url"]].append(page_url)
                 elif link_result.get("soft_404"):
                     all_soft_404s.append(link_result)
+                elif is_refused(link_result):
+                    if link_result["url"] not in {r["url"] for r in all_refused}:
+                        all_refused.append(link_result)
                 elif status and status >= 400:
                     all_broken.append(link_result)
                     broken_by_target[link_result["url"]].append(page_url)
@@ -348,6 +410,7 @@ def crawl_broken_links(start_url: str, max_depth: int = 2, max_pages: int = 50,
     result["total_links_checked"] = links_checked_count
     result["broken"] = unique_broken
     result["soft_404s"] = all_soft_404s
+    result["refused"] = all_refused
     result["redirected_chains"] = all_chains
     result["timeout"] = all_timeouts
     result["summary"] = {
@@ -358,12 +421,14 @@ def crawl_broken_links(start_url: str, max_depth: int = 2, max_pages: int = 50,
         "soft_404s": len(all_soft_404s),
         "redirect_chains": len(all_chains),
         "timeout": len(all_timeouts),
+        "refused": len(all_refused),
     }
 
     if unique_broken:
-        result["issues"].append(
-            f"🔴 {len(unique_broken)} unique broken link target(s) found across {len(visited_pages)} pages"
-        )
+        result["issues"].append(_broken_issue(
+            unique_broken, f"{len(unique_broken)} unique broken link target(s) found across {len(visited_pages)} pages"))
+    if all_refused:
+        result["issues"].append(_refused_issue(all_refused))
     if all_soft_404s:
         result["issues"].append(
             f"⚠️ {len(all_soft_404s)} soft 404(s) — pages return 200 but show 'not found' content"
@@ -467,7 +532,7 @@ def main():
     if result.get("issues"):
         print(f"\nIssues:")
         for issue in result["issues"]:
-            print(f"  {issue}")
+            print(f"  {_issue_text(issue)}")
 
 
 if __name__ == "__main__":

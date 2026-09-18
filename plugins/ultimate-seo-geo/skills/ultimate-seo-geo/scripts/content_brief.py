@@ -38,9 +38,12 @@ except ImportError:
     sys.exit(1)
 
 try:
-    from url_safety import validate_url
+    from url_safety import is_crawlable_href, validate_url
 except ImportError:
     validate_url = None
+
+    def is_crawlable_href(href: str) -> bool:
+        return bool(href) and not href.startswith(("#", "javascript:", "mailto:", "tel:"))
 
 
 STOP_WORDS = {
@@ -375,7 +378,7 @@ def find_internal_link_candidates(
     seen = set()
     for link in soup.find_all("a", href=True):
         href = link["href"].strip()
-        if href.startswith(("#", "javascript:", "mailto:", "tel:")):
+        if not is_crawlable_href(href):
             continue
 
         absolute = urljoin(site_url, href)

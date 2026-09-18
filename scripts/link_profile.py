@@ -31,7 +31,7 @@ except ImportError:
           file=sys.stderr)
     sys.exit(1)
 
-from url_safety import validate_url
+from url_safety import is_crawlable_href, validate_url
 
 
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-LinkProfile/1.8)"
@@ -119,7 +119,7 @@ def extract_links(html: str, page_url: str, base_domain: str) -> dict:
 
     for a in soup.find_all("a", href=True):
         href = a["href"].strip()
-        if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
+        if not is_crawlable_href(href):
             continue
 
         full_url = urljoin(page_url, href)
