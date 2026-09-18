@@ -5,8 +5,8 @@ recommendations carry their fields and point at IDs that exist, the blocked-by
 graph is acyclic, display-only evidence never carries a score, opportunities
 and strengths render outside the findings list, an absence claim about site
 structure needs a complete inventory, the start-today view only lists work an
-agent can begin, and every document is self-contained HTML that links IDs
-across the set.
+agent can begin, and the report is one self-contained HTML page that links IDs
+in place and renders each thing once.
 """
 
 import copy
@@ -186,72 +186,109 @@ def test_lint_cli_exit_codes(tmp_path):
 # --- render ---------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
-def rendered():
-    return render_report.render_all(_source())
+def html():
+    return render_report.render(_source())
 
 
-def test_every_document_is_rendered_and_self_contained(rendered):
-    assert set(rendered) == {"index.html", "0-brief.html", "1-audit.html", "2-strategy.html", "3-plan.html", "4-appendix.html"}
-    for name, html in rendered.items():
-        assert html.startswith("<!doctype html>")
-        assert "--paper:" in html and "@media print" in html, name          # CSS inlined, print styles present
-        assert "<script src=" not in html, name                              # no CDN scripts
-        assert "prefers-color-scheme:dark" in html, name
+def part(html, pid):
+    """The markup of one part: from its opening div to the next part or the footer."""
+    start = html.index(f'<div class="part" id="{pid}">')
+    ends = [i for i in (html.find('<div class="part" id=', start + 1), html.find("<footer>", start)) if i != -1]
+    return html[start:min(ends)]
+
+
+def section(html, sid):
+    return html.split(f'<section id="{sid}"')[1].split("</section>")[0]
+
+
+def test_one_self_contained_file(html):
+    assert set(render_report.render_all(_source())) == {"report.html"}
+    assert html.startswith("<!doctype html>")
+    assert "--paper:" in html and "@media print" in html                     # CSS inlined, print styles present
+    assert "<script src=" not in html                                         # no CDN scripts
+    assert "prefers-color-scheme:dark" in html
+
+
+def test_parts_run_summary_audit_strategy_plan_appendix(html):
+    nav = re.search(r'<nav class="toc".*?</nav>', html, re.S).group(0)
+    assert re.findall(r'href="#(\w+)"', nav) == ["summary", "audit", "strategy", "plan", "appendix"]
+    positions = [html.index(f'<div class="part" id="{p}">') for p in ("summary", "audit", "strategy", "plan", "appendix")]
+    assert positions == sorted(positions)
+    assert '<span class="sec-n">2.1</span><h2>Scope and coverage</h2>' in html   # sections number within their part
+    toc = re.search(r'<ol class="part-toc">.*?</ol>', part(html, "plan"), re.S).group(0)
+    assert 'href="#plan-register"' in toc
+
+
+def test_each_thing_renders_once(html):
+    """The duplication the six-file set had: one verdict, one coverage block, one decisions
+    table, one list of this week's actions, one register."""
+    assert html.count("Brand demand is the risk") == 1                        # brief verdict, in the Summary only
+    assert html.count("Scope and coverage</h2>") == 1
+    assert html.count("Inventory complete: absence claims") == 1
+    assert html.count("Decisions needed</h2>") == 1 and html.count('id="D1"') == 1
+    assert "What happens next" not in html and "Start today — what an agent" not in html and "By owner" not in html
+    assert html.count("The full register</h2>") == 1
+
+
+def test_summary_falls_back_to_the_audit_verdict_without_repeating_it():
+    src = _source()
+    del src["docs"]["brief"]
+    out = render_report.render(src)
+    assert out.count("Verdict with <code>code</code>") == 1
+    assert "Verdict with" in part(out, "summary") and "Verdict with" not in part(out, "audit")
 
 
 def test_prompt_ids_and_paths_are_not_linked_as_recommendations():
-    ctx = render_report.Ctx(_source(), "audit")
-    html = ctx.inline("prompt T1.3 owns /vs/ but T1 fixes it; `T1` in code stays")
-    assert 'href="3-plan.html#T1">T1</a> fixes' in html
-    assert "T1.3" in html and 'href="3-plan.html#T1">T1</a>.3' not in html
-    assert "<code>T1</code>" in html
+    ctx = render_report.Ctx(_source())
+    out = ctx.inline("prompt T1.3 owns /vs/ but T1 fixes it; `T1` in code stays")
+    assert '<a href="#T1">T1</a> fixes' in out
+    assert "T1.3" in out and '<a href="#T1">T1</a>.3' not in out
+    assert "<code>T1</code>" in out
 
 
-def test_ids_link_across_the_set(rendered):
-    audit, plan = rendered["1-audit.html"], rendered["3-plan.html"]
-    assert 'href="3-plan.html#T1"' in audit                                  # finding -> rec in another document
-    assert 'href="#T1"' in plan and 'id="T1"' in plan                        # same-document anchor
-    assert 'href="1-audit.html#F1"' in plan                                  # rec -> finding
-    assert 'href="3-plan.html#D1"' in audit                                  # decision link
+def test_ids_link_within_the_page(html):
+    audit, plan = part(html, "audit"), part(html, "plan")
+    assert 'href="#T1"' in audit                                              # finding -> rec
+    assert 'href="#F1"' in plan                                               # rec -> finding
+    assert 'href="#D1"' in audit                                              # decision link
+    assert 'id="T1"' in section(html, "plan-register") and html.count('id="T1"') == 1
+    assert ".html#" not in html                                               # nothing points at another file
     assert "<code>code</code>" in audit and "<strong>bold</strong>" in audit
 
 
-def test_findings_strengths_and_opportunities_render_in_their_own_blocks(rendered):
-    audit = rendered["1-audit.html"]
-    findings = audit.split('<section id="findings">')[1].split("</section>")[0]
+def test_findings_strengths_and_opportunities_render_in_their_own_blocks(html):
+    findings = section(html, "audit-findings")
     assert 'id="F1"' in findings and 'id="F2"' not in findings and 'id="F3"' not in findings
-    assert 'id="F2"' in audit.split('<section id="strengths">')[1].split("</section>")[0]
-    opps = audit.split('<section id="opportunities">')[1].split("</section>")[0]
+    assert 'id="F2"' in section(html, "audit-strengths")
+    opps = section(html, "audit-opportunities")
     assert 'id="F3"' in opps and "shown, not weighted" in opps
 
 
-def test_coverage_states_completeness_and_checks(rendered):
-    audit = rendered["1-audit.html"]
-    assert "Inventory complete: absence claims" in audit
-    assert "3,013" in audit and "crawl incomplete" in audit
-    assert "Not examined" in audit and "Backlinks" in audit
-    assert "Assumptions you can reject" in audit
+def test_coverage_states_completeness_and_checks(html):
+    cov = section(html, "audit-coverage")
+    assert "Inventory complete: absence claims" in cov
+    assert "3,013" in cov and "crawl incomplete" in cov
+    assert "Not examined" in cov and "Backlinks" in cov
+    assert "Assumptions you can reject" in cov
     src = _source()
     src["coverage"]["graph"]["sitemap"]["complete"] = False
     src["findings"] = [f for f in src["findings"] if f["kind"] != "opportunity"]
-    html = render_report.doc_audit(src, render_report.load_css())
-    assert "Inventory incomplete: absence claims about site structure are withheld" in html
+    assert "Inventory incomplete: absence claims about site structure are withheld" in render_report.render(src)
 
 
-def test_site_shape_tree_is_static_and_mermaid_goes_to_appendix(rendered):
-    audit = rendered["1-audit.html"]
+def test_site_shape_tree_is_static_and_mermaid_goes_to_appendix(html):
+    audit = part(html, "audit")
     assert 'class="tree"' in audit and "/blog/x" in audit
     assert "graph TD" not in audit
-    assert "graph TD" in rendered["4-appendix.html"]
+    assert "graph TD" in part(html, "appendix")
 
 
-def test_register_carries_tier_lane_supersedes_and_dropped_rows(rendered):
-    plan = rendered["3-plan.html"]
+def test_register_carries_tier_lane_supersedes_and_dropped_rows(html):
+    plan = part(html, "plan")
     assert "lane-Auto" in plan and "lane-Human" in plan and "lane-Decision" in plan
     assert "Overrides page_types finding missing_page_type" in plan
-    assert 'class="dropped"' in plan                                          # C2 struck through in the full register
-    timeline = plan.split('<section id="timeline">')[1].split("</section>")[0]
-    assert "C2" not in timeline                                               # dropped items leave the timeline
+    assert 'class="dropped"' in section(html, "plan-register")               # C2 struck through in the full register
+    assert "C2" not in section(html, "plan-timeline")                         # dropped items leave the timeline
 
 
 def test_start_today_lists_only_unblocked_agent_work():
@@ -262,19 +299,49 @@ def test_start_today_lists_only_unblocked_agent_work():
     assert [r["id"] for r in render_report.start_today(src)] == ["C1", "M1"]
 
 
-def test_brief_has_decisions_and_first_actions(rendered):
-    brief = rendered["0-brief.html"]
-    assert "Publish pricing?" in brief
-    assert 'href="3-plan.html#T1"' in brief and "M1" in brief
-    assert 'id="T1"' not in brief                                             # the plan's register owns the anchor
-    assert "What is not known yet" in brief
+def test_start_today_is_marked_in_the_timeline(html):
+    timeline = section(html, "plan-timeline")
+    marked = re.findall(r'<tr><td class="q"><a href="#(\w+)"[^<]*</a></td><td><span class="chip g">Start today</span>', timeline)
+    assert marked == ["M1"]
+    assert "Start today" not in section(html, "plan-register")
 
 
-def test_appendix_counts_validity_verdicts(rendered):
-    appendix = rendered["4-appendix.html"]
+def test_summary_has_decisions_this_week_and_what_is_not_known(html):
+    summary = part(html, "summary")
+    assert "Publish pricing?" in summary and 'id="D1"' in summary
+    assert 'href="#T1"' in summary and "M1" in summary
+    assert 'id="T1"' not in summary                                           # the register owns the anchor
+    assert "What is not known yet" in summary and 'href="#audit-coverage"' in summary
+
+
+def test_page_cards_and_appendix_fold(html):
+    assert '<details class="fold wave">' in section(html, "strategy-pages")
+    appendix = part(html, "appendix")
+    assert appendix.count('<section id="appendix-') == appendix.count('<details class="fold"><summary class="sec-head">')
     assert "Confirmed as written" in appendix and "Dropped" in appendix
     assert "Machine checks" not in appendix                                   # no summary folded in
     assert "Generative engine optimization" in appendix
+
+
+def test_link_handler_unfolds_and_printing_opens_every_fold():
+    js = render_report.NAV_JS
+    handler = js[js.index("In-page links scroll by script"):]
+    assert "p.open=true" in handler.split("scrollIntoView")[0]
+    assert "beforeprint" in js and "afterprint" in js
+    css = open(os.path.join(ROOT, "references", "report-template", "print.css"), encoding="utf-8").read()
+    assert ".part{break-before:page" in css
+
+
+def test_parts_without_content_are_left_out():
+    src = _source()
+    for key in ("prompts", "pages", "validity", "tests", "glossary"):
+        src.pop(key, None)
+    src["docs"]["strategy"] = {}
+    src["recommendations"] = [dict(r, validity=None) for r in src["recommendations"] if r["status"] != "dropped"]
+    src["structure"]["architecture"].pop("mermaid", None)
+    out = render_report.render(src)
+    assert 'id="strategy"' not in out and 'id="appendix"' not in out
+    assert 'href="#strategy"' not in out and 'href="#appendix"' not in out
 
 
 def test_summary_and_graph_merge_into_coverage_and_appendix():
@@ -291,8 +358,8 @@ def test_summary_and_graph_merge_into_coverage_and_appendix():
     assert "urls" not in src["coverage"]["graph"]["sitemap"]
     assert src["health_score"]["overall"] == 71 and src["health_score"]["source"].startswith("generate_report.py")
     assert report_data_lint.lint(src)["errors"] == []
-    out = render_report.render_all(src)
-    audit, appendix = out["1-audit.html"], out["4-appendix.html"]
+    out = render_report.render(src)
+    audit, appendix = part(out, "audit"), part(out, "appendix")
     assert "Health Score 71/100" in audit
     row = re.search(r"<tr>.*?Page-type coverage.*?</tr>", audit, re.S).group(0)
     assert "shown, not weighted" in row and "<td class=\"n\">—</td>" in row      # display-only: no score, no weight
@@ -310,17 +377,17 @@ def test_render_cli_refuses_a_bad_source_unless_forced(tmp_path):
     assert not (tmp_path / "out").exists()
     run = subprocess.run([sys.executable, script, str(path), "--out", str(tmp_path / "out"), "--force", "--json"], capture_output=True, text=True)
     assert run.returncode == 0
-    assert len(json.loads(run.stdout)["written"]) == 6
+    assert [os.path.basename(p) for p in json.loads(run.stdout)["written"]] == ["report.html"]
 
 
 def test_sample_source_is_clean_and_catalogue_shows_every_component():
     sample = render_report.sample_source()
     assert report_data_lint.lint(sample)["errors"] == []
-    html = render_report.catalogue_html(render_report.load_css())
+    out = render_report.catalogue_html(render_report.load_css())
     for marker in ('class="verdict"', 'class="figs"', 'class="cov"', 'class="tree"', 'class="find c"', 'class="find keep"', 'class="find opp"',
                    "lane-Decision", 'class="dropped"', 'class="ptier"', 'class="pg con"', 'class="gloss"', "Overrides navigation finding", "Toggle light / dark"):
-        assert marker in html, marker
-    assert "<script src=" not in html
+        assert marker in out, marker
+    assert "<script src=" not in out
 
 
 def test_catalogue_on_disk_matches_the_renderer():
@@ -343,41 +410,31 @@ def test_template_package_is_bundled():
 def test_html_escapes_source_text():
     src = _source()
     src["findings"][0]["title"] = "<img src=x onerror=alert(1)>"
-    html = render_report.doc_audit(src, render_report.load_css())
-    assert "<img src=x" not in html and "&lt;img src=x" in html
+    out = render_report.render(src)
+    assert "<img src=x" not in out and "&lt;img src=x" in out
     src2 = copy.deepcopy(_source())
     src2["docs"]["audit"]["sections"][0]["blocks"][0]["rows"] = [["<script>x</script>"]]
-    assert "<script>x</script>" not in render_report.doc_audit(src2, render_report.load_css())
+    assert "<script>x</script>" not in render_report.render(src2)
 
 
 # --- anchors ------------------------------------------------------------------------
 
-def _ids(html):
-    markup = re.sub(r"<script\b.*?</script>", "", html, flags=re.S)
+def _ids(markup):
+    markup = re.sub(r"<script\b.*?</script>", "", markup, flags=re.S)
     return re.findall(r'\bid="([^"]+)"', markup), markup
 
 
-@pytest.mark.parametrize("source", [_source, render_report.sample_source], ids=["test source", "sample source"])
-def test_every_id_is_unique_and_every_link_lands(source):
-    """A repeated id sends a link to the first copy; a missing one goes nowhere. Links into
-    another document of the set must name an id that document has."""
-    out = render_report.render_all(source())
-    ids = {}
-    for name, html in out.items():
-        found, _ = _ids(html)
-        dupes = sorted({i for i in found if found.count(i) > 1})
-        assert dupes == [], f"{name}: duplicate ids {dupes}"
-        ids[name] = set(found)
-    for name, html in out.items():
-        _, markup = _ids(html)
-        for doc, frag in re.findall(r'href="([\w.-]*)#([^"]*)"', markup):
-            target = doc or name
-            assert target in out, f"{name}: link to unknown document {doc}"
-            assert frag in ids[target], f"{name}: link to {target}#{frag} has no target"
+@pytest.mark.parametrize("make", [lambda: render_report.render(_source()), lambda: render_report.render(render_report.sample_source()),
+                                  lambda: render_report.catalogue_html(render_report.load_css())],
+                         ids=["test source", "sample source", "catalogue"])
+def test_every_id_is_unique_and_every_link_lands(make):
+    """A repeated id sends a link to the first copy; a missing one goes nowhere."""
+    found, markup = _ids(make())
+    assert sorted({i for i in found if found.count(i) > 1}) == []
+    assert sorted({h for h in re.findall(r'href="#([^"]*)"', markup) if h not in set(found)}) == []
 
 
-def test_in_page_links_scroll_by_script_and_the_footer_says_what_to_do(rendered):
-    for name, html in rendered.items():
-        script = re.search(r"<script>(.*?)</script>", html, re.S).group(1)
-        assert "scrollIntoView" in script and "preventDefault" in script, name
-        assert "open the file in a web browser" in re.search(r"<footer>.*?</footer>", html, re.S).group(0), name
+def test_in_page_links_scroll_by_script_and_the_footer_says_what_to_do(html):
+    script = re.search(r"<script>(.*?)</script>", html, re.S).group(1)
+    assert "scrollIntoView" in script and "preventDefault" in script
+    assert "open the file in a web browser" in re.search(r"<footer>.*?</footer>", html, re.S).group(0)

@@ -2,7 +2,21 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+- **The client report is one file.** `render_report.py` now writes a single `report.html` instead of
+  `index.html`, `0-brief.html`, `1-audit.html`, `2-strategy.html`, `3-plan.html` and
+  `4-appendix.html`. It has five parts: Summary, Audit, Strategy, Plan and a folded Appendix. The
+  sticky nav lists the parts, each part opens with its own contents line, sections number within
+  their part (`2.3`), and printing starts each part on a new page. Anyone who scripts against the
+  old file names needs to read `report.html` instead; there is no `--split` flag.
+- **Each thing renders once.** One verdict (the brief's, or the audit's when there is no brief), one
+  coverage block (Audit), one decisions table (Summary), one list of this week's actions (Summary),
+  one register (Plan). Removed: the audit's "What happens next", the plan's separate "Start today"
+  and "By owner" tables (start-today items are now marked in the timeline) and the index page.
+- Page cards fold by wave and the appendix sections fold; a link into a folded section unfolds it,
+  and printing opens every fold.
+- The source format is unchanged (`schema_version` 1). `docs.strategy` and `docs.plan` verdicts now
+  lead their part; `docs.index.blocks` render as "How to read this report" in the Summary.
 
 ## [1.19.5] - 2026-09-18
 

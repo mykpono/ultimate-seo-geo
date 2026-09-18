@@ -239,3 +239,23 @@ footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line-strong);
   .find dt,.pg dt{padding-top:8px}
   .prow{grid-template-columns:1fr}
 }
+/* Report parts (render_report.py): one document, five parts, each with its own contents line. */
+.part{margin-top:88px;padding-top:44px;border-top:2px solid var(--ink)}
+.part:first-child{margin-top:0;padding-top:40px;border-top:0}
+.part[id]{scroll-margin-top:56px}
+.part-head{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.part-n{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.part-head h2{font-size:clamp(30px,3.4vw,40px);margin:0}
+.part-toc{list-style:none;padding:0;margin:0 0 28px;display:flex;flex-wrap:wrap;gap:6px 20px;font-size:14px}
+.part-toc a{text-decoration:none}
+.part-toc .n{font-family:var(--mono);font-size:12px;color:var(--faint);margin-right:6px}
+.part>section:first-of-type{border-top:1px solid var(--line);margin-top:28px}
+details.fold>summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:14px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::after{content:"Show";margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--accent)}
+details.fold[open]>summary::after{content:"Hide"}
+details.fold>summary.sec-head{margin-bottom:0}
+details.fold[open]>summary.sec-head{margin-bottom:22px}
+details.wave{border-top:1px solid var(--line);padding-block:14px}
+details.wave>summary h3{margin:0}
+section.fold{padding-block:20px 0;margin-top:20px}

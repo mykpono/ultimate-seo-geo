@@ -23,4 +23,8 @@
   .fig{font-size:20pt}
   pre.mono{white-space:pre-wrap}
   footer{margin-top:24pt}
+  .part{break-before:page;margin-top:0;border-top:0}
+  section.fold{padding-block:18pt 0;margin-top:18pt}
+  .part:first-child{break-before:auto}
+  details.fold>summary::after{content:none}
 }
