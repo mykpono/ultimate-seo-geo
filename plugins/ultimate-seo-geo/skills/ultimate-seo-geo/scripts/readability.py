@@ -50,13 +50,25 @@ def count_syllables(word: str) -> int:
     return max(1, count)
 
 
+_BLOCK_TAGS = ["p", "div", "section", "article", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6",
+               "blockquote", "table", "tr", "br", "pre", "figure", "figcaption", "details", "summary", "main"]
+
+
 def extract_text(html: str) -> str:
     """Extract readable text from HTML, stripping scripts/styles."""
     if HAS_BS4:
         soup = BeautifulSoup(html, "html.parser")
         for tag in soup(["script", "style", "nav", "header", "footer", "aside"]):
             tag.decompose()
-        return soup.get_text(separator="\n", strip=True)
+        # One blank line per block element: analyze() splits paragraphs on blank
+        # lines, and get_text() alone never emits one, so a whole page used to
+        # count as a single paragraph ("114 sentences per paragraph").
+        for tag in soup.find_all(_BLOCK_TAGS):
+            tag.insert_before("\n\n")
+            tag.insert_after("\n\n")
+        # No separator: inline tags (<a>, <strong>) must not put a space before a full stop.
+        lines = [re.sub(r"[ \t]+", " ", line).strip() for line in soup.get_text().split("\n")]
+        return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
     else:
         # Basic fallback: strip tags
         text = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)

@@ -46,6 +46,33 @@ on its own first. Minor per D-020: new report capability; the JSON additions are
 - `tests/test_report_action_plan.py` (29 tests) and `tests/test_finding_codes.py` (18 tests), each
   validated by reintroducing defects.
 
+### Fixed
+Seven defects a live run (balloonbay.us) exposed and the fixtures had not. On that site they were
+both of its Critical / High findings: it now reports 0 critical, 0 high, and 93 rather than 92.
+- **Cloudflare Email Obfuscation is not a broken link.** Cloudflare rewrites every `mailto:` to
+  `/cdn-cgi/l/email-protection#…`, which answers 404 to a crawler by design, so any site showing an
+  email address got a false High ("global navigation link returns an error on every page") and a
+  false Critical ("broken links"). New `url_safety.is_crawlable_href()` replaces seven private copies
+  of the href filter (`site_graph`, `link_profile`, `internal_links`, `site_mapper`, `broken_links`,
+  `content_brief`, `canonical_checker`) and also skips `sms:`.
+- **A host that refuses the crawler is not a broken link.** An *external* 401 / 403 / 429 / 999
+  (Yelp, LinkedIn, most review sites) goes to a new `refused` list and one `data_gap` open question
+  ("open each in a browser"), out of `broken` and out of the score. An internal 403 is still broken.
+- **The broken-links Critical names its links.** It carried no evidence and no fix; it is now a
+  structured finding with the first five URLs, their status and anchor text, a fix, and its lane.
+- **`validate_schema.py` `[info]` notes are info.** "Google withdrew FAQ rich results … keep the
+  markup" was reported as a Medium with the fix "Fix JSON-LD" and took 8 points off the schema score
+  per note — against D-016. Now `info`, no fix, no score cost.
+- **`readability.py` paragraph count.** Text was joined with single newlines and split on blank
+  lines, so a page was one paragraph ("114.0 sentences per paragraph"). Block elements now delimit
+  paragraphs, and inline tags no longer put a space before a full stop.
+- **A retired robots.txt token carries its fix** (`write the rule for ClaudeBot, … instead`) as a
+  structured info finding, so the action plan can place it (Assisted: it is a robots.txt edit).
+- **The appendix no longer prints stock text** ("Rerun the section check …") under every issue;
+  like the finding cards, it shows a dependency, failure check or leading indicator only when the
+  script supplied one.
+- `tests/test_sample_run_bugs.py` (39 tests), each fix validated by reverting it.
+
 ### Changed
 - **Section 07 "Recommendations" is gone.** It restated what each check's appendix panel and the
   Platform section already print; nothing is lost. Sections renumber: Health Score 04, Scope and

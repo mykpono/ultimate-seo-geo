@@ -1767,7 +1767,13 @@ def render_recommendations(section_data: dict) -> str:
                 severity = _SEVERITY_LEVEL[_canonical_severity(issue.get("severity"))]
                 fix = issue.get("fix", "")
                 fix_html = f'<p class="issue-fix"><span class="lbl">Fix</span> {_esc(fix)}</p>' if fix else ""
-                meta = _render_issue_metadata(_recommendation_metadata(issue, "section"))
+                # Only what the script said, like the finding cards: the stock wording here
+                # read "Rerun the section check" under every issue of every check.
+                meta = _render_issue_metadata({
+                    "dependency": _supplied(issue, "dependency", "depends_on"),
+                    "failure_check": _supplied(issue, "falsifiability", "failure_check", "how_to_know_failed", "validation"),
+                    "leading_indicator": _supplied(issue, "leading_indicator", "metric"),
+                })
                 issue_rows.append(
                     '<li class="issue">'
                     f'<div class="issue-head">{_severity_chip(severity)}'

@@ -245,8 +245,14 @@ def main():
 
     if args.json:
         critical_ct = sum(1 for e in errors if _is_critical(e))
+        # An [info] note says the markup is valid and should stay (D-016): it is
+        # not a defect, names no fix, and takes nothing off the score.
+        defects = [e for e in errors if not e.startswith("[info]")]
         issues = []
         for e in errors[:40]:
+            if e.startswith("[info]"):
+                issues.append({"finding": e[len("[info]"):].strip(), "severity": "info", "fix": ""})
+                continue
             issues.append(
                 {
                     "finding": e,
@@ -257,7 +263,7 @@ def main():
         score = 100
         if block_count == 0:
             score = 55  # informational — not all pages need schema
-        score = max(0, score - len(errors) * 8 - critical_ct * 12)
+        score = max(0, score - len(defects) * 8 - critical_ct * 12)
         payload = {
             "path": filepath,
             "jsonld_blocks": block_count,

@@ -23,6 +23,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse, urlunparse
 
+from url_safety import is_crawlable_href
+
 try:
     import requests
 except ImportError:
@@ -470,7 +472,7 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
         soup = BeautifulSoup(resp.text, "html.parser")
         for a in soup.find_all("a", href=True):
             href = a["href"].strip()
-            if href.startswith(("#", "javascript:", "mailto:", "tel:")):
+            if not is_crawlable_href(href):
                 continue
             abs_url = urljoin(final_url, href)
             abs_parsed = urlparse(abs_url)
