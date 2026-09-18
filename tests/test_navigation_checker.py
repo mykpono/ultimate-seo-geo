@@ -246,6 +246,29 @@ def test_broken_and_redirected_nav_links():
     assert m and m[0]["severity"] == "Medium" and m[0]["links"][0]["final_url"] == S + "/moved-here"
 
 
+def test_a_nav_link_that_refuses_the_crawler_is_unverified_not_broken():
+    """/account answering 401, or the site's own rate limiter answering 429, is not a dead link."""
+    pages = _saas_site(nav=NAV + ["/account", "/throttled", "/forbidden", "/gone"])
+    failed = [{"url": S + "/account", "status": 401, "error": "HTTP 401", "depth": 1},
+              {"url": S + "/throttled", "status": 429, "error": "HTTP 429", "depth": 1},
+              {"url": S + "/forbidden", "status": 403, "error": "HTTP 403", "depth": 1},
+              {"url": S + "/gone", "status": 404, "error": "HTTP 404", "depth": 1}]
+    r = nav.analyze(_graph(pages, failed=failed), site_type="saas")
+    [broken] = _issues(r, "nav_link_broken")
+    # An internal 403 is still an error: a site that forbids its own public page has a problem.
+    assert sorted(l["status"] for l in broken["links"]) == [403, 404] and broken["finding"].startswith("2 ")
+    [gap] = _issues(r, "nav_link_unverified")
+    assert gap["severity"] == "Info" and gap["kind"] == "data_gap"
+    assert sorted(l["status"] for l in gap["links"]) == [401, 429] and "browser" in gap["fix"]
+
+
+def test_only_refused_nav_links_raise_no_broken_finding():
+    pages = _saas_site(nav=NAV + ["/account"])
+    r = nav.analyze(_graph(pages, failed=[{"url": S + "/account", "status": 401, "error": "HTTP 401", "depth": 1}]),
+                    site_type="saas")
+    assert not _issues(r, "nav_link_broken") and _issues(r, "nav_link_unverified")
+
+
 def test_footer_dump_counts_internal_links_only():
     """developers.cloudflare.com: 46 footer links, 45 of them to another domain."""
     ext = [_link(f"https://parent.com/{i}", f"p{i}", "footer", "footer", internal=False) for i in range(45)]

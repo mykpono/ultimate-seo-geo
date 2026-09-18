@@ -889,7 +889,11 @@ def calculate_overall_score(data: dict) -> dict:
         has_wikidata = 1 if ent.get("wikidata", {}).get("found") else 0
         has_wikipedia = 1 if ent.get("wikipedia", {}).get("found") else 0
         ent_score = min(100, found * 15 + has_wikidata * 25 + has_wikipedia * 25)
-        issues_count = len(ent.get("issues", []))
+        # Only defects cost score. Info notes and data gaps ("could not verify", "no
+        # Wikipedia article") do not, so the number no longer depends on how a script
+        # itemises what it saw.
+        issues_count = sum(1 for i in ent.get("issues", []) or []
+                           if not isinstance(i, dict) or _canonical_severity(i.get("severity")) not in ("info", "low"))
         ent_score = max(0, ent_score - issues_count * 10)
         scores["entity"] = ent_score
     else:

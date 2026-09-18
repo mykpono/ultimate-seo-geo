@@ -43,6 +43,7 @@ from urllib.parse import urlparse
 
 import page_type_classifier as ptc
 import site_graph
+from url_safety import is_refusal
 
 GLOBAL_SHARE = 0.80            # a link is global when it is on >= 80% of sampled pages
 MIN_PAGES_FOR_GLOBAL = 3       # below this, the homepage's chrome stands in for "global"
@@ -269,14 +270,16 @@ def analyze(graph: dict, site_type: str = "auto", sample: int = 40) -> dict:
     # Broken or redirected global links.
     failed = {f["url"]: f for f in graph.get("crawl", {}).get("failed", [])}
     failed_keys = {site_graph.page_key(u): f for u, f in failed.items()}
-    broken, redirected = [], []
+    broken, redirected, refused = [], [], []
     for s in primary + footer:
         if not s["internal"] or not s["key"]:
             continue
         page = pages_all.get(s["key"])
         if page is None:
             f = failed_keys.get(s["key"])
-            if f and (f.get("status") or 0) >= 400:
+            if f and is_refusal(f.get("status"), internal=True):
+                refused.append({"href": s["href"], "anchor": s["anchor"], "status": f.get("status")})
+            elif f and (f.get("status") or 0) >= 400:
                 broken.append({"href": s["href"], "anchor": s["anchor"], "status": f.get("status")})
             continue
         if page.get("redirected"):
@@ -291,6 +294,18 @@ def analyze(graph: dict, site_type: str = "auto", sample: int = 40) -> dict:
             "fix": "Fix or remove the target; re-run `broken_links.py` to confirm.",
             "confidence": "Confirmed",
             "links": broken[:10],
+        })
+    if refused:
+        issues.append({
+            "type": "nav_link_unverified",
+            "kind": "data_gap",
+            "severity": "Info",
+            "finding": f"{len(refused)} global navigation link(s) could not be verified: the server refused the crawler.",
+            "evidence": "; ".join(f"{r['anchor'] or r['href']} -> HTTP {r['status']}" for r in refused[:5]),
+            "fix": "Open each in a browser. A login-gated page (401) or a throttled crawl (429) is not a broken link; "
+                   "for 429, re-run `site_graph.py` with a longer delay.",
+            "confidence": "Confirmed",
+            "links": refused[:10],
         })
     if redirected:
         issues.append({

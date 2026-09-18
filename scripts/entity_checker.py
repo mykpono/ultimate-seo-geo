@@ -189,6 +189,39 @@ def analyze_sameas(same_as_list: list) -> dict:
     }
 
 
+def sameas_gap_issue(missing: dict, wikidata_found: bool, wikipedia_found: bool):
+    """One finding for every profile the sameAs array lacks, or None.
+
+    It used to be one finding per platform, which read as three defects and cost
+    the entity score three times for a single edit to one array. A link to
+    Wikipedia or Wikidata is only asked for when the article or item exists:
+    "no Wikidata entry" is its own finding, and a sameAs to a page that does not
+    exist cannot be added.
+    """
+    blocked = {"Wikipedia": wikipedia_found, "Wikidata": wikidata_found}
+    askable = {name: data for name, data in missing.items() if blocked.get(name, True)}
+    waiting = [name for name in missing if name not in askable]
+    if not askable:
+        return None
+    names = ", ".join(f"{name} ({data['kg_signal']})" for name, data in askable.items())
+    issue = {
+        "severity": "Warning" if any(d["priority"] == "Critical" for d in askable.values()) else "Info",
+        "area": "sameAs",
+        "code": "entity.sameas_missing",
+        "finding": f"Entity schema sameAs is missing {len(askable)} profile link(s): {names}.",
+        "evidence": "sameAs has no URL on " + ", ".join(d["domain"] for d in askable.values()),
+        "fix": "Add the URL of each profile that exists to the sameAs array of the Organization or Person schema; "
+               "skip any the entity does not have.",
+        "lane": "Human",
+        "lane_reason": "Needs the profile URLs, which only the owner knows; adding them to the schema is then a safe edit.",
+        "platforms": list(askable),
+    }
+    if waiting:
+        issue["dependency"] = (f"{' and '.join(waiting)} left out: no {'entries exist' if len(waiting) > 1 else 'entry exists'} "
+                               "yet (see that finding). Add the link once it does.")
+    return issue
+
+
 # ---------------------------------------------------------------------------
 # Wikidata lookup
 # ---------------------------------------------------------------------------
@@ -393,13 +426,9 @@ def run_entity_check(url: str, entity_name: str = "", kg_api_key: str = "") -> d
             "fix": "Pursue notability through press coverage and third-party references. Wikipedia articles significantly boost Knowledge Panel eligibility.",
         })
 
-    for name, data in sameas_analysis.get("missing", {}).items():
-        issues.append({
-            "severity": "Warning" if data["priority"] == "Critical" else "Info",
-            "area": "sameAs",
-            "finding": f"Missing sameAs link to {name} ({data['kg_signal']} KG signal).",
-            "fix": f"Add '{data['domain']}' profile URL to sameAs array in your entity schema.",
-        })
+    gap = sameas_gap_issue(sameas_analysis.get("missing", {}), wikidata["found"], wikipedia["found"])
+    if gap:
+        issues.append(gap)
 
     issues.extend(sameas_analysis.get("issues", []))
     issues.extend(nap_issues)

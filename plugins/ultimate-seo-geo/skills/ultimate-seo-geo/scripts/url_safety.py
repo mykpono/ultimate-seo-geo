@@ -225,3 +225,18 @@ def is_crawlable_href(href: str) -> bool:
     if not value or value.lower().startswith(_NON_PAGE_SCHEMES):
         return False
     return _OBFUSCATED_EMAIL_PATH not in urlparse(value).path
+
+
+# Statuses that mean "the server would not show this to a crawler", not "the
+# page is gone". From another host, any of them: Yelp, LinkedIn (999) and most
+# review sites answer this way to every bot. From the audited site itself only
+# 401 (a login-gated page, e.g. /account in the navigation) and 429 (its own
+# rate limiter throttling the crawl): a site that 403s its own public pages has
+# a real problem, so an internal 403 is still an error.
+REFUSAL_STATUSES = frozenset({401, 403, 429, 999})
+_INTERNAL_REFUSAL_STATUSES = frozenset({401, 429})
+
+
+def is_refusal(status, internal: bool) -> bool:
+    """True when status says the crawler was refused, so the link is unverified, not broken."""
+    return status in (_INTERNAL_REFUSAL_STATUSES if internal else REFUSAL_STATUSES)
