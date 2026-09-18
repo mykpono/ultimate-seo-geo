@@ -118,8 +118,8 @@ Client documents show a `/100` only when it is the `overall` of a `generate_repo
 
 `report.css` holds the tokens and components; `components.html` renders each once in light and dark. Rules:
 
-- **Fonts**: IBM Plex Sans (headings, UI, tables), Source Serif 4 (prose), IBM Plex Mono (IDs, numbers, code), loaded from Google Fonts with system fallbacks.
-- **Colour** is semantic only: `critical`, `warn`, `good`, `accent`, plus paper / surface / ink / muted / line. Dark mode by `prefers-color-scheme` and `data-theme`.
+- **Fonts**: Instrument Sans (headings, UI, tables and prose; `--serif` is an alias of `--sans` kept for compatibility) and JetBrains Mono (IDs, numbers, code, eyebrows), the Tobto faces, loaded from Google Fonts with system fallbacks.
+- **Colour** is semantic only: `critical`, `warn`, `good`, `accent`, `opp`, plus paper / surface / ink / muted / line. Values come from the Tobto design system: brand blue `#0057B7` is the accent, neutrals are the ink ladder, each semantic hue uses its -700 step as type on light and its -300 step on dark, and Blaze orange `#FF6A1A` (`--opp`) marks opportunities and new pages only, never small type. Surfaces separate with hairlines, not shadows; cards use `--r-card` (14px) and chips `--r-chip` (6px). Dark mode by `prefers-color-scheme` and `data-theme`.
 - **Components**: masthead, sticky section nav, verdict, figure strip, table wrapper, finding card, opportunity block, keep block, recommendation row, chips (severity, kind, evidence status, tier, lane, validity, basis), coverage table, callout, before / after, page card, prompt card, section tree (nested list), dependency list, glossary, footer.
 - **Diagrams** are static. The section tree from `site_architecture.py` renders as a nested list; the Mermaid text goes in the appendix for readers who want to paste it.
 - **Print**: `print.css` sets A4, page numbers, no sticky nav, tables unbroken, links expanded.
