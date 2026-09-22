@@ -36,7 +36,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from urllib.parse import urlparse
 
-from fetch_page import fetch_page as fetch_url
+from fetch_page import fetch_page as fetch_url, render_fallback_warning
 from robots_checker import AI_CRAWLER_ROLES, BLOCKING_STATUSES, SEARCH_ENGINE_CRAWLERS, crawler_status
 
 # Maximum number of analysis scripts to run in parallel.
@@ -76,15 +76,20 @@ def run_script(script_name: str, args: list, timeout: int = 120) -> dict:
         return {"error": str(e)}
 
 
-def fetch_page(url: str, render: str = "never") -> str:
-    """Fetch page HTML to a temp file, return path."""
+def fetch_page(url: str, render: str = "never") -> tuple[str, str]:
+    """Fetch page HTML to a temp file. Returns (path, render_warning).
+
+    With render="auto" a failed render still returns the static HTML, and
+    render_warning says so; the page-level checks run on that content.
+    """
     fetched = fetch_url(url, timeout=20, render=render)
+    warning = render_fallback_warning(fetched["render_error"]) if fetched.get("render_error") else ""
     if fetched.get("error") or not fetched.get("content"):
-        return ""
+        return "", warning
     tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8")
     tmp.write(fetched["content"])
     tmp.close()
-    return tmp.name
+    return tmp.name, warning
 
 
 def detect_environment(html_text: str, url: str) -> dict:
@@ -587,7 +592,10 @@ def collect_data(
 
     # Fetch page for parse_html and readability
     print("  ⏳ Fetching page HTML...")
-    html_path = fetch_page(url, render=render)
+    html_path, render_warning = fetch_page(url, render=render)
+    if render_warning:
+        print(f"  ⚠️  {render_warning}")
+        data["render_warning"] = render_warning
     page_html = ""
     if html_path and os.path.exists(html_path):
         try:
@@ -1411,6 +1419,7 @@ def build_summary(data: dict, scores: dict) -> dict:
         "open_questions": build_open_questions(data, scores, issues),
         "sections_run": sorted(name for name, value in data["sections"].items()
                                if isinstance(value, dict) and value and not value.get("error")),
+        "render_warning": data.get("render_warning"),
     }
 
 

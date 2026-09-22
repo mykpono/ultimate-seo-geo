@@ -30,6 +30,17 @@ DEFAULT_HEADERS = {
 }
 
 
+def render_fallback_warning(render_error: str) -> str:
+    """One-line warning for an auto-mode render that fell back to static HTML."""
+    first_line = (render_error or "").strip().splitlines()[0] if render_error else ""
+    if "not installed" in first_line:
+        return "render unavailable — using static HTML; run `pip install playwright && playwright install chromium`"
+    return (
+        "render unavailable — using static HTML; run `playwright install chromium`"
+        + (f" ({first_line})" if first_line else "")
+    )
+
+
 def fetch_page(
     url: str,
     timeout: int = 30,
@@ -54,6 +65,8 @@ def fetch_page(
             - headers: Response headers
             - redirect_chain: List of redirect URLs
             - rendered: Whether Playwright rendering supplied the content
+            - render_error: Why rendering failed when render="auto" fell back
+              to the static HTML (content is still the static response)
             - error: Error message if failed
     """
     result = {
@@ -64,6 +77,7 @@ def fetch_page(
         "redirect_chain": [],
         "rendered": False,
         "render_mode": render,
+        "render_error": None,
         "error": None,
     }
 
@@ -118,6 +132,11 @@ def fetch_page(
         if render == "always" or (render == "auto" and should_render(response.text)):
             rendered = render_url(response.url, timeout=timeout)
             if rendered.error:
+                # "auto" means render if possible: keep the static response
+                # rather than discarding a good 200 because the browser is missing.
+                if render == "auto":
+                    result["render_error"] = rendered.error
+                    return result
                 result["error"] = rendered.error
                 return result
             result["url"] = rendered.final_url
@@ -177,6 +196,8 @@ def main():
     print(f"\nURL: {result['url']}", file=sys.stderr)
     print(f"Status: {result['status_code']}", file=sys.stderr)
     print(f"Rendered: {result['rendered']}", file=sys.stderr)
+    if result["render_error"]:
+        print(f"Warning: {render_fallback_warning(result['render_error'])}", file=sys.stderr)
     if result["redirect_chain"]:
         print(f"Redirects: {' -> '.join(result['redirect_chain'])}", file=sys.stderr)
 
