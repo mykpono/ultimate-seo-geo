@@ -33,7 +33,7 @@ gh release list --limit 3                 # vX.Y.Z must appear as Latest
 - `AGENTS.md` → the same **Skill at a glance** table (**Version** / **Updated**); `check_version_sync.py` checks it
 - `.claude-plugin/marketplace.json` → `metadata.version` **and** `plugins[0].version`
 - `plugins/ultimate-seo-geo/.claude-plugin/plugin.json` → `version`
-- Optional: `README.md` and `plugins/ultimate-seo-geo/README.md` version badges
+- `README.md` and `plugins/ultimate-seo-geo/README.md` → the version badge (`badge/version-X.Y.Z-green`); `check_version_sync.py` checks both
 - `CHANGELOG.md` entry for the release
 
 ---
