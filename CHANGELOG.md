@@ -2,7 +2,11 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+- **`check_version_sync.py` reads the README version badges.** The badge in `README.md` and
+  `plugins/ultimate-seo-geo/README.md` stayed at 1.16.0 through 1.20.2 because nothing checked it.
+  Both now count as version declarations, and `tests/test_version_sync.py` runs the checker, so a
+  stale badge fails CI. RELEASE.md § 1 lists the badges as required.
 
 ## [1.20.2] - 2026-09-21
 

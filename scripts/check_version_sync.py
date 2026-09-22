@@ -18,6 +18,8 @@ PLUGIN_JSON = Path("plugins/ultimate-seo-geo/.claude-plugin/plugin.json")
 PLUGIN_SKILL = Path("plugins/ultimate-seo-geo/skills/ultimate-seo-geo/SKILL.md")
 AGENTS_MD = Path("AGENTS.md")
 PLUGIN_AGENTS = Path("plugins/ultimate-seo-geo/skills/ultimate-seo-geo/AGENTS.md")
+README_MD = Path("README.md")
+PLUGIN_README = Path("plugins/ultimate-seo-geo/README.md")
 
 versions: dict[str, str] = {}
 
@@ -35,6 +37,15 @@ def extract_table_version(path: Path) -> str | None:
         return None
     text = path.read_text(encoding="utf-8")
     m = re.search(r"\*\*Version\*\*\s*\|\s*(.+?)(?:\s*\||\s*$)", text, re.MULTILINE)
+    return m.group(1).strip() if m else None
+
+
+def extract_badge_version(path: Path) -> str | None:
+    """Version from a shields.io badge: img.shields.io/badge/version-1.20.2-green.svg"""
+    if not path.exists():
+        return None
+    text = path.read_text(encoding="utf-8")
+    m = re.search(r"img\.shields\.io/badge/version-([0-9][^-/\s]*)-", text)
     return m.group(1).strip() if m else None
 
 
@@ -80,6 +91,16 @@ if v:
 v = extract_table_version(PLUGIN_AGENTS)
 if v:
     versions["plugin AGENTS.md table"] = v
+
+# The README badges sat at 1.16.0 through four minor releases because nothing
+# read them.
+v = extract_badge_version(README_MD)
+if v:
+    versions["README.md badge"] = v
+
+v = extract_badge_version(PLUGIN_README)
+if v:
+    versions["plugin README.md badge"] = v
 
 v = extract_json_version(MARKETPLACE_JSON, "metadata", "version")
 if v:
