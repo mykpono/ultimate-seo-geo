@@ -2,7 +2,16 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+- **`generate_report.py --render auto` dropped the page-level checks when the browser was missing.**
+  With Playwright installed but no Chromium binary (or Playwright not installed at all),
+  `fetch_page.py` got a good 200 but reported the failed render as an error, and the report threw
+  the static HTML away. `onpage`, `readability`, `schema_validation` and `image_seo` went
+  unmeasured and the score moved (68 against 81 without `--render` on a live page). In `auto` mode
+  a failed render now keeps the static HTML, sets `rendered: false` and records the reason in
+  `render_error`; the report prints "render unavailable — using static HTML; run
+  `playwright install chromium`" and carries it as `render_warning` in the summary JSON.
+  `--render always` still fails when it cannot render.
 
 ## [1.20.1] - 2026-09-21
 

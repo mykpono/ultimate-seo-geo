@@ -57,6 +57,59 @@ class FetchPageTests(unittest.TestCase):
         self.assertEqual(session.calls, 1)
 
 
+class RenderFallbackTests(unittest.TestCase):
+    """--render auto with Playwright present but no browser binary."""
+
+    STATIC = "<html><head><title>Static</title></head><body><div id=root></div></body></html>"
+    BROWSER_MISSING = (
+        "Render failed: BrowserType.launch: Executable doesn't exist at /x/chrome\n"
+        "Looks like Playwright was just installed or updated."
+    )
+
+    def _fetch(self, render: str):
+        from render_page import RenderResult
+
+        session = FakeSession([FakeResponse("https://example.com/", text=self.STATIC)])
+        failed = RenderResult(url="https://example.com/", error=self.BROWSER_MISSING)
+        with (
+            patch("fetch_page.requests.Session", return_value=session),
+            patch("url_safety.socket.getaddrinfo", return_value=[(None, None, None, None, ("93.184.216.34", 0))]),
+            patch("fetch_page.should_render", return_value=True),
+            patch("fetch_page.render_url", return_value=failed),
+        ):
+            return fetch_page_module.fetch_page("https://example.com/", render=render)
+
+    def test_auto_render_failure_keeps_static_html(self):
+        result = self._fetch("auto")
+
+        self.assertIsNone(result["error"])
+        self.assertEqual(result["status_code"], 200)
+        self.assertEqual(result["content"], self.STATIC)
+        self.assertFalse(result["rendered"])
+        self.assertEqual(result["render_error"], self.BROWSER_MISSING)
+
+    def test_always_render_failure_is_still_an_error(self):
+        result = self._fetch("always")
+
+        self.assertEqual(result["error"], self.BROWSER_MISSING)
+
+    def test_report_fetch_uses_static_html_and_warns(self):
+        fetched = {
+            "content": self.STATIC, "status_code": 200, "rendered": False,
+            "render_error": self.BROWSER_MISSING, "error": None,
+        }
+        with patch("generate_report.fetch_url", return_value=fetched):
+            path, warning = generate_report.fetch_page("https://example.com/", render="auto")
+        try:
+            self.assertEqual(Path(path).read_text(encoding="utf-8"), self.STATIC)
+        finally:
+            Path(path).unlink()
+        self.assertIn("render unavailable", warning)
+        self.assertIn("playwright install chromium", warning)
+        self.assertIn("Executable doesn't exist", warning)
+        self.assertNotIn("\n", warning)
+
+
 class ReportMetadataTests(unittest.TestCase):
     def test_recommendation_metadata_defaults_are_falsifiable(self):
         meta = generate_report._recommendation_metadata({"finding": "Missing H1"}, "onpage")

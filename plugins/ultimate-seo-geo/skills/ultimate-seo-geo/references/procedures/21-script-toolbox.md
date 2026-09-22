@@ -128,6 +128,7 @@ python scripts/generate_report.py https://staging.example.com --format none --js
     | `status`, `first_seen` | `null` without `--previous`. With it: `new` or `persisting`, and the timestamp of the first run in the chain that saw it |
 
   - `sections_run`: the checks that returned a result this run; what `--previous` uses to tell fixed from not re-checked
+  - `render_warning`: `null`, or why `--render auto` could not render and audited the static HTML instead (Playwright or its browser missing). The page-level checks still ran, on the static HTML
   - `action_plan`: finding IDs per lane, `Auto` first, each lane in the order to work it (severity, then the score its check can recover). Info notes with no `fix` and data gaps are left out. **Mode 3 reads this**: work `Auto`, confirm each `Assisted` item with the user before producing it, hand `Human` and `Decision` to the user
   - `open_questions`: what the run could not see. Unmeasured checks first (`id` `Q-<check>`, with `why`, `close` and the weight it `unlocks`), then `data_gap` findings by their `F` ID. Additive in `schema_version` 2: `counts`, `level` and the gates still see every finding
 
