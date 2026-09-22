@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.20.2] - 2026-09-21
+
+`--render auto` falls back to static HTML when it cannot render. The page-level checks used to
+be dropped instead. Patch per D-020.
+
 ### Fixed
 - **`generate_report.py --render auto` dropped the page-level checks when the browser was missing.**
   With Playwright installed but no Chromium binary (or Playwright not installed at all),
