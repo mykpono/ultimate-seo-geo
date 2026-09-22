@@ -11,7 +11,6 @@ Example usage:
 import argparse
 import json
 import os
-import re
 import sys
 from typing import List
 
@@ -54,15 +53,7 @@ def validate_jsonld(content: str, check_html_parity: bool = False) -> List[str]:
     """
     errors = []
     page_text = faq_parity.visible_text(content) if check_html_parity else None
-    # `type` may sit anywhere in the tag and is rarely the only attribute:
-    # Yoast emits class="yoast-schema-graph", Next.js and Shopify commonly add
-    # id=. Requiring `type` to be the sole attribute silently extracted nothing
-    # on those sites and returned a clean bill of health.
-    pattern = (
-        r'<script\b[^>]*?\btype\s*=\s*["\']application/ld\+json["\'][^>]*>'
-        r'(.*?)</script>'
-    )
-    blocks = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
+    blocks = jsonld.script_blocks(content)
 
     if not blocks:
         return []  # No schema found — not an error
@@ -235,13 +226,9 @@ def main():
     errors = validate_jsonld(
         content, check_html_parity=filepath.lower().endswith((".html", ".htm"))
     )
-    block_count = len(
-        re.findall(
-            r'<script\s+type=["\']application/ld\+json["\']',
-            content,
-            re.IGNORECASE,
-        )
-    )
+    # Same extractor as validate_jsonld(): a narrower count once reported
+    # "0 blocks, add schema" for a block it had just validated.
+    block_count = len(jsonld.script_blocks(content))
 
     if args.json:
         critical_ct = sum(1 for e in errors if _is_critical(e))
