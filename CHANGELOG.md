@@ -4,6 +4,38 @@
 
 _Nothing yet._
 
+## [1.20.1] - 2026-09-21
+
+`validate_schema.py` counts the JSON-LD it validates, and `readability.py` advice comes from the
+page it describes. Found auditing a live salary-guide page. Patch per D-020.
+
+### Fixed
+- **`validate_schema.py --json` reported "0 blocks, add schema" for schema it had just validated.**
+  The block count used its own pattern, which wanted `type` as the first attribute, so
+  `<script data-site-seo-schema="0" type="application/ld+json">` scored 55 with a recommendation to
+  add schema. Validation and the count now share one extractor, `jsonld.script_blocks()`.
+- **`readability.py` threw away the long sentences worth rewriting.** Its keyword-list filter
+  dropped any 25+ word sentence whose words were more than 85% unique, which is every normal long
+  sentence. It now looks for missing function words instead: a keyword dump has almost none, real
+  prose is 40-50% function words.
+- **Every page with hard vocabulary got two canned "homepage hero" rewrites.** When no long
+  sentence survived, the script returned fixed advice about a hero block and section blurbs, on
+  articles and guides alike. It now names the page's own sentences with the most 3+ syllable words
+  and lists those words.
+- **Suggested rewrites broke sentences mid-phrase.** Splitting after "that", before "and" or at a
+  comma produced "described by that. Publisher; ...", "between the lead. A salesperson" and
+  "including Sun Microsystems. Cisco.", plus a doubled full stop. A rewrite now splits only after a
+  semicolon or colon, or at ", but" before a new clause, never inside "either ... or"; any other
+  long sentence gets "Split this into two or three sentences of 15-20 words each (it has N)."
+- **Paragraph length counted headings, list items and stat cards as paragraphs.** A 600-word guide
+  came out at 69 paragraphs of 0.5 sentences, which hides real walls of text. A paragraph is now a
+  block of at least 8 words that ends like a sentence, and its length is the sentences in it.
+  Flesch scores are unchanged on the seven real pages checked.
+- New tests: `tests/test_readability.py` (13, 12 fail against the previous script) and five in
+  `tests/test_validate_schema.py` (5 fail against the previous script).
+  `test_the_fallback_recommendations_still_exist` now checks the fallback by behaviour, since the
+  canned copy it searched for is gone.
+
 ## [1.20.0] - 2026-09-18
 
 The client report is one file. `render_report.py` writes `report.html` in five parts instead of a

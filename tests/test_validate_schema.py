@@ -58,6 +58,61 @@ def test_valid_schema_still_produces_no_errors():
     assert validate_jsonld(page('type="application/ld+json" id="x"', VALID)) == []
 
 
+# --- the block count must see what validation saw ---------------------------
+#
+# alwayshired.com emits <script data-site-seo-schema="0" type="application/ld+json">.
+# validate_jsonld() found and validated that block, while main() counted blocks
+# with a pattern that wanted `type` first, so --json printed jsonld_blocks: 0,
+# score 55 and "No JSON-LD blocks found — add relevant schema".
+
+def run_json(tmp_path, html):
+    target = tmp_path / "page.html"
+    target.write_text(html, encoding="utf-8")
+    out = subprocess.run(
+        [sys.executable,
+         os.path.join(os.path.dirname(__file__), "..", "scripts", "validate_schema.py"),
+         str(target), "--json"],
+        capture_output=True, text=True,
+    )
+    return json.loads(out.stdout)
+
+
+@pytest.mark.parametrize(
+    "attrs",
+    [
+        'type="application/ld+json"',
+        'data-site-seo-schema="0" type="application/ld+json"',
+        'id="schema" type="application/ld+json"',
+        "data-nscript='beforeInteractive' type='application/ld+json'",
+        'class="yoast-schema-graph" type = "application/ld+json"',
+    ],
+)
+def test_block_count_matches_the_blocks_validated(tmp_path, attrs):
+    result = run_json(tmp_path, page(attrs, VALID))
+
+    assert result["jsonld_blocks"] == 1, result
+    assert result["score"] == 100, result
+    assert result["recommendations"] == [], result
+
+
+def test_every_block_is_counted(tmp_path):
+    html = (
+        page('data-x="1" type="application/ld+json"', VALID)
+        + page('type="application/ld+json" id="b"', VALID)
+    )
+    assert run_json(tmp_path, html)["jsonld_blocks"] == 2
+
+
+def test_a_page_without_schema_is_still_reported(tmp_path):
+    """The fix must not hide real absence: a plain script is not JSON-LD."""
+    html = '<html><head><script type="module" src="/a.js"></script></head></html>'
+    result = run_json(tmp_path, html)
+
+    assert result["jsonld_blocks"] == 0
+    assert result["score"] == 55
+    assert result["recommendations"]
+
+
 def test_non_jsonld_script_tags_are_ignored():
     html = '<html><script type="text/javascript">var x = 1;</script></html>'
 

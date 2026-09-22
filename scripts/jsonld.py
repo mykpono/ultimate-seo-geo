@@ -28,6 +28,25 @@ import re
 from typing import List
 
 
+# `type` may sit anywhere in the tag and is rarely the only attribute: Yoast
+# emits class="yoast-schema-graph", Next.js and Shopify add id=, and some site
+# builders put a data- attribute first. A pattern that wants `type` first finds
+# nothing on those pages and reports them as having no schema at all.
+_SCRIPT_BLOCK_RE = re.compile(
+    r'<script\b[^>]*?\btype\s*=\s*["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def script_blocks(html: str) -> List[str]:
+    """The raw text of every `<script type="application/ld+json">` block, in order.
+
+    Every caller that counts blocks or parses them must use this one extractor,
+    so the count and the validation can never disagree about what is on the page.
+    """
+    return _SCRIPT_BLOCK_RE.findall(html or "")
+
+
 def type_names(value) -> List[str]:
     """Return an `@type` value as a list of type strings.
 

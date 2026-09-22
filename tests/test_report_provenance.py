@@ -85,8 +85,16 @@ def test_stock_recommendations_are_domain_neutral(term):
 
 
 def test_the_fallback_recommendations_still_exist():
-    """Neutralising the copy must not delete the feature."""
-    text = _all_recommendation_text()
+    """Neutralising the copy must not delete the feature.
 
-    assert "sentence_rewrites" in text
-    assert "who you help" in text
+    Since 1.20.1 the fallback names the page's own hardest sentences rather
+    than printing fixed "homepage hero" copy, so check it by behaviour.
+    """
+    text = (
+        "Compensation variability materially affects organizational attractiveness. "
+        "Territory configuration influences opportunity availability considerably."
+    )
+    rewrites = readability.analyze_readability(text)["sentence_rewrites"]
+
+    assert rewrites
+    assert all(item["current"] in text for item in rewrites)

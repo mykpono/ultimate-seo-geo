@@ -83,42 +83,90 @@ def split_sentences(text: str) -> list:
 
 
 def suggest_sentence_rewrite(sentence: str) -> str:
-    """Generate a simple, shorter rewrite by splitting long sentences."""
+    """Suggest a shorter form of a long sentence.
+
+    Splits only where a sentence boundary is certain: after a semicolon or a
+    colon, or before a clause-level conjunction that follows a comma
+    (", but HTML paragraphs can ..."). Anywhere else a mechanical split breaks
+    the grammar: before "and" it cut noun phrases ("between the lead. A
+    salesperson"), at commas it cut lists ("including Sun Microsystems.
+    Cisco."), and after "that" it cut "described by that. Publisher". For those
+    sentences the suggestion says what to do instead of inventing a rewrite.
+    """
     tokens = sentence.strip().split()
     if len(tokens) <= 22:
         return sentence.strip()
 
-    conjunctions = {"and", "but", "because", "which", "that", "while", "although", "however", "so"}
-    split_points = []
-    for i, tok in enumerate(tokens):
-        clean = tok.strip(",;:").lower()
-        if tok.endswith((",", ";", ":")) or clean in conjunctions:
-            split_points.append(i)
-
+    clause_conjunctions = {"but", "however", "although", "because", "whereas", "yet"}
+    not_a_clause = {"not", "also", "only", "rather", "then"}
+    min_side = 6
     mid = len(tokens) // 2
-    if split_points:
-        split_idx = min(split_points, key=lambda i: abs(i - mid))
-        if split_idx < 8 or split_idx > len(tokens) - 8:
-            split_idx = mid
-    else:
-        split_idx = mid
+
+    # Each candidate is the index where the second sentence starts.
+    candidates = [i + 1 for i, tok in enumerate(tokens) if tok.endswith((";", ":"))]
+    candidates += [
+        i for i in range(1, len(tokens) - 1)
+        if tokens[i - 1].endswith(",")
+        and tokens[i].lower() in clause_conjunctions
+        and tokens[i + 1].strip(",;:").lower() not in not_a_clause
+    ]
+    lowered = [t.strip(",;:()").lower() for t in tokens]
+
+    def keeps_constructions_whole(i):
+        # "either ... or" is one construction: splitting between them left
+        # "It doesn't or (ii) the problem ..." on a posthog.com post.
+        return not ("either" in lowered[:i] and "or" in lowered[i:])
+
+    usable = [
+        i for i in candidates
+        if min_side <= i <= len(tokens) - min_side and keeps_constructions_whole(i)
+    ]
+    if not usable:
+        return (
+            f"Split this into two or three sentences of 15-20 words each "
+            f"(it has {len(tokens)})."
+        )
+    split_idx = min(usable, key=lambda i: abs(i - mid))
 
     first_tokens = tokens[:split_idx]
     second_tokens = tokens[split_idx:]
-    if second_tokens and second_tokens[0].strip(",;:").lower() in conjunctions:
+    if second_tokens[0].strip(",;:").lower() in clause_conjunctions:
         second_tokens = second_tokens[1:]
 
     first = " ".join(first_tokens).rstrip(",;:.")
-    second = " ".join(second_tokens).lstrip(",;: ")
-    if not second:
-        first = " ".join(tokens[:mid]).rstrip(",;:.")
-        second = " ".join(tokens[mid:]).lstrip(",;: ")
+    second = " ".join(second_tokens).lstrip(",;: ").rstrip(".!?")
+    first = first[0].upper() + first[1:]
+    second = second[0].upper() + second[1:]
+    return f"{first}. {second}."
 
-    first = first[0].upper() + first[1:] if first else ""
-    second = second[0].upper() + second[1:] if second else ""
-    if first and second:
-        return f"{first}. {second}."
-    return sentence.strip()
+
+_FUNCTION_WORDS = frozenset(
+    "a an the and or but nor of to in on for with by at from as into about than "
+    "is are was were be been being am it its this that these those their them "
+    "they we you your our he she his her not no if then so such can will would "
+    "should may might must do does did have has had which who whom what when "
+    "where how all any each more most other some only own same very".split()
+)
+
+# A paragraph is prose that ends like a sentence. Headings, list labels, stat
+# cards and button text are blocks too, but counting them as paragraphs drove
+# sentences-per-paragraph towards zero (69 "paragraphs" at 0.5 sentences on a
+# 600-word guide) and hid real walls of text.
+_PARAGRAPH_MIN_WORDS = 8
+_SENTENCE_END_RE = re.compile(r'[.!?]["\'\u201d\u2019)\]]*$')
+
+
+def _is_paragraph(chunk: str) -> bool:
+    return (
+        len(re.findall(r"\b[a-zA-Z]+\b", chunk)) >= _PARAGRAPH_MIN_WORDS
+        and bool(_SENTENCE_END_RE.search(chunk.strip()))
+    )
+
+
+def _prose_sentence_count(chunk: str) -> int:
+    return sum(
+        1 for s in split_sentences(chunk) if len(re.findall(r"\b[a-zA-Z]+\b", s)) >= 4
+    )
 
 
 def is_navigation_noise(sentence: str) -> bool:
@@ -145,9 +193,12 @@ def is_navigation_noise(sentence: str) -> bool:
     if not tokens:
         return True
 
-    # Excessively keyword-list style content
-    unique_ratio = len(set(t.lower() for t in tokens)) / max(1, len(tokens))
-    if len(tokens) >= 25 and unique_ratio > 0.85:
+    # Keyword-list style content: almost no function words. Word uniqueness
+    # cannot tell the two apart; a real 30-word sentence repeats almost nothing
+    # (0.97 unique), so the old `unique_ratio > 0.85` test discarded exactly the
+    # long sentences worth rewriting.
+    function_share = sum(t.lower() in _FUNCTION_WORDS for t in tokens) / len(tokens)
+    if len(tokens) >= 25 and function_share < 0.15:
         return True
 
     return False
@@ -183,9 +234,10 @@ def analyze_readability(text: str) -> dict:
         result["issues"].append("🔴 No readable text content found")
         return result
 
-    # Split into paragraphs
-    paragraphs = [p.strip() for p in re.split(r'\n\s*\n', text) if p.strip()]
-    result["paragraph_count"] = len(paragraphs)
+    # Split into paragraphs: blocks of prose, not every block element
+    chunks = [p.strip() for p in re.split(r'\n\s*\n', text) if p.strip()]
+    paragraph_sentences = [max(1, _prose_sentence_count(c)) for c in chunks if _is_paragraph(c)]
+    result["paragraph_count"] = len(paragraph_sentences)
 
     # Split into sentences
     raw_sentences = split_sentences(text)
@@ -214,7 +266,9 @@ def analyze_readability(text: str) -> dict:
 
     # Averages
     result["avg_sentence_length"] = round(len(words) / result["sentence_count"], 1)
-    result["avg_paragraph_length"] = round(result["sentence_count"] / max(1, result["paragraph_count"]), 1)
+    result["avg_paragraph_length"] = round(
+        sum(paragraph_sentences) / max(1, len(paragraph_sentences)), 1
+    )
     result["avg_syllables_per_word"] = round(syllables / len(words), 2)
 
     # Flesch Reading Ease: 206.835 - 1.015*(words/sentences) - 84.6*(syllables/words)
@@ -294,30 +348,27 @@ def analyze_readability(text: str) -> dict:
         if len(result["sentence_rewrites"]) >= 3:
             break
 
-    # If the page appears to be homepage/navigation-heavy and we cannot extract
-    # clean prose sentences, provide actionable homepage replacement targets.
-    if not result["sentence_rewrites"] and (result["avg_sentence_length"] > 25 or fre_val < 40):
-        result["sentence_rewrites"].extend([
-            {
-                "current": "Homepage hero intro block is broad and hard to scan.",
-                "suggested": (
-                    "Use a 2-3 sentence hero: who you help, what users can do here, and "
-                    "where to start. Name the audience and the outcome in the first "
-                    "sentence, then point at the primary entry point."
-                ),
-                "current_word_count": "template",
-                "target_word_count": "40-60 total (split into 2-3 sentences)",
-            },
-            {
-                "current": "Section descriptions mix too many topics in one long paragraph.",
-                "suggested": (
-                    "Replace with short blurbs per section (1 sentence each), each followed "
-                    "by a CTA link naming the specific action for that section."
-                ),
-                "current_word_count": "template",
-                "target_word_count": "12-20 words per blurb",
-            },
-        ])
+    # Hard to read without any long sentence means the vocabulary is the
+    # problem, so point at the sentences carrying the most long words. This
+    # used to return two canned "homepage hero" rewrites whatever the page was,
+    # which put advice about a site's hero block on salary guides and articles.
+    if not result["sentence_rewrites"] and fre_val < 40:
+        dense = []
+        for s in sentences:
+            if is_navigation_noise(s):
+                continue
+            tokens = re.findall(r"\b[a-zA-Z]+\b", s)
+            long_words = list(dict.fromkeys(t for t in tokens if count_syllables(t) >= 3))
+            if len(long_words) >= 3:
+                dense.append((len(long_words), len(tokens), s, long_words))
+        dense.sort(key=lambda x: x[0], reverse=True)
+        for _, wc, s, long_words in dense[:3]:
+            result["sentence_rewrites"].append({
+                "current": s[:600],
+                "suggested": "Use shorter, everyday words for: " + ", ".join(long_words[:6]) + ".",
+                "current_word_count": wc,
+                "target_word_count": "same length, fewer 3+ syllable words",
+            })
 
     if result["sentence_rewrites"]:
         result["recommendations"].append(
