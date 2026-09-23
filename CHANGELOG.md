@@ -1,6 +1,47 @@
 # Changelog
 
-## [Unreleased]
+## [1.21.0] - 2026-09-23
+
+Search Console data now says what to fix. A new script, `gsc_insights.py`, turns query x page
+rows into five ranked lists. `generate_report.py` joins page clicks to every finding, so the
+action plan can order work by traffic. Minor per D-020: new capability. Nothing about the score
+changes.
+
+### Added
+- **`gsc_insights.py`: Search Console opportunity analysis (Tier 1).** One run fetches query x
+  page rows for the last 28 days (paged past the API's 25,000-row limit, with a
+  `--max-rows` cap it reports when reached) and reports:
+  - **striking distance:** average position 8-15 with at least 200 impressions, plus the upside
+    at the property's own position-3 CTR;
+  - **low CTR:** CTR below half **the property's own median CTR** at that rounded position.
+    It replaces the fixed industry table, and a bucket with fewer than 5 rows reads
+    "cannot compute";
+  - **cannibalisation:** a second URL holding at least 10% of a query's impressions. Fragment
+    URLs (`/pricing#faq`) are merged first, so jump links are not reported as competing pages;
+  - **decay:** clicks down at least 20% in the latest window and also down in the window
+    before it. The page is tagged seasonal when the same two windows fell a year earlier;
+  - **serve map:** `--serve-map targets.csv` compares the page you intend for each query with
+    the page Google shows.
+
+  Each analysis that finds something emits one finding in the report shape. Redirect advice is
+  always Assisted. `--save-rows` and `--replay` analyse saved rows without credentials.
+- **Traffic at stake in `generate_report.py`.** `--gsc-property sc-domain:example.com` runs
+  `gsc_insights.py` as a new display-only check, *Search performance*, which is never weighted.
+  Its page clicks are joined to every finding. `--gsc-pages Pages.csv` does the join from the
+  Performance report's Pages export (or `gsc_query.py --dimension page --json` output) without
+  API access. How each finding is charged:
+  - a finding that names URLs of the audited site is charged their clicks;
+  - one from a check that audits only the report's page is charged that page;
+  - one from a site-level check (robots.txt, headers, sitemaps) is marked site-wide with no
+    figure;
+  - anything else, and every data gap, gets no figure.
+
+  Other hosts' URLs, such as broken external links, are never charged. Findings show a
+  "Traffic at stake" line, and plan items show "N clicks at stake". Inside each severity, the
+  action plan puts site-wide findings first, then the most clicks. The summary JSON gains
+  `findings[].traffic_at_stake` and `search_console`, both additive in `schema_version` 2 and
+  both `null` without Search Console data. A run without Search Console data orders exactly as
+  before.
 
 ### Changed
 - **`check_version_sync.py` reads the README version badges.** The badge in `README.md` and

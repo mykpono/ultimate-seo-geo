@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![AGENTS.md](https://img.shields.io/badge/AGENTS.md-compatible-blue)](https://agents.md)
-[![Version](https://img.shields.io/badge/version-1.20.2-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.21.0-green.svg)](CHANGELOG.md)
 [![LLM-Agnostic](https://img.shields.io/badge/LLM--Agnostic-7%2B%20platforms-purple.svg)](#platform-compatibility)
 
 The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML, Excel, and PDF reports.
@@ -341,6 +341,7 @@ In CI, `--format none --json seo-summary.json --fail-under 70 --fail-on critical
 | `google_api_tier.py` | Detect available Google API credentials (Tier 0–2) |
 | `crux_history.py` | CrUX History API — historical CWV data (Tier 0) |
 | `gsc_query.py` | Google Search Console queries (Tier 1, OAuth) |
+| `gsc_insights.py` | GSC opportunities: striking distance, low CTR vs the site's own curve, cannibalisation, decay, serve map (Tier 1) |
 | `gsc_export.py` | GSC data export (Tier 1, OAuth) |
 | `ga4_report.py` | GA4 organic and AI-assistant referral traffic (Tier 2, OAuth) |
 | `pdf_charts.py` | SVG chart generation for PDF reports (module) |

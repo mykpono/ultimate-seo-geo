@@ -78,6 +78,8 @@ Runs the bundled analysis pipeline (see §2): URL-based scripts, homepage HTML f
 
 **Previous run:** `python scripts/generate_report.py https://example.com --json summary.json --previous last-month.json` opens the report with what changed since the earlier `--json` summary (score delta, findings resolved and new, checks that changed status) and writes the same comparison under `"previous"` in the new summary. Findings are matched by `key` (below), not by ID or wording, so "2 broken links" becoming "1 broken link" is one `persisting` finding (with `finding_was`), not a fix plus a new defect. `previous` holds `resolved`, `new`, `persisting` (each with `first_seen`, and `severity_was` when it moved) and `not_rechecked`: earlier findings whose check did not run this time. **Never report a `not_rechecked` finding as fixed.** A summary written before 1.19.0 has no keys; they are derived from its wording, so old baselines still compare. The action plan opens with "Fixed since the … run" and marks each item New or Open since a date.
 
+**Search Console:** `python scripts/generate_report.py https://example.com --gsc-property sc-domain:example.com` runs `gsc_insights.py` as the display-only *Search performance* check (striking distance, low CTR, cannibalisation, decay; never weighted) and joins page clicks to every finding. Without API access, `--gsc-pages Pages.csv` joins the Pages export of the Performance report (or `gsc_query.py --dimension page --json` output); it wins over the property's own totals when both are given. A finding that names URLs of the audited site is charged their clicks; one from a check that audits only the report's page is charged that page; one from a site-level check (robots.txt, headers, sitemaps) is marked site-wide with no figure; anything else, and every data gap, gets none. The score and the findings do not change; inside each severity the action plan puts site-wide findings first, then the most clicks.
+
 **White-label:** `--prepared-for "Client"`, `--prepared-by "Agency"` fill the masthead; `--accent "#B83F00"` sets the accent colour. Nothing else in the design changes per brand.
 
 **Excel:** `python scripts/generate_report.py https://example.com --format xlsx --output report.xlsx` (requires `openpyxl`).
@@ -126,10 +128,12 @@ python scripts/generate_report.py https://staging.example.com --format none --js
 
     | `code`, `key` | Identity across runs. `code` is the finding's class: the script's own `code` (or slug-shaped `type`), else its wording with numbers, URLs and quoted names removed, prefixed with the check (`broken_links.broken-link-s-found`). `key` adds the subject back (`…#https://…`), so two pages with one defect stay two findings. A script that wants a stable identity through rewording should emit `code` |
     | `status`, `first_seen` | `null` without `--previous`. With it: `new` or `persisting`, and the timestamp of the first run in the chain that saw it |
+    | `traffic_at_stake` | `null` without `--gsc-property`/`--gsc-pages`, for data gaps, and for findings no URL ties to a page. Else `{"scope": "site"}` (site-level check, no figure) or `{"scope": "pages", "clicks", "impressions", "urls_named", "urls_matched", "basis"}`; both carry `source` and `window` |
 
   - `sections_run`: the checks that returned a result this run; what `--previous` uses to tell fixed from not re-checked
   - `render_warning`: `null`, or why `--render auto` could not render and audited the static HTML instead (Playwright or its browser missing). The page-level checks still ran, on the static HTML
-  - `action_plan`: finding IDs per lane, `Auto` first, each lane in the order to work it (severity, then the score its check can recover). Info notes with no `fix` and data gaps are left out. **Mode 3 reads this**: work `Auto`, confirm each `Assisted` item with the user before producing it, hand `Human` and `Decision` to the user
+  - `search_console`: `null`, or the page traffic joined to findings: `source`, `window`, `total_clicks`, `total_impressions`, `pages` (count)
+  - `action_plan`: finding IDs per lane, `Auto` first, each lane in the order to work it (severity, then Search Console clicks at stake when joined, then the score its check can recover). Info notes with no `fix` and data gaps are left out. **Mode 3 reads this**: work `Auto`, confirm each `Assisted` item with the user before producing it, hand `Human` and `Decision` to the user
   - `open_questions`: what the run could not see. Unmeasured checks first (`id` `Q-<check>`, with `why`, `close` and the weight it `unlocks`), then `data_gap` findings by their `F` ID. Additive in `schema_version` 2: `counts`, `level` and the gates still see every finding
 
   **Migrating from `schema_version` 1:** v1 `severity` is v2 `level`. Counts are keyed by the full scale, so `counts.warning` is now `counts.medium`. Gate behaviour and exit codes are unchanged.
@@ -183,6 +187,9 @@ python scripts/llms_txt_checker.py https://example.com --check-sitemap --json
 
 # Check the preferred sources opt-in (news/publisher sites)
 python scripts/preferred_sources_checker.py https://example.com
+
+# Search Console opportunities: striking distance, low CTR, cannibalisation, decay (Tier 1)
+python scripts/gsc_insights.py sc-domain:example.com --all --json
 
 # Import a hand-exported GSC generative-AI performance CSV (no API exists)
 python scripts/gsc_ai_import.py ai-performance-export.csv --json

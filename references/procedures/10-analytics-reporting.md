@@ -24,7 +24,25 @@
 2. **Impressions stable, clicks fell** → SERP feature change (AI Overview absorbing clicks). Optimize for AI citation (§ 3) and featured snippet (§ 7c).
 3. **Segment by page type** → Isolate which category is affected.
 
+### Search Console Opportunities (Tier 1)
+
+Run `python scripts/gsc_insights.py sc-domain:example.com --all --json` before advising on titles, refreshes or cannibalisation. It reads query x page data for the last 28 days and reports:
+
+| Analysis | Rule | Default action |
+|---|---|---|
+| Striking distance | Average position 8–15, ≥200 impressions (`--min-impressions` for small sites) | Put the query's words in the title, H1 and opening paragraph; add one internal link with the query as anchor |
+| Low CTR | Position ≤10, ≥100 impressions, CTR below **half this property's own median CTR** at that rounded position | Rewrite title and meta description, unless a SERP feature sits above the result |
+| Cannibalisation | Query with ≥50 impressions where a second URL holds ≥10% of them (fragment URLs merged first) | Pick the winner; merge with a 301 (high-risk, confirm first) or re-target the other page |
+| Decay | Clicks down ≥20% in the latest window **and** down in the one before, ≥30 clicks; tagged seasonal when the same windows fell last year | Refresh non-seasonal pages: find the lost queries, compare with the pages now outranking them |
+| Serve map | `--serve-map targets.csv` (query,url) vs the page with the most impressions | Strengthen the intended page, or update the map |
+
+Every figure comes from the API. The CTR benchmark is the property's own; a position bucket with fewer than 5 qualifying rows reads "cannot compute", never an industry number. Upside estimates name the bucket they came from. Output lists its limits (anonymised queries, row caps). Without credentials, `--replay rows.json` analyses rows saved earlier with `--save-rows`.
+
+**In the full report:** `generate_report.py URL --gsc-property sc-domain:example.com` runs these as the display-only *Search performance* check and adds each finding's Search Console clicks ("Traffic at stake"). `--gsc-pages Pages.csv` (the Performance report's Pages export) adds the clicks without API access.
+
 ### CTR Benchmarks
+
+Industry ranges for orientation only. For a verified property, judge CTR against the property's own curve (`gsc_insights.py --low-ctr`), not this table.
 
 | Position | Expected CTR | Action |
 |---|---|---|
