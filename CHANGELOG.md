@@ -4,8 +4,9 @@
 
 Search Console data now says what to fix. A new script, `gsc_insights.py`, turns query x page
 rows into five ranked lists. `generate_report.py` joins page clicks to every finding, so the
-action plan can order work by traffic. Minor per D-020: new capability. Nothing about the score
-changes.
+action plan can order work by traffic. `index_coverage_diff.py` compares two weekly Page indexing
+exports and names the one change to investigate. Minor per D-020: new capability. Nothing about
+the score changes.
 
 ### Added
 - **`gsc_insights.py`: Search Console opportunity analysis (Tier 1).** One run fetches query x
@@ -42,6 +43,23 @@ changes.
   `findings[].traffic_at_stake` and `search_console`, both additive in `schema_version` 2 and
   both `null` without Search Console data. A run without Search Console data orders exactly as
   before.
+- **`index_coverage_diff.py`: Page indexing week over week.** The Page indexing report is not in
+  the Search Console API, so this reads two of its exports: the zip, the unzipped folder or the
+  Critical issues CSV. It compares every reason and the Indexed / Not indexed totals from
+  Chart.csv. A reason counts as moved at 50 URLs, or at 5% of a change of at least 10 URLs, so
+  2 -> 3 pages is not a "50% rise". Each reason is classed as:
+  - technical: robots.txt, noindex, 4xx/5xx, redirect errors;
+  - quality: "Crawled - currently not indexed" and duplicates. Every appearance says
+    resubmitting does nothing;
+  - discovery: "Discovered - currently not indexed";
+  - expected: redirects and alternates.
+
+  `--shipped` ties each move to a line of shipped work by keyword, and says so when no line
+  matches. The script names one reason to investigate: technical rises first, then a fall in
+  Indexed, then quality and discovery. An expected rise that a shipped note explains comes last.
+  `--examples OLD NEW` diffs one reason's example URLs and `--sitemap` marks the ones that are
+  submitted; Search Console caps those lists at 1,000, and the output calls them a sample. A file
+  that is not a Page indexing export fails with an error instead of reporting nothing.
 
 ### Changed
 - **`check_version_sync.py` reads the README version badges.** The badge in `README.md` and
