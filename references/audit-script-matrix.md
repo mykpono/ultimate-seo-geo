@@ -24,6 +24,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Broken links (single page) | §9 | `broken_links.py` | `python scripts/broken_links.py URL --json` |
 | Broken links (site-wide) | §9, §11 | `broken_links.py` | `python scripts/broken_links.py URL --crawl --depth 2 --json` |
 | Internal links / redirects | §9, §11 | `internal_links.py` | `python scripts/internal_links.py URL --depth 1 --json` |
+| Anchor text per destination (in-content links only; vague anchors) | §9 | `internal_links.py` | `python scripts/internal_links.py URL --graph site_graph.json --json` (graph from `site_graph.py URL --out site_graph.json`) |
 | Core Web Vitals (PSI) | §4 | `pagespeed.py` | `python scripts/pagespeed.py URL --strategy mobile --json` |
 | Entity / Wikidata | §3 | `entity_checker.py` | `python scripts/entity_checker.py URL --json` |
 | Citability and structure (prose walls, paragraph length, headings, lead; article pages) | §3 | `citability_checker.py` | `python scripts/citability_checker.py --url URL --json` (or a saved HTML file) |
