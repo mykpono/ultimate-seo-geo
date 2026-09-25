@@ -5,9 +5,16 @@ Check redirect chains for a URL.
 Follows the full redirect chain, reports each hop (status + destination),
 detects mixed HTTP/HTTPS, redirect loops, and chain length issues.
 
+With --graph (a site_graph.py output) it audits the site's own links
+instead: every internal link whose written URL is not where its page ends up
+is followed hop by hop, and the redirects are ranked by how many pages link to
+them, so the ones to fix first come first. A link that sits in the header,
+nav or footer is flagged: it is on every page, and one template edit fixes it.
+
 Usage:
     python redirect_checker.py https://example.com
     python redirect_checker.py https://example.com http://example.com --json
+    python redirect_checker.py --graph site_graph.json --json
 """
 
 import argparse
@@ -172,12 +179,194 @@ def check_redirects(url: str, max_redirects: int = 10, timeout: int = 10) -> dic
     return result
 
 
+# ---------------------------------------------------------------------------
+# Site-wide: the site's own links that redirect (--graph)
+# ---------------------------------------------------------------------------
+
+CHROME_REGIONS = frozenset({"nav", "header", "footer", "breadcrumb"})
+DEFAULT_MAX_CHECKS = 100
+TEMPORARY = (302, 303, 307)
+LIST_LIMIT = 25
+
+
+def _strip_fragment(url: str) -> str:
+    return (url or "").split("#", 1)[0]
+
+
+def _strip_query(url: str) -> str:
+    return _strip_fragment(url).split("?", 1)[0]
+
+
+def redirecting_links(graph: dict) -> dict:
+    """{href: {"sources": set, "chrome": bool, "content": bool, "final": str}} for internal links that redirect.
+
+    A link redirects when its href, as written (fragment dropped), differs from
+    the final URL of the page it points to. Compared as written, not by page
+    key, so /gallery -> /gallery/ counts: it is a real hop the site's own link
+    makes. Query strings are ignored in the comparison: the graph keys pages
+    without them, so ?utm_content=... variants (moz.com) are not evidence of a
+    redirect. The result is a list of suspects; audit_site_redirects walks each
+    one, and only the walk says whether it redirects. Links to pages the crawl
+    did not fetch are counted apart, unjudged.
+    """
+    pages = graph.get("pages") or {}
+    found, unfetched = {}, set()
+    for page in pages.values():
+        source = page.get("url")
+        for link in page.get("out_links") or []:
+            if not link.get("internal") or not link.get("key") or link["key"] == page.get("key"):
+                continue
+            target = pages.get(link["key"])
+            href = _strip_fragment(link.get("href"))
+            if target is None:
+                unfetched.add(href)
+                continue
+            final = _strip_fragment(target.get("final_url") or target.get("url"))
+            if not final or _strip_query(href) == _strip_query(final):
+                continue
+            slot = found.setdefault(href, {"sources": set(), "chrome": False, "content": False, "final": final})
+            slot["sources"].add(source)
+            if link.get("region") in CHROME_REGIONS or link.get("container") in ("header", "footer"):
+                slot["chrome"] = True
+            else:
+                slot["content"] = True
+    return {"links": found, "unfetched_targets": len(unfetched)}
+
+
+def audit_site_redirects(graph: dict, max_checks: int = DEFAULT_MAX_CHECKS, check=None) -> dict:
+    """Follow every redirecting internal link and rank them by the pages that carry them."""
+    check = check or check_redirects
+    found = redirecting_links(graph)
+    ranked = sorted(found["links"].items(), key=lambda kv: (-len(kv[1]["sources"]), kv[0]))
+    rows = []
+    for href, info in ranked[:max_checks]:
+        walked = check(href)
+        chain = walked.get("chain") or []
+        statuses = [hop.get("status") for hop in chain]
+        final_status = statuses[-1] if statuses else None
+        rows.append({
+            "href": href,
+            "linking_pages": len(info["sources"]),
+            "sources": sorted(info["sources"])[:5],
+            "in_navigation": info["chrome"],
+            "in_content": info["content"],
+            "hops": walked.get("total_hops", 0),
+            "statuses": statuses,
+            "final_url": walked.get("final_url") or info["final"],
+            "final_status": final_status,
+            "loop": bool(walked.get("has_loop")),
+            "temporary": any(s in TEMPORARY for s in statuses[:-1]),
+            "downgrade": bool(walked.get("has_downgrade")),
+            "error": walked.get("error"),
+        })
+    chains = [r for r in rows if r["hops"] >= 2 or r["loop"]]
+    broken = [r for r in rows if not r["loop"] and r["final_status"] is not None and r["final_status"] >= 400]
+    single = [r for r in rows if r["hops"] == 1 and not r["loop"] and r not in broken]
+    # A suspect the walk answers directly (0 hops) is not a redirect: the site serves both spellings, e.g.
+    # /category/x and /category/x/ both 200 on smashingmagazine.com, and the crawl fetched the other one.
+    resolved = [r for r in rows if r["hops"] == 0 and not r["loop"] and (r["final_status"] or 0) < 400]
+    result = {
+        "pages_in_graph": len(graph.get("pages") or {}),
+        "suspects": len(found["links"]),
+        "redirecting_links": len(rows) - len(resolved) + max(0, len(found["links"]) - max_checks),
+        "checked": len(rows),
+        "not_checked": max(0, len(found["links"]) - max_checks),
+        "unfetched_targets": found["unfetched_targets"],
+        "counts": {"single_hop": len(single), "chains": len(chains), "loops": sum(r["loop"] for r in rows),
+                   "ends_in_error": len(broken), "temporary": sum(r["temporary"] for r in rows),
+                   "serves_directly": len(resolved)},
+        "redirects": [r for r in rows if r not in resolved][:LIST_LIMIT],
+        "method": ("internal links whose written URL differs from the final URL of the page they point to, "
+                   "followed hop by hop and ranked by linking pages"),
+    }
+    result["issues"] = site_redirect_issues(result, rows, chains, broken, single)
+    return result
+
+
+def site_redirect_issues(result, rows, chains, broken, single) -> list:
+    issues = []
+    nav_note = lambda group: (f" {sum(r['in_navigation'] for r in group)} of them sit in the header, nav or footer: "  # noqa: E731
+                              "fix those once in the template." if any(r["in_navigation"] for r in group) else "")
+    if chains or broken:
+        worst = (chains + broken)[0]
+        issues.append({
+            "severity": "medium",
+            "code": "redirects.site_chains",
+            "lane": "Assisted",
+            "finding": (f"{len(chains)} internal link target(s) redirect through 2+ hops or loop, and {len(broken)} "
+                        f"redirect to an error page."),
+            "evidence": "; ".join(f"{r['href']} -> {' -> '.join(str(s) for s in r['statuses'])} "
+                                  f"(linked from {r['linking_pages']} page(s))" for r in (chains + broken)[:3]),
+            "impact": "Every extra hop costs crawl budget and delays the page; a chain that ends in an error drops the link entirely.",
+            "fix": ("Point each first redirect straight at the final URL (one hop), and give the error ones a live "
+                    "destination. Redirect rules are high-risk: confirm before shipping." + nav_note(chains + broken)),
+            "confidence": "Confirmed",
+            "falsifiability": "Wrong if the chain differs for Googlebot; check one in Search Console's URL Inspection.",
+            "leading_indicator": "Chains and errors in the next --graph run; 'Page with redirect' in Search Console's Page indexing.",
+            "urls": [worst["href"]] + [r["href"] for r in (chains + broken)[1:10]],
+        })
+    if single:
+        issues.append({
+            "severity": "low",
+            "code": "redirects.links_to_redirects",
+            "lane": "Auto",
+            "finding": (f"{len(single)} internal link target(s) redirect once; "
+                        f"{sum(r['linking_pages'] for r in single)} page link(s) point at them."),
+            "evidence": "; ".join(f"{r['href']} -> {r['final_url']} (from {r['linking_pages']} page(s))" for r in single[:3]),
+            "impact": "Each link through a redirect costs a hop on every crawl and is reported as 'Page with redirect'.",
+            "fix": ("Change each link to its final URL. The redirects stay for outside links." + nav_note(single)
+                    + (f" {sum(r['temporary'] for r in single)} use a temporary redirect (302/303/307); if the move is "
+                       "permanent, make it a 301." if any(r["temporary"] for r in single) else "")),
+            "confidence": "Confirmed",
+            "falsifiability": "Wrong if the final URL is not the canonical page (check its rel=canonical).",
+            "leading_indicator": "redirecting_links in the next --graph run.",
+            "urls": [r["href"] for r in single[:10]],
+        })
+    return issues
+
+
+def print_site(result: dict) -> None:
+    c = result["counts"]
+    print(f"Site redirects — {result['suspects']} suspect link target(s) on {result['pages_in_graph']} pages; "
+          f"{result['checked']} walked, {result['not_checked']} not walked; {result['redirecting_links']} redirect")
+    print(f"  single hop {c['single_hop']} | chains {c['chains']} | loops {c['loops']} | end in error {c['ends_in_error']} | "
+          f"temporary {c['temporary']} | serves directly (not a redirect) {c['serves_directly']}")
+    print("=" * 78)
+    for r in result["redirects"]:
+        where = "nav" if r["in_navigation"] else "content"
+        print(f"  {r['linking_pages']:>4} pages [{where}] {r['href']}")
+        print(f"        {' -> '.join(str(s) for s in r['statuses'])}  {r['final_url']}"
+              + ("  LOOP" if r["loop"] else "") + (f"  error: {r['error']}" if r["error"] else ""))
+    for issue in result["issues"]:
+        print(f"\n{issue['finding']}\n  Fix: {issue['fix']}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Check redirect chains")
-    parser.add_argument("urls", nargs="+", help="URL(s) to check")
+    parser.add_argument("urls", nargs="*", help="URL(s) to check")
+    parser.add_argument("--graph", metavar="PATH",
+                        help="site_graph.py output: audit every internal link that redirects, ranked by linking pages")
+    parser.add_argument("--max-checks", type=int, default=DEFAULT_MAX_CHECKS,
+                        help=f"With --graph: redirecting links to follow (default {DEFAULT_MAX_CHECKS})")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()
+    if args.graph:
+        import site_graph  # lazy: the plain URL check needs no site-structure modules
+        try:
+            graph = site_graph.load_graph(args.graph)
+        except (OSError, ValueError) as exc:
+            parser.error(f"--graph: {exc}")
+        if args.max_checks < 1:
+            parser.error("--max-checks must be positive")
+        result = audit_site_redirects(graph, args.max_checks)
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print_site(result)
+        return
+    if not args.urls:
+        parser.error("give URL(s) to check, or --graph")
 
     results = []
     for url in args.urls:

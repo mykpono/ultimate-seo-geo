@@ -603,6 +603,14 @@ Read the verdict, not the point estimate:
 - **0 of 5 is not "never cited".** Its interval still reaches 43%. 0 of 10 has an upper bound of 28%, which reads as rare.
 - **Compare engines or months only when their intervals do not overlap.** Overlapping intervals show no demonstrated change, whatever the point estimates say.
 - **Cited is not the same as mentioned.** A brand named without a source link came from the model's memory or an unlinked page. Record it in `mentioned` and report it separately.
+
+**Are the answers right about the brand?** Paste each answer whole into the grid's `answer` column and describe the official facts in a JSON file (founding year, headquarters, founders, prices, yes/no claims such as "free plan", and phrases that must never appear, such as "acquired by"; each with the `source` page that states it). A worked example is `references/brand-facts-example.json`. Then run `python scripts/citation_sampling.py runs.csv --facts brand.json --json`, adding `--domain` to score citations in the same run.
+
+- It reads only sentences that name the brand, plus a pronoun sentence straight after one ("It was founded in 2019"). A value counts only when it closely follows its keyword.
+- A statement in parentheses that do not name the brand ("Mixpanel (founded 2009)") is left out. So is one where a listed competitor (`others`) stands between the brand and the keyword, or one after a contrast ("compared to", "unlike").
+- For each fact it reports how many answers state it, how many get it wrong (with a 95% interval, per engine) and the wrong sentences quoted.
+- Each wrong fact becomes one finding. The fix is to state the fact plainly on its `source` page, then correct the third-party `profiles`. Engines repeat their sources, so fix the sources rather than the answers.
+- Price mismatches are hypotheses until read: answers quote old or regional plans.
 - **The script calls no AI engine and needs no API key.** Rows can come from manual checks, the DataForSEO MCP tools above, or an export from the monitoring tools in this section.
 
 ---

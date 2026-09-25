@@ -171,6 +171,9 @@ python scripts/ai_bot_logs.py access.log --verify-ips --json
 
 # AI citation presence as a rate: write a prompt x engine x run grid, fill it in, then score it
 python scripts/citation_sampling.py --template --prompts prompts.txt --engines chatgpt,perplexity --runs 5 --output runs.csv
+
+# Check the recorded answers for wrong brand facts (answer column + a facts file)
+python scripts/citation_sampling.py runs.csv --facts references/brand-facts-example.json --json
 python scripts/citation_sampling.py runs.csv --domain example.com --json
 
 # Instructions to AI systems hidden from visitors (prompt injection, invisible Unicode)
@@ -195,6 +198,12 @@ python scripts/index_coverage_diff.py last-week.zip this-week.zip --shipped ship
 python3 scripts/google_auth.py setup     # first time: installs the Google libraries in the skill's venv
 python3 scripts/google_auth.py login
 python3 scripts/google_auth.py status
+
+# Every internal link that redirects, followed hop by hop, ranked by linking pages
+python scripts/redirect_checker.py --graph site_graph.json --json
+
+# Pages that name a money page's topic but do not link to it (sentence + anchor)
+python scripts/link_opportunities.py --graph site_graph.json --target https://example.com/pricing --terms "pricing" --json
 
 # Search Console opportunities: striking distance, low CTR, cannibalisation, decay (Tier 1)
 python scripts/gsc_insights.py sc-domain:example.com --all --json

@@ -1,0 +1,17 @@
+{
+  "brand": "Acme Analytics",
+  "aliases": ["Acme"],
+  "others": ["Mixpanel", "Amplitude", "Heap"],
+  "profiles": ["Wikipedia", "Wikidata", "Crunchbase", "LinkedIn", "G2"],
+  "facts": [
+    {"field": "founding year", "type": "year", "value": 2016, "source": "https://acme.example/about"},
+    {"field": "headquarters", "type": "place", "value": "Austin", "aliases": ["Austin, Texas", "Austin, TX"], "source": "https://acme.example/about"},
+    {"field": "founders", "type": "people", "value": ["Jane Doe", "Raj Patel"], "source": "https://acme.example/about"},
+    {"field": "pricing", "type": "money", "value": [0, 29, 99], "source": "https://acme.example/pricing"},
+    {"field": "free plan", "type": "claim", "value": true, "true_phrases": ["free plan", "free tier"], "source": "https://acme.example/pricing"}
+  ],
+  "false_claims": [
+    {"phrase": "acquired by", "source": "https://acme.example/about"},
+    {"phrase": "open source", "source": "https://acme.example/product"}
+  ]
+}

@@ -6,8 +6,10 @@ Search Console data now says what to fix. A new script, `gsc_insights.py`, turns
 rows into five ranked lists. `generate_report.py` joins page clicks to every finding, so the
 action plan can order work by traffic. `index_coverage_diff.py` compares two weekly Page indexing
 exports and names the one change to investigate. `internal_links.py` audits in-content anchor
-text from the shared site graph, and `report_lint.py` holds a written audit to one next action and
-no unsourced numbers. Minor per D-020: new capability. Nothing about the score changes.
+text from the shared site graph, `report_lint.py` holds a written audit to one next action and
+no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong brand facts, and
+`link_opportunities.py` finds the pages that should link to a money page, and
+`redirect_checker.py --graph` ranks every internal link that redirects. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
 - **Search Console sign-in for every user: `google_auth.py`.** `setup` installs the Google
@@ -105,6 +107,55 @@ no unsourced numbers. Minor per D-020: new capability. Nothing about the score c
     raised nothing.
   - The template now says it plainly: a number the data cannot support is written as
     `cannot compute from this data`, with what would supply it.
+- **Brand-fact check in `citation_sampling.py --facts brand.json`.** It checks recorded AI answers
+  for wrong statements about the brand. The template grid gains an `answer` column, and a facts
+  file lists the official founding year, HQ, founders, prices, yes/no claims ("free plan") and
+  never-true phrases ("acquired by"), each with the page that states it; see
+  `references/brand-facts-example.json`.
+  - **What it reads.** Only sentences that name the brand, plus a pronoun sentence straight after
+    one. A value must follow its keyword closely, and "does not have a free plan" counts as the
+    opposite claim.
+  - **Other companies' facts are left out.** It skips a statement in parentheses that do not name
+    the brand ("Mixpanel (founded 2009)"), one with a listed competitor between the brand and the
+    keyword, one after a contrast ("compared to Mixpanel's $49"), and an introductory "Unlike
+    Amplitude, which is based in…".
+  - **What it reports.** For each fact: how many answers state it, how many get it wrong (with a
+    95% Wilson interval, per engine) and the wrong sentences quoted. Each wrong fact becomes one
+    finding that names the page to correct and the third-party profiles. It runs on its own or
+    with `--domain` citation scoring. Price mismatches are hypotheses, because answers quote old
+    plans.
+- **`link_opportunities.py`: pages that should link to a money page.** It takes the shared
+  site graph, a `--target` URL and `--terms` and/or the target's Search Console `--queries` (a
+  text list or a `gsc_insights.py --save-rows` file). It lists pages that name the topic in their
+  own content but do not link to the target from it, each with the sentence to put the link in and
+  the anchor: a Search Console query when one is in the sentence, else the term as written.
+  - **What counts as linked.** A page linking only from the navigation stays a candidate, marked
+    as such, because a link in the text still adds context. A page whose canonical is the target,
+    or a `www.` copy of it, is the target itself.
+  - **What counts as a mention.** Link text is blanked, so a term that is already another link's
+    anchor does not count. Page furniture is not a sentence to link from: breadcrumbs, pipe bars,
+    carousel controls, Title Case headings and link-dense lines.
+  - **Product names are not the term.** A term followed by another capitalised word is part of a
+    different name ("Workers AI" for `/workers`).
+  - **Coverage.** At most `--max-fetch` candidates are read: those naming a term in their title or
+    H1 first, then the target's own section, then the shallowest. The output counts the unread
+    ones. `--gsc-pages` orders the results by the source page's clicks.
+  - **Calibration.** Checked on 40-page graphs of posthog.com, balloonbay.us,
+    developers.cloudflare.com and smashingmagazine.com. Every first-draft false positive is now a
+    named test.
+- **Site-wide redirects in `redirect_checker.py --graph site_graph.json`.** It follows every
+  internal link whose URL, as written, is not where its page ends up, hop by hop (every hop still
+  passes the SSRF guard), and ranks them by how many pages link to them.
+  - **What counts as a redirect.** The written URL is compared, not the page key, so a
+    `/gallery` → `/gallery/` hop counts. Query-string variants are not suspects (moz.com's
+    `?utm_content=` links), and a suspect that serves directly is not reported as a redirect
+    (smashingmagazine.com serves both `/category/x` and `/category/x/`).
+  - **Two findings, split by risk.** Chains of 2+ hops, loops and redirects that end in an error
+    are `Assisted`, because the redirect rules change. Single hops are `Auto`: update the links.
+    Temporary 302/303/307 hops are called out.
+  - **Real finds.** Navigation links that redirect on 34-39 of 40 pages at python.org (one a
+    302), backlinko.com and moz.com; header, nav and footer links are flagged as fixable once in
+    the template.
 
 ### Changed
 - **`gsc_query.py` returns one row per page.** Search Console reports jump links and sitelinks
@@ -123,6 +174,15 @@ no unsourced numbers. Minor per D-020: new capability. Nothing about the score c
   `plugins/ultimate-seo-geo/README.md` stayed at 1.16.0 through 1.20.2 because nothing checked it.
   Both now count as version declarations, and `tests/test_version_sync.py` runs the checker, so a
   stale badge fails CI. RELEASE.md § 1 lists the badges as required.
+
+### Fixed
+- **`site_graph.py` resolved relative links against the URL it asked for, not the one it landed
+  on.** A crawl started at `https://smashingmagazine.com/` is redirected to `www.`. Every relative
+  link on those pages was recorded on the apex host: 5,734 of the 40-page graph's internal links
+  pointed at URLs that redirect, and the graph held a `www` and an apex copy of pages. Links and
+  the canonical now resolve against the final URL, as a browser does. Pages are still keyed by the
+  URL the crawl requested. The page-type, navigation and architecture checks all read the corrected
+  graph and run as before.
 
 ## [1.20.2] - 2026-09-21
 
