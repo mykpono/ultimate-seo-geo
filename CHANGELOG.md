@@ -8,7 +8,8 @@ action plan can order work by traffic. `index_coverage_diff.py` compares two wee
 exports and names the one change to investigate. `internal_links.py` audits in-content anchor
 text from the shared site graph, `report_lint.py` holds a written audit to one next action and
 no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong brand facts, and
-`link_opportunities.py` finds the pages that should link to a money page. Minor per D-020: new capability. Nothing about the score changes.
+`link_opportunities.py` finds the pages that should link to a money page, and
+`redirect_checker.py --graph` ranks every internal link that redirects. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
 - **`gsc_insights.py`: Search Console opportunity analysis (Tier 1).** One run fetches query x
@@ -127,12 +128,34 @@ no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong
   - **Calibration.** Checked on 40-page graphs of posthog.com, balloonbay.us,
     developers.cloudflare.com and smashingmagazine.com. Every first-draft false positive is now a
     named test.
+- **Site-wide redirects in `redirect_checker.py --graph site_graph.json`.** It follows every
+  internal link whose URL, as written, is not where its page ends up, hop by hop (every hop still
+  passes the SSRF guard), and ranks them by how many pages link to them.
+  - **What counts as a redirect.** The written URL is compared, not the page key, so a
+    `/gallery` → `/gallery/` hop counts. Query-string variants are not suspects (moz.com's
+    `?utm_content=` links), and a suspect that serves directly is not reported as a redirect
+    (smashingmagazine.com serves both `/category/x` and `/category/x/`).
+  - **Two findings, split by risk.** Chains of 2+ hops, loops and redirects that end in an error
+    are `Assisted`, because the redirect rules change. Single hops are `Auto`: update the links.
+    Temporary 302/303/307 hops are called out.
+  - **Real finds.** Navigation links that redirect on 34-39 of 40 pages at python.org (one a
+    302), backlinko.com and moz.com; header, nav and footer links are flagged as fixable once in
+    the template.
 
 ### Changed
 - **`check_version_sync.py` reads the README version badges.** The badge in `README.md` and
   `plugins/ultimate-seo-geo/README.md` stayed at 1.16.0 through 1.20.2 because nothing checked it.
   Both now count as version declarations, and `tests/test_version_sync.py` runs the checker, so a
   stale badge fails CI. RELEASE.md § 1 lists the badges as required.
+
+### Fixed
+- **`site_graph.py` resolved relative links against the URL it asked for, not the one it landed
+  on.** A crawl started at `https://smashingmagazine.com/` is redirected to `www.`. Every relative
+  link on those pages was recorded on the apex host: 5,734 of the 40-page graph's internal links
+  pointed at URLs that redirect, and the graph held a `www` and an apex copy of pages. Links and
+  the canonical now resolve against the final URL, as a browser does. Pages are still keyed by the
+  URL the crawl requested. The page-type, navigation and architecture checks all read the corrected
+  graph and run as before.
 
 ## [1.20.2] - 2026-09-21
 

@@ -24,6 +24,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |
 | Broken links (single page) | §9 | `broken_links.py` | `python scripts/broken_links.py URL --json` |
 | Broken links (site-wide) | §9, §11 | `broken_links.py` | `python scripts/broken_links.py URL --crawl --depth 2 --json` |
+| Site-wide redirects from the site's own links (hops, loops, error endings; ranked by linking pages, nav links flagged) | §11, §20 | `redirect_checker.py` | `python scripts/redirect_checker.py --graph site_graph.json --json` (`--max-checks N`) |
 | Internal links / redirects | §9, §11 | `internal_links.py` | `python scripts/internal_links.py URL --depth 1 --json` |
 | Link opportunities: pages that name a target's topic but do not link to it (sentence + anchor) | §9 | `link_opportunities.py` | `python scripts/link_opportunities.py --graph site_graph.json --target https://example.com/pricing --terms "pricing" --json` (`--queries rows.json` for Search Console anchors, `--gsc-pages Pages.csv` to order by clicks) |
 | Anchor text per destination (in-content links only; vague anchors) | §9 | `internal_links.py` | `python scripts/internal_links.py URL --graph site_graph.json --json` (graph from `site_graph.py URL --out site_graph.json`) |
