@@ -13,6 +13,12 @@ follows the template the skill documents:
 - with --summary (the generate_report.py --json file): the headline score,
   category table and measured-check count match the summary, and no
   Core Web Vitals or backlink numbers appear for checks that never ran
+- one action: a full audit's Executive Summary names exactly one "Next
+  action:", not a list
+- numbers with no source: click, impression, session and CTR figures when no
+  Search Console data reached the summary, and forecasts ("+20% traffic")
+  with no basis on the line, are warned about; a line that says "cannot
+  compute" is the correct way to write a number the data cannot support
 
 Stdlib only. Exit 0 when clean, 1 on errors (or on warnings with --strict),
 2 on usage errors.
@@ -76,6 +82,26 @@ RETIRED_FORMULA = re.compile(r"positive_signals|deficit_signals|Critical\s*[−-
 CWV_NUMBER = re.compile(r"\b(?:LCP|INP|CLS|TTFB|FCP)\b[^\n.;]{0,25}?\d|PageSpeed[^\n.;]{0,30}?score[^\n.;]{0,5}\d",
                         re.I)
 BACKLINK_NUMBER = re.compile(r"\d[\d,.]*\s*(?:k\s*)?(?:referring domains|backlinks)\b", re.I)
+# Traffic claims: a count of clicks / impressions / sessions / visits, or a CTR percentage.
+TRAFFIC_NUMBER = re.compile(
+    r"\b\d[\d,.]*\s*(?:k\b)?\+?\s*(?:monthly\s+|organic\s+|monthly organic\s+)?"
+    r"(?:clicks?|impressions|sessions|visits|visitors)\b|\bCTR\b[^\n.;|]{0,20}?\d[\d.]*\s*%|\d[\d.]*\s*%\s*CTR\b", re.I)
+# ...that are really thresholds ("fewer than 100 visits") or click depth ("3 clicks from the homepage").
+TRAFFIC_EXEMPT = re.compile(
+    r"(?:<|>|≤|≥|\bunder|\bover|\bbelow|\babove|at least|at most|fewer than|less than|more than|minimum|threshold)"
+    r"\s*\d[\d,.]*\s*(?:k\b)?\+?\s*(?:monthly\s+|organic\s+)*(?:clicks?|impressions|sessions|visits|visitors)"
+    r"|\bclicks?\s+(?:from|of|away from|deep|to reach)\b|\bwithin\s+\d+\s+clicks?\b|\bclick depth\b"
+    r"|cannot compute|not measured", re.I)
+# Forecasts: "increase traffic by 30%", "+15–30% CTR", "20% more clicks".
+PROJECTION = re.compile(
+    r"\b(?:increase|boost|lift|grow|improve|raise|gain|drive|double|recover)\w*\b[^\n.;|]{0,50}?\bby\s+\d[\d–-]*\s*%"
+    r"|\+\d[\d–-]*\s*%\s*(?:more\s+)?(?:CTR|traffic|clicks|conversions|sessions|rankings?|visibility|impressions)\b"
+    r"|\b\d[\d–-]*\s*%\s*more\s+(?:traffic|clicks|conversions|sessions|impressions|visitors)\b", re.I)
+# A forecast that names where its number came from is sourced.
+PROJECTION_BASIS = re.compile(r"\b(?:source|basis|based on|per|from (?:your|the site's|this property's)|median|measured|"
+                              r"study|studies|benchmark|Search Console|GSC|GA4|cannot compute)\b", re.I)
+NEXT_ACTION = re.compile(r"^Next action:\s*(.*)$", re.I)
+ENUMERATED = re.compile(r"(?:^|\s)(?:\(?\d+[.)]|[a-c]\))\s+\S")
 EMOJI = re.compile("[\U0001F300-\U0001FAFF☀-➿⚡]️?")
 # Agents often bold field labels ("**Finding:**", "**Fix**:") or list them ("- Evidence:").
 LABEL_MARKUP = re.compile(r"\*\*|__")
@@ -361,6 +387,56 @@ class Linter:
                     self.error("unmeasured-metric", n, f"{what} appear, but {check} was not measured in the "
                                                        f"summary. Write \"not measured — run {script}\" instead.")
 
+    def check_next_action(self):
+        """A full audit's Executive Summary names one next action (§ 2), not a to-do list."""
+        if self.kind != "audit" or self.excerpt:
+            return
+        content = self._content()
+        start = next((n for n, l in content if l.startswith("## ") and "executive summary" in l.lower()), None)
+        if start is None:
+            return  # check_sections reports the missing section
+        section = self._section_lines(start)
+        hit = None
+        for i, (n, raw) in enumerate(section):
+            m = NEXT_ACTION.match(LIST_MARKER.sub("", LABEL_MARKUP.sub("", raw.strip())))
+            if m:
+                hit = (i, n, m.group(1).strip())
+                break
+        if hit is None:
+            self.error("next-action", start, 'The Executive Summary needs one "Next action: <one change, the page or '
+                                             'template, the finding it closes>" line.')
+            return
+        i, n, value = hit
+        following = []
+        for _, raw in section[i + 1:]:
+            if not raw.strip():
+                break
+            following.append(raw.strip())
+        listed = sum(1 for line in following if LIST_MARKER.match(line) or re.match(r"^\d+[.)]\s", line))
+        if not value and not listed:
+            self.error("next-action", n, '"Next action:" is empty; name the one change to make first.')
+        elif len(ENUMERATED.findall(" " + value)) >= 2 or listed >= 2 or (not value and listed):
+            self.error("next-action-list", n, '"Next action:" lists several actions; name one. The rest belong '
+                                              "in the priority sections.")
+
+    def check_unsourced_numbers(self):
+        """Traffic figures and forecasts with nothing behind them (warnings: the lint cannot see GA4)."""
+        search_console = bool((self.summary or {}).get("search_console"))
+        traffic = [n for n, line in self._content()
+                   if TRAFFIC_NUMBER.search(line) and not TRAFFIC_EXEMPT.search(line)]
+        if traffic and not search_console:
+            where = ("the summary has no Search Console data" if self.summary is not None
+                     else "no --summary to check them against")
+            self.warn("unverified-traffic", traffic[0],
+                      f"Click / impression / session / CTR figures on {len(traffic)} line(s) (first at line {traffic[0]}), "
+                      f"and {where}. State them only if Search Console or GA4 data was read; otherwise write "
+                      '"cannot compute from this data" and name what would supply it.')
+        for n, line in self._content():
+            if PROJECTION.search(line) and not PROJECTION_BASIS.search(line):
+                self.warn("unsourced-projection", n, "A forecast with no basis on the line. Name its source "
+                                                     '("based on this property\'s median CTR at position 3") or '
+                                                     'write "cannot compute from this data".')
+
     def run(self) -> dict:
         self._parse_findings()
         self.check_title()
@@ -369,6 +445,8 @@ class Linter:
             self.check_sections()
             self.check_findings()
             self.check_evidence_integrity()
+            self.check_next_action()
+            self.check_unsourced_numbers()
         by_line = lambda item: (item["line"] is None, item["line"] or 0)  # noqa: E731
         return {
             "type": self.kind,

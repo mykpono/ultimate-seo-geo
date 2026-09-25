@@ -19,7 +19,8 @@ Source: generate_report.py — 19 weighted checks measured; not measured: pagesp
 | Local SEO | — | 0% | Not applicable |
 
 ## Executive Summary
-Crawlability is sound. Flat traffic traces to E-E-A-T: health content on a YMYL topic carries no named, credentialed author. Adding reviewed-by attribution to the strain and conditions pages is the highest-impact action. Performance was not measured (PageSpeed rate-limited); rerun pagespeed.py before judging Core Web Vitals.
+Crawlability is sound. Flat traffic traces to E-E-A-T: health content on a YMYL topic carries no named, credentialed author. Performance was not measured (PageSpeed rate-limited); rerun pagespeed.py before judging Core Web Vitals.
+Next action: add a reviewed-by line naming a credentialed reviewer to the strain and conditions page template.
 
 ## 🔴 Critical Issues (fix immediately)
 

@@ -6,7 +6,8 @@ Search Console data now says what to fix. A new script, `gsc_insights.py`, turns
 rows into five ranked lists. `generate_report.py` joins page clicks to every finding, so the
 action plan can order work by traffic. `index_coverage_diff.py` compares two weekly Page indexing
 exports and names the one change to investigate. `internal_links.py` audits in-content anchor
-text from the shared site graph. Minor per D-020: new capability. Nothing about the score changes.
+text from the shared site graph, and `report_lint.py` holds a written audit to one next action and
+no unsourced numbers. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
 - **`gsc_insights.py`: Search Console opportunity analysis (Tier 1).** One run fetches query x
@@ -73,6 +74,22 @@ text from the shared site graph. Minor per D-020: new capability. Nothing about 
     calls to action, and Google does not penalise repeated internal anchors.
   - **The score does not move.** The one finding is `low`, which the internal-links score never
     charges. The report's Internal links panel shows the audit.
+- **Two report rules in `report_lint.py`: one next action, and no number without a source.**
+  - **Next action.** A full audit's Executive Summary must name exactly one
+    `Next action: <one change, the page or template, the finding it closes>`. A missing or empty
+    line is an error, and so is a numbered or bulleted list there. The § 2 template (procedure
+    02, AGENTS.md, the ChatGPT instructions) now carries the line in place of the old "single
+    highest-impact action" prose, and the eval-1 fixture was updated to match.
+  - **Unsourced numbers (warnings).** Click, impression, session, visit and CTR figures raise a
+    warning when the `--summary` shows no joined Search Console data. So do forecasts ("increase
+    traffic by 30%", "+15–30% CTR") with no basis on the same line. These are warnings, not
+    errors, because the lint cannot see GA4.
+  - **What does not count.** Thresholds ("fewer than 100 monthly organic sessions"), click depth
+    ("within 3 clicks of the homepage") and any line that says "cannot compute" are not claims.
+    The first two patterns come from the saved real eval responses, where the traffic rule then
+    raised nothing.
+  - The template now says it plainly: a number the data cannot support is written as
+    `cannot compute from this data`, with what would supply it.
 
 ### Changed
 - **`check_version_sync.py` reads the README version badges.** The badge in `README.md` and
