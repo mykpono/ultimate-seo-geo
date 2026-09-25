@@ -194,6 +194,9 @@ python scripts/preferred_sources_checker.py https://example.com
 # Page indexing week over week, from two GSC exports (the report is not in the API)
 python scripts/index_coverage_diff.py last-week.zip this-week.zip --shipped shipped.txt --json
 
+# Requests a rendered page makes: open first-party write endpoints, llms.txt endpoints, tag load (Playwright)
+python scripts/page_network.py https://example.com/ https://example.com/pricing --llms-txt --json
+
 # GA4 conversion event audit before quoting it: test hosts, bursts, repeats, tracking steps (Tier 2)
 python scripts/ga4_audit.py --property 123456789 --event generate_lead --production-host example.com --save-monthly ga4-monthly.csv --json
 

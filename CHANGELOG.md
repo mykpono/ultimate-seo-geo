@@ -12,6 +12,31 @@ no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong
 `redirect_checker.py --graph` ranks every internal link that redirects. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
+- **What a rendered page calls: `page_network.py`.** `render_page.py --network` now
+  records every request a page makes. URLs are kept without query strings, since tracker
+  hits carry emails and IDs, and no header value is kept except CORS and content type.
+  `page_network.py` renders the given pages and reports:
+  - **first-party write endpoints with no key that answer any origin.** A `POST`, `PUT`,
+    `PATCH` or `DELETE` is checked against the page's own response and one `OPTIONS`
+    preflight from a foreign origin; the script never sends a `POST`;
+  - **the API-shaped URLs a site advertises in `llms.txt`** (`--llms-txt`), and any
+    endpoint given with `--endpoint`;
+  - **tracking vendors and third-party hosts per page**, with a tag-load finding at 10+
+    vendors.
+
+  This is F26 from the Improvado v4.1 audit: the site's chat widget called
+  `agent.improvado.io/ask` from every browser, with no key and `Access-Control-Allow-Origin: *`,
+  and a crawl saw only the `llms.txt` line. Built against live sites, whose false positives
+  shaped the rules:
+  - open CORS on `GET`s of public data (posthog.com's 43 Gatsby page-data files, Cloudflare's
+    OneTrust files, Vercel's Next.js prefetches) is not a finding;
+  - self-hosted analytics ingestion (PostHog's `/e/`, `/flags/`) and tag proxies (Improvado's
+    `/_tag/`) are not APIs;
+  - HTML pages that look API-shaped (Improvado's `/mcp/<source>` pages in `llms.txt`) are
+    skipped, and a 403 HTML refusal is not read as authentication.
+
+  On improvado.io the widget is gone, the endpoint is still open, and the homepage loads 13
+  tracking vendors from 43 third-party hosts.
 - **GA4 conversion audit: `ga4_audit.py` (Tier 2).** It checks a conversion event before
   anyone quotes it:
   - events from test and preview hosts, or any host not listed with `--production-host`;

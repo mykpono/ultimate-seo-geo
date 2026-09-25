@@ -31,6 +31,14 @@ For the full Critical Technical Issues + Fix Directives table (9 issues with det
 
 **Key rule**: Serve all critical SEO elements (canonical, meta robots, structured data, title, meta description, hreflang) in the **initial server-rendered HTML** — not JS-only.
 
+### What the Rendered Page Calls (network)
+
+A raw-HTML crawl cannot see the requests a page's scripts send. `python scripts/page_network.py https://example.com/ https://example.com/pricing --llms-txt --json` renders each page and records every request. URLs are kept without query strings, and no header value is stored except CORS and content type. It reports two things:
+- **Open write endpoints:** a first-party `POST`/`PUT`/`PATCH`/`DELETE` sent with no key to an endpoint that answers any origin. The script checks with the page's own response and one harmless `OPTIONS` preflight, and never sends a `POST` itself. Any website can make that call at the site's cost; on Improvado it was an LLM endpoint called from a chat widget. `--llms-txt` probes the API-shaped URLs the site advertises there, and `--endpoint URL` probes one you found in its scripts.
+- **Tag load:** the tracking vendors and third-party hosts each page loads. Ten or more vendors is the usual cause of a slow mobile Interaction to Next Paint.
+
+What is *not* a finding: CORS open on a `GET` of public data (Gatsby page-data, a Next.js prefetch, a consent script), a site's own tag-manager proxy (`/_tag/`), and self-hosted analytics ingestion. A widget that calls its endpoint only after a click needs that interaction, which this script does not perform.
+
 ### Technical Finding Example
 
 ```
