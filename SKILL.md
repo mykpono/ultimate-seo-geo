@@ -73,7 +73,7 @@ When a section points to a reference file, read only what you need for the curre
 | Programmatic SEO | `references/programmatic-seo.md` | `programmatic_seo_auditor.py` |
 | Migration | `references/site-migration.md` | `redirect_checker.py` |
 | Analytics / myths | `references/analytics-reporting.md` | — |
-| Crawl / indexation | `references/crawl-indexation.md` | `sitemap_checker.py`, `duplicate_content.py`, `canonical_checker.py`, `broken_links.py`, `internal_links.py` |
+| Crawl / indexation | `references/crawl-indexation.md` | `sitemap_checker.py`, `index_coverage_diff.py`, `duplicate_content.py`, `canonical_checker.py`, `broken_links.py`, `internal_links.py` |
 | Site structure / page types / navigation | `references/page-types.md`, `references/industry-templates.md` | `site_graph.py`, `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py` |
 
 ### When *not* to run Mode 1 (full audit)

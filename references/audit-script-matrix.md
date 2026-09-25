@@ -34,6 +34,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Sitemap + URL health | §11 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --sample 50 --json` |
 | Sitemap lastmod plausibility (coverage, invalid / future / one-date-everywhere, 20-page comparison with the pages' own modified dates) | §11 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --lastmod --json` (`--no-page-dates` skips the page fetches) |
 | Sitemap structure (index layout, per-section children, file sizes, duplicates, foreign hosts, http entries) | §11 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --structure --json` |
+| Page indexing week over week (two GSC exports: reasons that moved, technical vs quality vs discovery, one to investigate) | §11 | `index_coverage_diff.py` | `python scripts/index_coverage_diff.py last-week.zip this-week.zip --shipped shipped.txt --json` (`--examples OLD NEW --sitemap URL` for one reason's URLs) |
 | Sitemap vs crawl reconciliation (unlisted indexable pages; listed noindex / redirect / canonicalised / 404 URLs; orphans after a complete crawl) | §11, §9 | `sitemap_checker.py` | `python scripts/sitemap_checker.py URL --reconcile site_graph.json --json` |
 | Local surface signals | §12 | `local_signals_checker.py` | `python scripts/local_signals_checker.py URL --json` |
 | IndexNow (full key validation) | §4 | `indexnow_checker.py` | `python scripts/indexnow_checker.py URL --key KEY --json` |
