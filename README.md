@@ -341,6 +341,7 @@ In CI, `--format none --json seo-summary.json --fail-under 70 --fail-on critical
 | `google_api_tier.py` | Detect available Google API credentials (Tier 0–2) |
 | `crux_history.py` | CrUX History API — historical CWV data (Tier 0) |
 | `gsc_query.py` | Google Search Console queries (Tier 1, OAuth) |
+| `link_opportunities.py` | Pages that name a target's topic but do not link to it: the sentence and the anchor |
 | `index_coverage_diff.py` | GSC Page indexing week over week from two exports: what moved, why, one reason to investigate |
 | `gsc_insights.py` | GSC opportunities: striking distance, low CTR vs the site's own curve, cannibalisation, decay, serve map (Tier 1) |
 | `gsc_export.py` | GSC data export (Tier 1, OAuth) |
