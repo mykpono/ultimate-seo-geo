@@ -12,6 +12,29 @@ no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong
 `redirect_checker.py --graph` ranks every internal link that redirects. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
+- **Human-only Search Console figures: `gsc_insights.py --human-basis`.** Search Console
+  has no user agent, so rank trackers, scrapers and agents arrive as queries and move
+  site-level position, CTR and impressions. The Improvado v4.1 report read a position gain
+  that the client's own board showed was mostly machine traffic. Each query is now labelled:
+  - **machine** when its text is machine-shaped (search operators, URLs, quoted-phrase
+    templates, scraper syntax);
+  - **machine** when its clicks are impossible for people: on positions 1-20 with 500+
+    impressions, fewer clicks than a floor CTR of 0.2% / 0.1% / 0.05% allows at Poisson
+    P < 1e-6;
+  - **agent-like** at 12 or more words.
+
+  `--human-basis` reports blended vs human-only figures, the change against the previous
+  window with the share of the position gain that is non-human, the queries set aside with
+  their reason codes, and the pages mostly shown to them. It emits one Decision finding when
+  10% or more of impressions, or 25% or more of the gain, is non-human. `--all` includes it,
+  which adds one request. Striking distance, low CTR and cannibalisation now read human
+  queries only, so no title rewrite is proposed for a query no person typed;
+  `--include-machine` restores the old behaviour.
+
+  Calibrated on 28,768 real Improvado query rows. On Sep 2-15 2026, 41% of impressions were
+  machine or agent-like and earned 8 clicks, and 56% of the position gain since Aug 18-31 was
+  non-human. A site's own CTR curve could not find this: Improvado's median CTR was 0% at
+  every position, so the floor is fixed.
 - **Search Console sign-in for every user: `google_auth.py`.** `setup` installs the Google
   libraries into the skill's own venv (`~/.config/ultimate-seo-geo/venv`). `login` opens a
   browser, signs in with the skill's OAuth client, so no Google Cloud project is needed, and
