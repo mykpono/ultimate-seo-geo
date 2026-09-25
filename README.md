@@ -348,6 +348,7 @@ In CI, `--format none --json seo-summary.json --fail-under 70 --fail-on critical
 | `gsc_insights.py` | GSC opportunities: striking distance, low CTR vs the site's own curve, cannibalisation, decay, serve map (Tier 1) |
 | `gsc_export.py` | GSC data export (Tier 1, OAuth) |
 | `ga4_report.py` | GA4 organic and AI-assistant referral traffic (Tier 2, OAuth) |
+| `conversion_reconcile.py` | Form conversions on two rulers: GA4 events vs distinct clean CRM people, with tests, preview hosts, bursts and repeats set aside |
 | `pdf_charts.py` | SVG chart generation for PDF reports (module) |
 | `pdf_template.py` | Professional A4 PDF template with cover + TOC (module) |
 | `render_page.py` | SPA-aware rendering (Playwright optional) |

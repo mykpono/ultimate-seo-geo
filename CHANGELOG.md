@@ -12,6 +12,24 @@ no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong
 `redirect_checker.py --graph` ranks every internal link that redirects. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
+- **Demo requests on two rulers: `conversion_reconcile.py`.** The Improvado v4.1 report
+  headlined a 44% fall in GA4 organic demo requests, while the client's CRM showed the
+  number of distinct clean business people asking for a demo rising 7%. The raw series was
+  contaminated three ways: a spam burst, the team's own tests from developer and preview
+  hosts, and repeat submitters. The script reads a CRM export (one row per submission;
+  columns found by name, `--map` to override) and optional monthly GA4 form events (the API
+  or UI export, filtered by `--ga4-channel`). It sets aside, each with a reason:
+  - internal addresses;
+  - test hosts: localhost, `*.amplifyapp.com`, `*.vercel.app`, staging and preview hosts,
+    and anything not a `--production-host`;
+  - burst days: 4x the trailing 28-day median and 30+ submissions, plus the decaying tail;
+  - free mail, with `--business-only`.
+
+  It counts distinct people per month (organic and qualified where the CRM has them) and
+  reports submissions per address. `--compare` puts every ruler side by side. The findings
+  name contamination above 10% a month, repeat submitters, and rulers that disagree
+  (opposite directions, or 20+ points apart). Burst days are set aside whole, and the output
+  estimates the real submissions lost with them.
 - **Human-only Search Console figures: `gsc_insights.py --human-basis`.** Search Console
   has no user agent, so rank trackers, scrapers and agents arrive as queries and move
   site-level position, CTR and impressions. The Improvado v4.1 report read a position gain
