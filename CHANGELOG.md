@@ -7,7 +7,8 @@ rows into five ranked lists. `generate_report.py` joins page clicks to every fin
 action plan can order work by traffic. `index_coverage_diff.py` compares two weekly Page indexing
 exports and names the one change to investigate. `internal_links.py` audits in-content anchor
 text from the shared site graph, `report_lint.py` holds a written audit to one next action and
-no unsourced numbers, and `citation_sampling.py --facts` checks AI answers for wrong brand facts. Minor per D-020: new capability. Nothing about the score changes.
+no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong brand facts, and
+`link_opportunities.py` finds the pages that should link to a money page. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
 - **`gsc_insights.py`: Search Console opportunity analysis (Tier 1).** One run fetches query x
@@ -107,6 +108,25 @@ no unsourced numbers, and `citation_sampling.py --facts` checks AI answers for w
     finding that names the page to correct and the third-party profiles. It runs on its own or
     with `--domain` citation scoring. Price mismatches are hypotheses, because answers quote old
     plans.
+- **`link_opportunities.py`: pages that should link to a money page.** It takes the shared
+  site graph, a `--target` URL and `--terms` and/or the target's Search Console `--queries` (a
+  text list or a `gsc_insights.py --save-rows` file). It lists pages that name the topic in their
+  own content but do not link to the target from it, each with the sentence to put the link in and
+  the anchor: a Search Console query when one is in the sentence, else the term as written.
+  - **What counts as linked.** A page linking only from the navigation stays a candidate, marked
+    as such, because a link in the text still adds context. A page whose canonical is the target,
+    or a `www.` copy of it, is the target itself.
+  - **What counts as a mention.** Link text is blanked, so a term that is already another link's
+    anchor does not count. Page furniture is not a sentence to link from: breadcrumbs, pipe bars,
+    carousel controls, Title Case headings and link-dense lines.
+  - **Product names are not the term.** A term followed by another capitalised word is part of a
+    different name ("Workers AI" for `/workers`).
+  - **Coverage.** At most `--max-fetch` candidates are read: those naming a term in their title or
+    H1 first, then the target's own section, then the shallowest. The output counts the unread
+    ones. `--gsc-pages` orders the results by the source page's clicks.
+  - **Calibration.** Checked on 40-page graphs of posthog.com, balloonbay.us,
+    developers.cloudflare.com and smashingmagazine.com. Every first-draft false positive is now a
+    named test.
 
 ### Changed
 - **`check_version_sync.py` reads the README version badges.** The badge in `README.md` and

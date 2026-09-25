@@ -194,6 +194,9 @@ python scripts/preferred_sources_checker.py https://example.com
 # Page indexing week over week, from two GSC exports (the report is not in the API)
 python scripts/index_coverage_diff.py last-week.zip this-week.zip --shipped shipped.txt --json
 
+# Pages that name a money page's topic but do not link to it (sentence + anchor)
+python scripts/link_opportunities.py --graph site_graph.json --target https://example.com/pricing --terms "pricing" --json
+
 # Search Console opportunities: striking distance, low CTR, cannibalisation, decay (Tier 1)
 python scripts/gsc_insights.py sc-domain:example.com --all --json
 
