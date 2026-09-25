@@ -57,7 +57,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Maps / GBP intelligence | §25 | `maps_checker.py` | `python scripts/maps_checker.py URL --json` |
 | Core Web Vitals history (CrUX) | §4 | `crux_history.py` | `python scripts/crux_history.py URL --metric lcp --json` |
 | SEO drift baseline / compare | §22 | `drift_monitor.py` | `python scripts/drift_monitor.py baseline URL` then `compare URL` |
-| GSC performance query (Tier 1) | §10 | `gsc_query.py` | `python scripts/gsc_query.py sc-domain:example.com --dimension page --json` (site URL is positional, not a flag) |
+| GSC performance query (Tier 1) | §10 | `gsc_query.py` | `python scripts/gsc_query.py sc-domain:example.com --dimension page --json` (site URL is positional, not a flag; page rows are merged across `#fragment` URLs, `--keep-fragments` for raw) |
 | GSC opportunities: striking distance, low CTR vs the site's own curve, cannibalisation, decay, serve map (Tier 1) | §10, §6 | `gsc_insights.py` | `python scripts/gsc_insights.py sc-domain:example.com --all --json` (`--serve-map targets.csv`; `--save-rows`/`--replay` to analyse without re-fetching) |
 | GSC URL inspection export (Tier 1) | §10 | `gsc_export.py` | `python scripts/gsc_export.py --property SITE --sitemap-url URL` |
 | GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |

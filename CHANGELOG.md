@@ -92,6 +92,18 @@ no unsourced numbers. Minor per D-020: new capability. Nothing about the score c
     `cannot compute from this data`, with what would supply it.
 
 ### Changed
+- **`gsc_query.py` returns one row per page.** Search Console reports jump links and sitelinks
+  as their own URLs, so a long post with a table of contents was split across several rows and
+  any one row undercounted the page. On the Improvado v4.1 audit, per-post impressions for the
+  ad-fraud posts were read from single anchor rows (`#what-is-ad-fraud`), about half the page
+  total the client measured. Page rows are now summed across fragment, query-string,
+  trailing-slash and host-case spellings (`gsc_insights.page_key`). Position is re-weighted by
+  impressions, CTR is recomputed, and each merged row lists its `merged_urls`. `--top-pages N`
+  now fetches `--limit` rows, merges them, and ranks by impressions as its help text always
+  said. Before, it asked the API for N rows in click order, which missed anchor rows below the
+  top N. The JSON adds `property_type` (`domain` or `url_prefix`), `page_normalization`,
+  `truncated` and `limits`. The limits say that fragment sums are an upper bound and that domain
+  and URL-prefix figures never add. `--keep-fragments` returns the raw rows.
 - **`check_version_sync.py` reads the README version badges.** The badge in `README.md` and
   `plugins/ultimate-seo-geo/README.md` stayed at 1.16.0 through 1.20.2 because nothing checked it.
   Both now count as version declarations, and `tests/test_version_sync.py` runs the checker, so a

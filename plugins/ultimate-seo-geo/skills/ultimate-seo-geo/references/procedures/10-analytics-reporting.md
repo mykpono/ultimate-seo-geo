@@ -38,6 +38,8 @@ Run `python scripts/gsc_insights.py sc-domain:example.com --all --json` before a
 
 Every figure comes from the API. The CTR benchmark is the property's own; a position bucket with fewer than 5 qualifying rows reads "cannot compute", never an industry number. Upside estimates name the bucket they came from. Output lists its limits (anonymised queries, row caps). Without credentials, `--replay rows.json` analyses rows saved earlier with `--save-rows`.
 
+**Quoting a page's Search Console figures:** use `gsc_query.py --dimension page` (it sums `#fragment` jump-link rows into their page) or `gsc_insights.py`. Never quote a single row from the Performance UI or a raw export for a page with a table of contents: its anchor rows are separate URLs there. State the property with the number (`sc-domain:` and URL-prefix figures never add), and say that fragment sums are an upper bound.
+
 **In the full report:** `generate_report.py URL --gsc-property sc-domain:example.com` runs these as the display-only *Search performance* check and adds each finding's Search Console clicks ("Traffic at stake"). `--gsc-pages Pages.csv` (the Performance report's Pages export) adds the clicks without API access.
 
 ### CTR Benchmarks
