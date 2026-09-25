@@ -6,10 +6,9 @@ Returns clicks, impressions, CTR, and average position grouped by query,
 page, country, or device. Complements gsc_export.py (URL Inspection) with
 performance data.
 
-Credentials (any one):
-  - Service account: set GOOGLE_APPLICATION_CREDENTIALS to the JSON path
-  - OAuth token: set GSC_CREDENTIALS to a saved token JSON path
-  - OAuth flow: run  python scripts/gsc_export.py --auth  first
+Sign in once with  python3 scripts/google_auth.py login  (a browser opens; read-only
+access). A service account (GOOGLE_APPLICATION_CREDENTIALS) or a saved token
+(GSC_CREDENTIALS) also works; see google_auth.py for the order.
 
 Usage:
     python scripts/gsc_query.py https://example.com/ --days 28 --json
@@ -54,60 +53,20 @@ PROPERTY_LIMIT = (
 SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
 GSC_API_BASE = "https://www.googleapis.com/webmasters/v3"
 
-TIER_UPGRADE_MSG = (
-    "Tier 1 credentials required for Search Console.\n"
-    "Options:\n"
-    "  1. Service account: set GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa.json\n"
-    "  2. OAuth token: run  python scripts/gsc_export.py --auth  then retry\n"
-    "  3. Set GSC_CREDENTIALS=/path/to/token.json\n"
-    "Run  python scripts/google_api_tier.py --check  to see current tier."
-)
-
 INSTALL_MSG = (
-    "Install Google API libraries:\n"
-    "  pip install google-api-python-client google-auth google-auth-httplib2\n"
-    "Or: pip install -r requirements-gsc.txt"
+    "Install the Google libraries once:\n"
+    "  python3 scripts/google_auth.py setup"
 )
 
 
 def _load_credentials():
-    """Load Google credentials from available sources."""
+    """Credentials from google_auth.py: service account, GSC_CREDENTIALS, or the saved login."""
+    import google_auth
     try:
-        from google.oauth2 import service_account as sa_mod
-        from google.oauth2.credentials import Credentials
-    except ImportError:
-        print(json.dumps({"error": INSTALL_MSG}))
+        return google_auth.load_credentials(SCOPES)[0]
+    except google_auth.AuthError as e:
+        print(json.dumps({"error": str(e)}))
         sys.exit(1)
-
-    sa_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    if sa_path and os.path.isfile(sa_path):
-        try:
-            creds = sa_mod.Credentials.from_service_account_file(sa_path, scopes=SCOPES)
-            return creds
-        except Exception as e:
-            print(json.dumps({"error": f"Failed to load service account: {e}"}))
-            sys.exit(1)
-
-    token_path = os.environ.get("GSC_CREDENTIALS")
-    if not token_path:
-        default = os.path.join(REPO_ROOT, "gsc-oauth-token.json")
-        if os.path.isfile(default):
-            token_path = default
-
-    if token_path and os.path.isfile(token_path):
-        try:
-            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-            if creds.expired and creds.refresh_token:
-                from google.auth.transport.requests import Request
-                creds.refresh(Request())
-            if creds.valid:
-                return creds
-        except Exception as e:
-            print(json.dumps({"error": f"Failed to load OAuth token: {e}"}))
-            sys.exit(1)
-
-    print(json.dumps({"error": TIER_UPGRADE_MSG}))
-    sys.exit(1)
 
 
 def _build_service(creds):
@@ -359,6 +318,10 @@ def main():
     )
 
     if "error" in raw:
+        import google_auth
+        if google_auth.is_sign_in_error(raw["error"]):
+            raw["error"] = (f"Google rejected the saved sign-in ({raw['error']}). Sign in again:\n  "
+                            f"python3 {os.path.join(SCRIPT_DIR, 'google_auth.py')} login")
         if args.json:
             print(json.dumps({"error": raw["error"]}))
         else:

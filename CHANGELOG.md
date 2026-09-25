@@ -10,6 +10,21 @@ text from the shared site graph, and `report_lint.py` holds a written audit to o
 no unsourced numbers. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
+- **Search Console sign-in for every user: `google_auth.py`.** `setup` installs the Google
+  libraries into the skill's own venv (`~/.config/ultimate-seo-geo/venv`). `login` opens a
+  browser, signs in with the skill's OAuth client, so no Google Cloud project is needed, and
+  lists the properties the account can read. `status` and `logout` (revokes, then deletes)
+  complete the set. Access is read-only (`webmasters.readonly`); the scripts never write to
+  Search Console. The token is saved once per user outside the skill folder
+  (`~/.config/ultimate-seo-geo/gsc-token.json`, mode 600), so every installed copy reads it
+  and a plugin update no longer loses it. `gsc_query.py`, `gsc_insights.py`, `gsc_export.py`
+  and `google_api_tier.py` load credentials through it, in this order: service account,
+  `GSC_CREDENTIALS`, the login token, then the old `gsc-oauth-token.json` in the skill folder.
+  A Search Console script run without the Google libraries re-runs itself in the skill's venv.
+  A revoked or expired sign-in now says to log in again instead of printing Google's raw error.
+  `gsc_export.py --no-browser` works again: it called `run_console()`, which
+  google-auth-oauthlib 1.x removed. The bundled client ID is empty until the maintainer's
+  OAuth client is created; until then `login` names `--client-secrets` as the way in.
 - **`gsc_insights.py`: Search Console opportunity analysis (Tier 1).** One run fetches query x
   page rows for the last 28 days (paged past the API's 25,000-row limit, with a
   `--max-rows` cap it reports when reached) and reports:
