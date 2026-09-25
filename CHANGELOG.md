@@ -12,6 +12,22 @@ no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong
 `redirect_checker.py --graph` ranks every internal link that redirects. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
+- **GA4 conversion audit: `ga4_audit.py` (Tier 2).** It checks a conversion event before
+  anyone quotes it:
+  - events from test and preview hosts, or any host not listed with `--production-host`;
+  - burst days, with the same rule `conversion_reconcile.py` uses, so both rulers are
+    cleaned alike;
+  - repeat firing, as events per user by month;
+  - tracking steps: a month where events per 1,000 sessions rise by half or fall to two
+    thirds while sessions hold, reported as a Hypothesis with the month to check in the tag
+    manager history;
+  - the share of organic sessions with landing page `(not set)`.
+
+  `--save-monthly` writes the clean monthly series by channel that
+  `conversion_reconcile.py --ga4` reads. `--save-rows`/`--replay` work without credentials.
+  These are the Improvado v4.1 questions the report could not answer from GA4: 108 July
+  events from one visitor, an unexplained step between August and September 2025, and 10.9%
+  of organic landing pages `(not set)`.
 - **Demo requests on two rulers: `conversion_reconcile.py`.** The Improvado v4.1 report
   headlined a 44% fall in GA4 organic demo requests, while the client's CRM showed the
   number of distinct clean business people asking for a demo rising 7%. The raw series was

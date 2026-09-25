@@ -215,7 +215,12 @@ def burst_days(submissions: list, factor=BURST_FACTOR, minimum=BURST_MIN, traili
     50-90 baseline), so the days straight after a burst stay in it while they are at least `tail`
     times the burst's own baseline.
     """
-    per_day = Counter(s["day"] for s in submissions)
+    return burst_days_from_counts(Counter(s["day"] for s in submissions), factor, minimum, trailing, tail)
+
+
+def burst_days_from_counts(per_day: dict, factor=BURST_FACTOR, minimum=BURST_MIN, trailing=BURST_TRAILING_DAYS,
+                           tail=BURST_TAIL_FACTOR) -> dict:
+    """burst_days over {day: count}; ga4_audit.py runs the same rule on GA4 event counts."""
     if not per_day:
         return {}
     first, last = min(per_day), max(per_day)

@@ -41,6 +41,17 @@ Every figure comes from the API. The CTR benchmark is the property's own; a posi
 
 **Machine queries are set aside before any analysis.** Search Console has no user agent, so rank trackers, scrapers and agents show up as queries. A query is **machine** when its text is machine-shaped (search operators, URLs, quoted-phrase templates such as `"roku" data governance strategy`, scraper syntax) or when its clicks are impossible for people: on positions 1–20 with 500+ impressions, fewer clicks than a floor CTR of 0.2% (positions 1–3), 0.1% (4–10) or 0.05% (11–20) allows at Poisson P < 1e-6. The floor sits well below AI Overview citation CTRs. A query of 12+ words is **agent-like**. Both are left out of striking distance, low CTR and cannibalisation, so no title rewrite is proposed for a query no person typed; `--include-machine` keeps them. The site's own CTR curve cannot find this contamination when it dominates the site (Improvado's median CTR was 0% at every position), which is why the floor is fixed. Quote site-level trends from `human_basis.current.human` and name the basis. On Improvado, Sep 2–15 2026: 41% of impressions were machine or agent-like (8 clicks), and 56% of the position gain since Aug 18–31 was a change in who searched.
 
+### GA4 Conversion Audit (Tier 2)
+
+Before quoting any GA4 conversion figure, run `python scripts/ga4_audit.py --property 123456789 --event generate_lead --production-host example.com --save-monthly ga4-monthly.csv --json`. It checks the event five ways:
+- **hosts:** events fired on localhost, preview or staging builds, or any non-production host;
+- **bursts:** the same burst rule the CRM side uses;
+- **repeats:** events per user by month, where 2 or more means retries, double-firing tags or testing;
+- **steps:** a month where events per 1,000 sessions rise by half or fall to two thirds while sessions hold. That is the signature of a tag, form or consent change: check the tag manager history for that month before quoting any trend across it;
+- **(not set):** the share of organic sessions whose landing page is `(not set)`.
+
+`--save-monthly` writes the clean monthly series by channel for `conversion_reconcile.py --ga4`. The Data API has no visitor ID, so naming the visitors behind a repeat needs the BigQuery export.
+
 ### Conversions on Two Rulers
 
 Before quoting a demo-request or lead trend, run `python scripts/conversion_reconcile.py --crm submissions.csv --ga4 ga4-monthly.csv --production-host example.com --internal-domain example.com --compare 2025-06:2025-08,2026-06:2026-08 --json` (`--business-only` for B2B). GA4 counts form events; the CRM counts submissions and the people behind them. The script sets aside the team's own tests (internal addresses), developer and preview hosts (localhost, `*.amplifyapp.com`, staging, anything not a `--production-host`), bot bursts with their decaying tail, and free mail with `--business-only`. It then counts distinct people per month, organic and qualified where the CRM has those columns. `--compare` sets every ruler side by side and flags when they point different ways. Quote **distinct clean people** as the demand figure and name the ruler with every number. A GA4 channel figure is not a demand figure until GA4 is joined to the CRM. On Improvado (v4.1), GA4 organic demo events fell 44% while clean business people rose 7%.
