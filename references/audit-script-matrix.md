@@ -61,6 +61,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Core Web Vitals history (CrUX) | §4 | `crux_history.py` | `python scripts/crux_history.py URL --metric lcp --json` |
 | SEO drift baseline / compare | §22 | `drift_monitor.py` | `python scripts/drift_monitor.py baseline URL` then `compare URL` |
 | Search Console sign-in (Tier 1) | §10 | `google_auth.py` | `python3 scripts/google_auth.py setup` once, then `python3 scripts/google_auth.py login` (browser, read-only; `status`, `logout`) |
+| Rendered-page network: open first-party write endpoints, llms.txt endpoints, tag load | §4 | `page_network.py` | `python scripts/page_network.py https://example.com/ --llms-txt --json` (`--endpoint URL` to probe one; needs Playwright) |
 | GSC performance query (Tier 1) | §10 | `gsc_query.py` | `python scripts/gsc_query.py sc-domain:example.com --dimension page --json` (site URL is positional, not a flag; page rows are merged across `#fragment` URLs, `--keep-fragments` for raw) |
 | GSC opportunities: striking distance, low CTR vs the site's own curve, cannibalisation, decay, serve map (Tier 1) | §10, §6 | `gsc_insights.py` | `python scripts/gsc_insights.py sc-domain:example.com --all --json` (`--human-basis` blended vs human-only; machine queries set aside unless `--include-machine`; `--serve-map targets.csv`; `--save-rows`/`--replay` to analyse without re-fetching) |
 | GSC URL inspection export (Tier 1) | §10 | `gsc_export.py` | `python scripts/gsc_export.py --property SITE --sitemap-url URL` |
