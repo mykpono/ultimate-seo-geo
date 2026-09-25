@@ -37,6 +37,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 from fetch_page import fetch_page as fetch_url, render_fallback_warning
+from gsc_insights import load_page_traffic
 from robots_checker import AI_CRAWLER_ROLES, BLOCKING_STATUSES, SEARCH_ENGINE_CRAWLERS, crawler_status
 
 # Maximum number of analysis scripts to run in parallel.
@@ -539,6 +540,136 @@ def _recommendation_metadata(issue: dict, section_name: str) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Traffic at stake: Search Console clicks joined to findings
+# ---------------------------------------------------------------------------
+# Severity says how wrong something is; clicks say how much it costs. A finding
+# that names URLs is charged those URLs' Search Console clicks. One from a check
+# that audits only the report's own page is charged that page. One from a
+# site-level check (robots.txt, headers, sitemaps) touches every page and gets
+# no per-page figure. Anything else gets none: a number is only printed when a
+# URL ties it to the finding.
+PAGE_SCOPED_CHECKS = frozenset({
+    "onpage", "social", "schema_validation", "image_seo", "readability", "content_quality", "article",
+    "citability", "hidden_instructions", "pagespeed", "redirects", "canonical", "hreflang",
+})
+SITE_WIDE_CHECKS = frozenset({
+    "robots", "ai_search_access", "ai_bot_access", "security", "llms_txt", "sitemap", "entity",
+    "indexnow_probe", "local_signals", "preferred_sources",
+})
+_TRAFFIC_URL_FIELDS = ("url", "page", "urls", "pages")
+
+
+def traffic_key(url) -> str:
+    """host/path with www., scheme, query, fragment and trailing slash dropped.
+
+    Looser than gsc_insights.page_key on purpose: a report run on https://ex.com
+    must still meet the https://www.ex.com/ rows of a URL-prefix property.
+    """
+    parsed = urlparse(str(url or "").strip())
+    host = parsed.netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return f"{host}{parsed.path.rstrip('/') or '/'}" if host else ""
+
+
+def traffic_from_pages(pages, source: str, window=None) -> dict:
+    """The lookup attach_traffic reads: {"pages": {traffic_key: {clicks, impressions}}, ...}."""
+    by_key = {}
+    for row in pages or []:
+        if not isinstance(row, dict):
+            continue
+        key = traffic_key(row.get("page"))
+        if not key:
+            continue
+        slot = by_key.setdefault(key, {"clicks": 0, "impressions": 0})
+        slot["clicks"] += int(row.get("clicks") or 0)
+        slot["impressions"] += int(row.get("impressions") or 0)
+    return {
+        "source": source,
+        "window": list(window) if window else None,
+        "pages": by_key,
+        "total_clicks": sum(v["clicks"] for v in by_key.values()),
+        "total_impressions": sum(v["impressions"] for v in by_key.values()),
+    }
+
+
+def _named_site_urls(source: dict, text: str, site_host: str) -> list:
+    """traffic_keys of the audited site's URLs a finding names, in order, deduplicated."""
+    found = []
+    for field in _TRAFFIC_URL_FIELDS:
+        value = source.get(field)
+        for item in value if isinstance(value, list) else [value]:
+            if isinstance(item, dict):
+                item = item.get("url") or item.get("page")
+            if isinstance(item, str):
+                found.append(item)
+    found += _URL_RE.findall(text)
+    keys = []
+    for url in found:
+        key = traffic_key(str(url).rstrip(".,;:"))
+        if key and key.split("/", 1)[0] == site_host and key not in keys:
+            keys.append(key)
+    return keys
+
+
+def attach_traffic(issue: dict, data: dict):
+    """The finding's traffic at stake, or None when there is no Search Console data or no URL to tie it to."""
+    traffic = data.get("gsc_traffic")
+    if not traffic:
+        return None
+    source = issue.get("source_issue") or {}
+    site_host = traffic_key(data.get("url")).split("/", 1)[0]
+    text = " ".join(str(part or "") for part in (issue.get("finding"), source.get("evidence")))
+    keys = _named_site_urls(source, text, site_host)
+    basis = "URLs named in the finding"
+    if not keys and issue["section"] in PAGE_SCOPED_CHECKS and data.get("url"):
+        keys, basis = [traffic_key(data["url"])], "the audited page"
+    base = {"source": traffic["source"], "window": traffic["window"]}
+    if not keys:
+        if issue["section"] in SITE_WIDE_CHECKS:
+            return {"scope": "site", **base}
+        return None
+    matched = [traffic["pages"][k] for k in keys if k in traffic["pages"]]
+    return {
+        "scope": "pages",
+        "clicks": sum(m["clicks"] for m in matched),
+        "impressions": sum(m["impressions"] for m in matched),
+        "urls_named": len(keys),
+        "urls_matched": len(matched),
+        "basis": basis,
+        **base,
+    }
+
+
+def _traffic_rank(issue: dict) -> tuple:
+    """Sort key inside one severity: site-wide first, then clicks at stake, then everything unjoined."""
+    traffic = issue.get("traffic")
+    if not traffic:
+        return (2, 0)
+    if traffic["scope"] == "site":
+        return (0, 0)
+    return (1, -traffic["clicks"]) if traffic["clicks"] else (2, 0)
+
+
+def _traffic_window(traffic: dict) -> str:
+    window = traffic.get("window")
+    return f"{window[0]} to {window[1]}" if window and all(window) else traffic.get("source") or "Search Console"
+
+
+def traffic_text(traffic) -> str:
+    if not traffic:
+        return ""
+    if traffic["scope"] == "site":
+        return "Site-wide: affects every page, so no per-page figure."
+    named = traffic["urls_named"]
+    if not traffic["urls_matched"]:
+        return (f"No Search Console clicks for the {named} URL{'s' if named != 1 else ''} it names "
+                f"({_traffic_window(traffic)}).")
+    return (f"{traffic['clicks']:,} clicks · {traffic['impressions']:,} impressions on {traffic['urls_matched']} of "
+            f"{named} URL{'s' if named != 1 else ''} ({traffic['basis']}; {_traffic_window(traffic)}).")
+
+
 SITE_GRAPH_MAX_PAGES = 80
 SITE_GRAPH_DEPTH = 2
 
@@ -571,8 +702,14 @@ def collect_data(
     crawl_max_pages: int = 30,
     crawl_depth: int = 2,
     render: str = "never",
+    gsc_property: str | None = None,
 ) -> dict:
-    """Run all analysis scripts and collect results."""
+    """Run all analysis scripts and collect results.
+
+    With gsc_property, gsc_insights.py runs in the same batch: its findings
+    become the display-only search_performance check and its page totals are
+    the traffic joined to every finding (see attach_traffic).
+    """
     print(f"🔍 Analyzing {url}...")
     if crawl_deep:
         print(
@@ -656,6 +793,8 @@ def collect_data(
         ("preferred_sources", "preferred_sources_checker.py", [url]),
         ("indexnow_probe", "indexnow_checker.py", [url, "--probe"]),
     ]
+    if gsc_property:
+        analyses.append(("search_performance", "gsc_insights.py", [gsc_property, "--all"]))
 
     # Add parse_html and readability if page was fetched
     if html_path:
@@ -677,7 +816,7 @@ def collect_data(
         start = time.time()
         timeout = (
             _SCRIPT_TIMEOUT_CRAWL
-            if crawl_deep and name in ("broken_links", "canonical")
+            if (crawl_deep and name in ("broken_links", "canonical")) or name == "search_performance"
             else _SCRIPT_TIMEOUT_DEFAULT
         )
         result = run_script(script, args, timeout=timeout)
@@ -711,6 +850,10 @@ def collect_data(
         os.unlink(graph_path)
 
     data["environment_fixes"] = build_environment_fixes(data)
+
+    sp = data["sections"].get("search_performance")
+    if isinstance(sp, dict) and isinstance(sp.get("pages"), list):
+        data["gsc_traffic"] = traffic_from_pages(sp["pages"], "gsc_insights.py", (sp.get("windows") or {}).get("current"))
 
     return data
 
@@ -1142,9 +1285,10 @@ CHECK_GROUP = {
     "entity": "geo", "llms_txt": "geo", "ai_bot_access": "geo", "hidden_instructions": "geo", "citability": "geo",
     "local_signals": "local",
     "page_types": "content", "navigation": "links", "architecture": "links",
+    "search_performance": "on_page",
 }
 # Structure checks report findings but carry no score: shown, never weighted.
-DISPLAY_ONLY_CHECKS = ("page_types", "navigation", "architecture")
+DISPLAY_ONLY_CHECKS = ("page_types", "navigation", "architecture", "search_performance")
 CONFIDENCE_LABELS = ("Confirmed", "Likely", "Hypothesis")
 
 # Who acts on a finding. The vocabulary is the recommendation register's
@@ -1178,6 +1322,7 @@ CHECK_LANE = {
     "architecture": "Assisted",
     "entity": "Human", "link_profile": "Human",
     "page_types": "Decision",
+    "search_performance": "Auto",
 }
 # A finding's own words outrank its check's usual lane: a robots.txt edit raised
 # by any check is still high-risk, and no check can create a Wikipedia article.
@@ -1295,7 +1440,9 @@ def check_score_gains(scores: dict) -> dict:
 def build_action_plan(issues: list, scores: dict) -> dict:
     """Findings someone can act on, by lane, in the order to do them.
 
-    Within a lane: severity first, then the score its check can recover. An
+    Within a lane: severity first, then Search Console clicks at stake when the
+    run has them (site-wide findings first, see _traffic_rank), then the score
+    its check can recover. An
     info-level note with no fix is an observation, not an action, and a data gap
     is a question; both stay out.
     """
@@ -1307,7 +1454,8 @@ def build_action_plan(issues: list, scores: dict) -> dict:
             continue
         plan[lane].append(issue)
     for items in plan.values():
-        items.sort(key=lambda i: (SEVERITY_SCALE.index(i["canonical_severity"]), -gains.get(i["section"], 0), i["id"]))
+        items.sort(key=lambda i: (SEVERITY_SCALE.index(i["canonical_severity"]), *_traffic_rank(i),
+                                  -gains.get(i["section"], 0), i["id"]))
     return plan
 
 
@@ -1420,6 +1568,8 @@ def build_summary(data: dict, scores: dict) -> dict:
         "sections_run": sorted(name for name, value in data["sections"].items()
                                if isinstance(value, dict) and value and not value.get("error")),
         "render_warning": data.get("render_warning"),
+        "search_console": {**{k: v for k, v in data["gsc_traffic"].items() if k != "pages"},
+                           "pages": len(data["gsc_traffic"]["pages"])} if data.get("gsc_traffic") else None,
     }
 
 
@@ -1504,6 +1654,7 @@ def _summary_finding(issue: dict) -> dict:
         "key": issue.get("key"),
         "status": None,
         "first_seen": None,
+        "traffic_at_stake": issue.get("traffic"),
     }
 
 
@@ -1616,6 +1767,7 @@ CHECK_LABELS = {
     "page_types": "Page-type coverage",
     "navigation": "Navigation and breadcrumbs",
     "architecture": "Site architecture",
+    "search_performance": "Search performance (Search Console)",
 }
 
 _SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2, "pass": 3}
@@ -1925,6 +2077,8 @@ def _collect_issues(data: dict) -> list:
         issue["id"] = f"F{number:02d}"
         issue.update(classify_finding(issue))
         issue["code"], issue["key"] = finding_code(issue["section"], issue.get("source_issue") or {}, issue["finding"])
+        # A data gap is a question, not work: it has nothing to put a cost on.
+        issue["traffic"] = attach_traffic(issue, data) if issue["kind"] != "data_gap" else None
     return issues
 
 
@@ -2339,7 +2493,11 @@ def _check_panels(data: dict) -> dict:
 
     for key in CHECK_LABELS:
         section = _source_section(sections, key)
-        if not isinstance(section, dict) or not section:
+        if key == "search_performance" and not section:
+            prefix = _notice("Runs only when the report is given a Search Console property "
+                             "(<code>--gsc-property sc-domain:example.com</code>, Tier 1 credentials). "
+                             "<code>--gsc-pages</code> with a Pages export adds traffic at stake to the findings without it.")
+        elif not isinstance(section, dict) or not section:
             prefix = _notice("This check did not run, usually because the page could not be fetched.")
         elif section.get("error") and key != "pagespeed":
             prefix = _notice(_esc(section.get("error")), "flag", "Check did not complete.")
@@ -2407,6 +2565,50 @@ def _check_panels(data: dict) -> dict:
             + (_table(["Section", "URLs", "Type", "In nav", "Hub", "Depth", "Equity"], sec_rows) if sec_rows else "")
             + (f"<pre class=\"mono\">{_esc(ar.get('mermaid', ''))}</pre>" if ar.get("mermaid") else "")
             + render_recommendations(ar)
+        )
+
+    sp = get("search_performance")
+    if sp:
+        window = (sp.get("windows") or {}).get("current") or ["—", "—"]
+        curve = sp.get("ctr_curve") or {}
+
+        def pct(value):
+            return f"{value or 0:.1%}"
+
+        def cells(values, url_at=None, text_at=(0,)):
+            """Table cells: the URL column clipped, text columns left, figures right-aligned."""
+            return "".join(
+                f'<td class="url">{_clip(v, 70)}</td>' if i == url_at else
+                f"<td>{_esc(v)}</td>" if i in text_at else
+                f'<td class="num">{_esc(f"{v:,}" if isinstance(v, int) else v)}</td>'
+                for i, v in enumerate(values)
+            )
+
+        curve_rows = [f"<tr>{cells([pos, pct(v.get('median_ctr')), v.get('rows', 0)], text_at=())}</tr>" for pos, v in curve.items()]
+        sd_rows = [f"<tr>{cells([i.get('query', ''), i.get('page', ''), i.get('position'), i.get('impressions', 0), i.get('upside_clicks_at_position_3')], 1)}</tr>"
+                   for i in ((sp.get("striking_distance") or {}).get("items") or [])[:10]]
+        lc_rows = [f"<tr>{cells([i.get('query', ''), i.get('page', ''), i.get('position'), pct(i.get('ctr')), pct(i.get('expected_ctr'))], 1)}</tr>"
+                   for i in ((sp.get("low_ctr") or {}).get("items") or [])[:10]]
+        dc_rows = []
+        for i in ((sp.get("decay") or {}).get("items") or [])[:10]:
+            clicks = i.get("clicks") or {}
+            trail = " / ".join(str(clicks.get(k, 0)) for k in ("before_previous", "previous", "current"))
+            pattern = {True: "seasonal", False: "trend"}.get(i.get("seasonal"), "no last-year data")
+            dc_rows.append(f"<tr>{cells([i.get('page', ''), trail, pattern], 0, (2,))}</tr>")
+        panels["search_performance"] = (
+            _notice("Query and page performance from the Search Console API: striking-distance queries, low CTR against this "
+                    "property's own CTR by position, queries split across URLs, and pages down two windows in a row. "
+                    "Every figure is from the API; shown, not weighted. Its page clicks also fill the "
+                    "&ldquo;Traffic at stake&rdquo; line of every finding that names a page.", "info")
+            + _kv([("Window", _esc(f"{window[0]} to {window[1]}")),
+                   ("Query x page rows", _esc(sp.get("query_page_rows", "—"))),
+                   ("Row cap reached", _esc(", ".join(sp.get("truncated") or []) or "no"))])
+            + (_subhead("Striking distance (position 8-15)") + _table(["Query", "Page", "Position", "Impressions", "Upside at position 3"], sd_rows) if sd_rows else "")
+            + (_subhead("Low CTR for the position") + _table(["Query", "Page", "Position", "CTR", "Site median"], lc_rows) if lc_rows else "")
+            + (_subhead("Decaying pages (clicks per window)") + _table(["Page", "Clicks, oldest to latest", "Pattern"], dc_rows) if dc_rows else "")
+            + (_subhead("This property's CTR by position") + _table(["Position", "Median CTR", "Rows"], curve_rows) if curve_rows else "")
+            + render_recommendations(sp)
+            + "".join(f'<p class="small">{_esc(line)}</p>' for line in sp.get("limits") or [])
         )
 
     return panels
@@ -2574,6 +2776,8 @@ def _finding_card(issue: dict) -> str:
         if falsifiability:
             text += (". " if text else "") + "Wrong if: " + _esc(falsifiability)
         rows.append(("Confidence", text))
+    if issue.get("traffic"):
+        rows.append(("Traffic at stake", _esc(traffic_text(issue["traffic"]))))
     if issue["fix"]:
         rows.append(("Fix", _esc(issue["fix"])))
     if issue.get("lane"):
@@ -2700,6 +2904,12 @@ def _plan_row(issue: dict, gains: dict, since: dict = None) -> str:
         age = (_chip("o", f"Open since {_short_date(first)}") if first else _chip("m", "New"))
     dependency = _supplied(issue.get("source_issue") or {}, "dependency", "depends_on")
     dep_html = f'<p class="small"><b>Depends on</b> {_esc(dependency)}</p>' if dependency else ""
+    traffic = issue.get("traffic") or {}
+    if traffic.get("scope") == "pages" and traffic.get("clicks"):
+        gain_html = (f'<span class="small mono" title="{_esc(traffic_text(traffic))}">'
+                     f'{traffic["clicks"]:,} clicks at stake</span>') + gain_html
+    elif traffic.get("scope") == "site":
+        gain_html = '<span class="small mono">site-wide</span>' + gain_html
     return (
         f'<li class="plan-item" data-key="{issue["id"]}">'
         f'<div class="plan-top"><a class="pid" href="#{issue["id"]}">{issue["id"]}</a>{_severity_chip(issue["severity"])}{age}'
@@ -2759,6 +2969,9 @@ def _render_action_plan(data: dict, scores: dict, issues: list, delta: dict = No
         "with access to the site&rsquo;s code or CMS. Evidence for every item is in the "
         '<a href="#findings">findings register</a>.</p>'
     )
+    if data.get("gsc_traffic"):
+        intro += (f'<p class="small prose">Search Console clicks ({_esc(_traffic_window(data["gsc_traffic"]))}) break ties '
+                  "inside each severity: site-wide findings first, then the findings whose pages earn the most clicks.</p>")
     notes = sum(1 for i in issues if i.get("lane") and i["severity"] == "info" and not i.get("fix"))
     if notes:
         intro += (f'<p class="small prose">{notes} informational {"note names" if notes == 1 else "notes name"} no fix and '
@@ -3918,6 +4131,18 @@ def main():
         help="An earlier --json summary of the same site; the report opens with what changed since it "
              "and the JSON summary carries the comparison under \"previous\"",
     )
+    parser.add_argument(
+        "--gsc-property",
+        metavar="PROPERTY",
+        help='Search Console property ("sc-domain:example.com" or "https://example.com/"). Runs gsc_insights.py '
+             "as a display-only check and joins its page clicks to every finding (needs Tier 1 credentials)",
+    )
+    parser.add_argument(
+        "--gsc-pages",
+        metavar="PATH",
+        help="Page clicks to join to findings without API access: a Search Console Pages CSV export, "
+             "gsc_insights.py --json or --save-rows output, or gsc_query.py --dimension page --json output",
+    )
     parser.add_argument("--prepared-for", metavar="NAME", help="Shown in the report masthead")
     parser.add_argument("--prepared-by", metavar="NAME", help="Shown in the report masthead (default: the skill)")
     parser.add_argument("--accent", metavar="#RRGGBB", help="Accent colour for the report (white-label); default teal")
@@ -3934,6 +4159,14 @@ def main():
             parser.error(f"--previous: cannot read {args.previous}: {exc}")
         if not isinstance(previous_summary, dict) or "findings" not in previous_summary:
             parser.error(f"--previous: {args.previous} is not a generate_report.py --json summary")
+    page_traffic = None
+    if args.gsc_pages:
+        try:
+            page_traffic = load_page_traffic(args.gsc_pages)
+        except (OSError, ValueError) as exc:
+            parser.error(f"--gsc-pages: cannot read {args.gsc_pages}: {exc}")
+        if not page_traffic["pages"]:
+            parser.error(f"--gsc-pages: {args.gsc_pages} has no page rows")
     report_options = {"prepared_for": args.prepared_for, "prepared_by": args.prepared_by, "accent": args.accent}
     if args.fail_under is not None and not 0 <= args.fail_under <= 100:
         parser.error("--fail-under must be between 0 and 100")
@@ -3950,7 +4183,11 @@ def main():
         crawl_max_pages=max(1, args.crawl_max_pages),
         crawl_depth=max(1, args.crawl_depth),
         render=args.render,
+        gsc_property=args.gsc_property,
     )
+    if page_traffic:
+        # An explicit file wins over the property's own page totals.
+        data["gsc_traffic"] = traffic_from_pages(page_traffic["pages"], page_traffic["source"], page_traffic["window"])
     scores = calculate_overall_score(data)
     summary = build_summary(data, scores)
     if previous_summary:

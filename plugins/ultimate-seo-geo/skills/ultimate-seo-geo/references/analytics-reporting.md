@@ -175,6 +175,8 @@ GSC shows CrUX (real user) data, which is what Google uses for rankings:
 | 6-10 | 2-5% |
 | 11-20 | 0.5-2% |
 
+These ranges are for orientation. With Search Console access, judge a query against the property's own median CTR at the same position: `python scripts/gsc_insights.py sc-domain:example.com --low-ctr --json` flags CTR below half of it.
+
 **Below-benchmark CTR at any position** → rewrite title tag and meta description. Test question-format titles, add numbers, power words, or year.
 
 ---

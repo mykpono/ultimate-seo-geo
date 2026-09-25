@@ -24,7 +24,8 @@ def test_structure_checks_are_labelled_grouped_and_unweighted():
     for key in STRUCTURE:
         assert key in gr.CHECK_LABELS and key in gr.CHECK_GROUP, key
         assert key not in gr.CHECK_WEIGHTS, f"{key} must stay display-only"
-    assert set(gr.DISPLAY_ONLY_CHECKS) == set(STRUCTURE)
+    # search_performance (gsc_insights.py) is the only other display-only check.
+    assert set(gr.DISPLAY_ONLY_CHECKS) == set(STRUCTURE) | {"search_performance"}
 
 
 def test_collect_data_builds_the_graph_once_and_passes_it_to_the_checkers():
