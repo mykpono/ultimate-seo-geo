@@ -15,6 +15,14 @@ five analyses over them:
                        trend, not one bad month), tagged "seasonal" when the
                        same windows a year earlier fell the same way
   --serve-map CSV      the page you intend for a query vs the page Google shows
+  --human-basis        blended vs human-only impressions, CTR and position, now and
+                       against the previous window, with the queries and pages that
+                       machine traffic (rank trackers, scrapers, agents) inflates
+
+Every analysis reads human queries only. Queries whose text is machine-shaped
+(search operators, URLs, quoted-phrase templates) or whose clicks are impossible
+for people at that volume and position are set aside, and so are 12+ word
+agent-style queries; --include-machine turns this off.
 
 Every number comes from the API response. Where the data cannot support a
 number the output says so (``"cannot compute"``) rather than estimating, and
@@ -44,7 +52,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
+import re
 import statistics
 import sys
 from datetime import date, timedelta
@@ -68,10 +78,18 @@ DECAY_MIN_CLICKS = 30
 DECAY_MIN_DROP = 0.20
 DEFAULT_LIMIT = 25
 
+# Machine-query classifier (human_basis). Calibrated on 28,768 Improvado query rows
+# (18 Aug-15 Sep 2026): every rule's rows together earned 8 clicks on 1.19M impressions.
+HUMAN_CTR_FLOOR = ((3.0, 0.002), (10.0, 0.001), (20.0, 0.0005))  # (max position, lowest plausible human CTR)
+IMPOSSIBLE_MIN_IMPRESSIONS = 500
+IMPOSSIBLE_P = 1e-6            # Poisson P(clicks <= observed) under the floor
+AGENT_MIN_WORDS = 12
+
 LIMITS = [
     "Search Console omits anonymised queries: query rows do not sum to page totals.",
     "Average position is impression-weighted over the window; a page ranking 3 on some days and 20 on others averages near 11.",
     "CTR benchmarks are this property's own medians per rounded position, from rows with enough impressions; they are not industry figures.",
+    "Search Console has no user agent: machine queries are inferred from query text and from clicks too few for people at that volume and position (see human_basis.criteria).",
 ]
 
 
@@ -149,13 +167,15 @@ def fetch_rows(service, site_url: str, bounds: tuple, dimensions: list, max_rows
         start_row += len(batch)
 
 
-def fetch_dataset(service, site_url: str, end: date, days: int, *, history: bool, max_rows: int) -> dict:
+def fetch_dataset(service, site_url: str, end: date, days: int, *, history: bool, max_rows: int,
+                  previous_queries: bool = False) -> dict:
     """Everything the analyses read, in the shape --save-rows writes and --replay reads.
 
     Always: query x page and page totals for the current window (page totals are
     what generate_report.py --gsc-pages joins to findings). With history (for
     --decay): page totals for the two windows before it and for the current and
-    previous windows a year earlier — seven requests in all.
+    previous windows a year earlier — seven requests in all. With previous_queries
+    (for --human-basis): query x page for the window before, one request more.
     """
     current = window(end, days)
     named = {"current": current}
@@ -171,6 +191,10 @@ def fetch_dataset(service, site_url: str, end: date, days: int, *, history: bool
         "query_page": fetch_rows(service, site_url, current, ["query", "page"], max_rows),
         "pages": {name: fetch_rows(service, site_url, bounds, ["page"], max_rows) for name, bounds in named.items()},
     }
+    if previous_queries:
+        previous = window(end, days, 1)
+        dataset["windows"]["previous"] = [d.isoformat() for d in previous]
+        dataset["query_page_previous"] = fetch_rows(service, site_url, previous, ["query", "page"], max_rows)
     return dataset
 
 
@@ -288,6 +312,162 @@ def low_ctr(rows: list, curve: dict, *, max_pos=LOW_CTR_MAX_POS, ratio=LOW_CTR_R
         "count": len(hits),
         "items": hits[:limit],
     }
+
+
+_OPERATOR = re.compile(r"(^|\s)-?(site|inurl|intitle|intext|allinurl|allintitle|cache|related|filetype|ext|before|after):\S", re.I)
+_URL = re.compile(r"https?://|www\.|\b[\w-]+\.(com|io|net|org|co)/\S", re.I)
+_QUOTED = re.compile(r'"[^"]+"')
+_SCRAPER_SYNTAX = re.compile(r"^[%|&*@]|\s\|\s|\sOR\s")
+
+
+def human_ctr_floor(position: float):
+    for max_pos, floor in HUMAN_CTR_FLOOR:
+        if position <= max_pos:
+            return floor
+    return None
+
+
+def _poisson_cdf(clicks: int, expected: float) -> float:
+    """P(X <= clicks) for X ~ Poisson(expected), in log space so large expectations do not underflow wrongly."""
+    if expected <= 0:
+        return 1.0
+    log_term = -expected
+    total = math.exp(log_term)
+    for k in range(1, int(clicks) + 1):
+        log_term += math.log(expected) - math.log(k)
+        total += math.exp(log_term)
+    return min(1.0, total)
+
+
+def classify_query(query: str, clicks: int, impressions: int, position: float) -> tuple:
+    """("human" | "machine" | "agent_like", [reason codes]) for one query's totals.
+
+    machine, from the text: search operators, URLs, quoted-phrase templates
+    ("<brand>" data strategy, two or more quoted phrases), scraper syntax (a
+    leading %, " | ", " OR "). machine, from behaviour: so many impressions on
+    pages one and two with so few clicks that people cannot produce it, even at
+    a floor CTR well below AI Overview citation rates (Poisson P < 1e-6).
+    agent_like: 12+ words, the shape of agent and AI Mode fan-out queries.
+    """
+    reasons = []
+    text = str(query or "")
+    if _OPERATOR.search(text):
+        reasons.append("search_operator")
+    if _URL.search(text):
+        reasons.append("url_in_query")
+    quotes = _QUOTED.findall(text)
+    if len(quotes) >= 2 or (quotes and _QUOTED.sub(" ", text).strip()):
+        reasons.append("quoted_template")
+    if _SCRAPER_SYNTAX.search(text):
+        reasons.append("scraper_syntax")
+    floor = human_ctr_floor(position or 0)
+    if floor and impressions >= IMPOSSIBLE_MIN_IMPRESSIONS and _poisson_cdf(clicks, floor * impressions) < IMPOSSIBLE_P:
+        reasons.append("impossible_ctr")
+    if reasons:
+        return "machine", reasons
+    if len(text.split()) >= AGENT_MIN_WORDS:
+        return "agent_like", ["long_query"]
+    return "human", []
+
+
+def classify_queries(rows: list) -> dict:
+    """{query.lower(): {"label", "reasons", "clicks", "impressions", "position"}} over query x page rows."""
+    totals = {}
+    for row in rows:
+        key = str(row.get("query", "")).lower()
+        t = totals.setdefault(key, {"query": row.get("query", ""), "clicks": 0, "impressions": 0, "_pos": 0.0})
+        impressions = row.get("impressions", 0) or 0
+        t["clicks"] += row.get("clicks", 0) or 0
+        t["impressions"] += impressions
+        t["_pos"] += (row.get("position", 0) or 0) * impressions
+    out = {}
+    for key, t in totals.items():
+        position = round(t["_pos"] / t["impressions"], 2) if t["impressions"] else 0.0
+        label, reasons = classify_query(t["query"], t["clicks"], t["impressions"], position)
+        out[key] = {"query": t["query"], "label": label, "reasons": reasons,
+                    "clicks": t["clicks"], "impressions": t["impressions"], "position": position}
+    return out
+
+
+def human_rows(rows: list, labels: dict) -> list:
+    return [r for r in rows if labels.get(str(r.get("query", "")).lower(), {}).get("label", "human") == "human"]
+
+
+def _basis(rows: list) -> dict:
+    impressions = sum(r.get("impressions", 0) or 0 for r in rows)
+    clicks = sum(r.get("clicks", 0) or 0 for r in rows)
+    weighted = sum((r.get("position", 0) or 0) * (r.get("impressions", 0) or 0) for r in rows)
+    return {"impressions": impressions, "clicks": clicks,
+            "ctr": round(clicks / impressions, 5) if impressions else None,
+            "position": round(weighted / impressions, 2) if impressions else None}
+
+
+def _change(before: dict, after: dict) -> dict:
+    out = {"clicks": after["clicks"] - before["clicks"]}
+    out["impressions_pct"] = (round((after["impressions"] - before["impressions"]) / before["impressions"], 4)
+                              if before["impressions"] else None)
+    out["position"] = (round(after["position"] - before["position"], 2)
+                       if before["position"] is not None and after["position"] is not None else None)
+    out["ctr"] = (round(after["ctr"] - before["ctr"], 5)
+                  if before["ctr"] is not None and after["ctr"] is not None else None)
+    return out
+
+
+def _split(rows: list, labels: dict) -> dict:
+    groups = {"human": [], "machine": [], "agent_like": []}
+    for r in rows:
+        groups[labels.get(str(r.get("query", "")).lower(), {}).get("label", "human")].append(r)
+    return {"blended": _basis(rows), "human": _basis(groups["human"]),
+            "machine": _basis(groups["machine"]), "agent_like": _basis(groups["agent_like"])}
+
+
+def human_basis(rows: list, labels: dict, previous_rows=None, previous_labels=None, *, limit=DEFAULT_LIMIT) -> dict:
+    """Blended vs human-only Search Console figures, and what the difference is made of."""
+    current = _split(rows, labels)
+    blended = current["blended"]["impressions"] or 0
+    excluded = current["machine"]["impressions"] + current["agent_like"]["impressions"]
+    reasons = {}
+    for info in labels.values():
+        for code in info["reasons"]:
+            slot = reasons.setdefault(code, {"queries": 0, "impressions": 0, "clicks": 0})
+            slot["queries"] += 1
+            slot["impressions"] += info["impressions"]
+            slot["clicks"] += info["clicks"]
+    top = sorted((i for i in labels.values() if i["label"] != "human"), key=lambda i: (-i["impressions"], i["query"]))
+    pages = {}
+    for r in rows:
+        page = pages.setdefault(page_key(r.get("page", "")), {"page": r.get("page", ""), "impressions": 0, "non_human_impressions": 0, "clicks": 0})
+        imp = r.get("impressions", 0) or 0
+        page["impressions"] += imp
+        page["clicks"] += r.get("clicks", 0) or 0
+        if labels.get(str(r.get("query", "")).lower(), {}).get("label", "human") != "human":
+            page["non_human_impressions"] += imp
+    dominated = [dict(p, non_human_share=round(p["non_human_impressions"] / p["impressions"], 3))
+                 for p in pages.values() if p["impressions"] and p["non_human_impressions"] / p["impressions"] >= 0.5]
+    dominated.sort(key=lambda p: (-p["non_human_impressions"], p["page"]))
+    out = {
+        "criteria": (f"machine: search operators, URLs, quoted-phrase templates, scraper syntax, or clicks below a "
+                     f"human CTR floor ({', '.join(f'{f:.2%} to position {p:g}' for p, f in HUMAN_CTR_FLOOR)}) at "
+                     f"{IMPOSSIBLE_MIN_IMPRESSIONS}+ impressions with Poisson P < {IMPOSSIBLE_P:g}; "
+                     f"agent_like: {AGENT_MIN_WORDS}+ words. The human basis excludes both."),
+        "current": current,
+        "non_human_share_of_impressions": round(excluded / blended, 4) if blended else None,
+        "reasons": reasons,
+        "count": len(top),
+        "items": [{k: i[k] for k in ("query", "label", "reasons", "impressions", "clicks", "position")} for i in top[:limit]],
+        "pages_mostly_non_human": dominated[:limit],
+    }
+    if previous_rows is None:
+        out["change"] = {"status": "not measured", "reason": "no previous-window query rows (run without --replay, or re-save rows)"}
+        return out
+    previous = _split(previous_rows, previous_labels if previous_labels is not None else classify_queries(previous_rows))
+    change = {"blended": _change(previous["blended"], current["blended"]),
+              "human": _change(previous["human"], current["human"])}
+    bp, hp = change["blended"]["position"], change["human"]["position"]
+    if bp and hp is not None and bp < 0:
+        change["position_gain_from_non_human"] = round(max(0.0, (bp - hp) / bp), 3)
+    out.update(previous=previous, change=change)
+    return out
 
 
 def cannibalization(rows: list, *, min_impressions=CANNIBAL_MIN_IMPRESSIONS, min_share=CANNIBAL_MIN_SHARE,
@@ -559,6 +739,35 @@ def build_issues(results: dict, window_text: str) -> list:
             "leading_indicator": "Weekly clicks of each refreshed page for six weeks after the refresh.",
             "urls": [i["page"] for i in dc["items"]],
         })
+    hb = results.get("human_basis")
+    share = (hb or {}).get("non_human_share_of_impressions") or 0
+    gain = ((hb or {}).get("change") or {}).get("position_gain_from_non_human") or 0
+    if hb and (share >= 0.10 or gain >= 0.25):
+        cur = hb["current"]
+        change = hb.get("change") or {}
+        trend = ""
+        if "blended" in change:
+            trend = (f" Position moved {change['blended']['position']:+.2f} blended but {change['human']['position']:+.2f} "
+                     f"on human queries: {gain:.0%} of the apparent gain is a change in who searches, not in rankings.")
+        issues.append({
+            "code": "non_human_queries", "severity": "medium", "kind": "defect", "lane": "Decision",
+            "finding": (f"{share:.0%} of Search Console impressions come from machine or agent-like queries "
+                        f"({window_text}); site-level position, CTR and impressions overstate what people see.{trend}"),
+            "evidence": ("Largest: " + _examples(hb["items"], lambda i: (
+                f"'{i['query']}' {i['impressions']:,} impressions, {i['clicks']} clicks at {i['position']} ({', '.join(i['reasons'])})"))
+                + f". Blended position {cur['blended']['position']}, human {cur['human']['position']}; "
+                  f"blended CTR {cur['blended']['ctr']:.3%}, human {cur['human']['ctr']:.3%}."),
+            "impact": ("Every site-level Search Console trend quoted from the blended numbers is off by the machine share; "
+                       "a ranking 'gain' can be a rank tracker or scraper fleet arriving, and CTR can fall while people click as before."),
+            "fix": ("Quote Search Console trends on the human basis (human_basis.current.human) and name the basis with the number. "
+                    "For pages mostly shown to machines (pages_mostly_non_human), decide whether the topic belongs on the site; "
+                    "no on-page change stops the queries."),
+            "confidence": "Likely",
+            "falsifiability": ("Wrong if the excluded queries earn clicks once the window fills in, or if the site's pages sit in "
+                               "a SERP feature that shows but is almost never clicked; re-read the listed queries in the Performance report."),
+            "leading_indicator": "Blended minus human position and the non-human impression share, re-read each window.",
+            "urls": [p["page"] for p in hb["pages_mostly_non_human"]],
+        })
     sm = results.get("serve_map")
     if sm and sm["count"]:
         issues.append({
@@ -581,9 +790,15 @@ def analyse(dataset: dict, selected: set, pairs=None, opts=None) -> dict:
     opts = opts or {}
     limit = opts.get("limit", DEFAULT_LIMIT)
     qp_block = dataset.get("query_page") or {}
-    rows = _merge_query_page(_rows(qp_block))
+    all_rows = _merge_query_page(_rows(qp_block))
+    labels = classify_queries(all_rows)
+    rows = all_rows if opts.get("include_machine") else human_rows(all_rows, labels)
     curve = ctr_curve(rows)
     results = {}
+    if "human_basis" in selected:
+        prev_block = dataset.get("query_page_previous")
+        prev_rows = _merge_query_page(_rows(prev_block)) if prev_block is not None else None
+        results["human_basis"] = human_basis(all_rows, labels, prev_rows, limit=limit)
     if "striking_distance" in selected:
         results["striking_distance"] = striking_distance(
             rows, curve, min_impressions=opts.get("min_impressions", STRIKING_MIN_IMPRESSIONS), limit=limit)
@@ -599,13 +814,18 @@ def analyse(dataset: dict, selected: set, pairs=None, opts=None) -> dict:
     windows = dataset.get("windows") or {}
     cur = windows.get("current") or ["?", "?"]
     window_text = f"{cur[0]} to {cur[1]}"
-    truncated = [name for name, block in [("query_page", qp_block), *((f"pages.{k}", v) for k, v in (dataset.get("pages") or {}).items())]
+    truncated = [name for name, block in [("query_page", qp_block), ("query_page_previous", dataset.get("query_page_previous")),
+                                          *((f"pages.{k}", v) for k, v in (dataset.get("pages") or {}).items())]
                  if isinstance(block, dict) and block.get("truncated")]
     pages_now = page_clicks((dataset.get("pages") or {}).get("current")) if dataset.get("pages") else {}
     out = {
         "site_url": dataset.get("site_url"),
         "windows": windows,
-        "query_page_rows": len(rows),
+        "query_page_rows": len(all_rows),
+        "queries_set_aside": (None if opts.get("include_machine") else
+                              {"rows": len(all_rows) - len(rows),
+                               "impressions": sum(r["impressions"] for r in all_rows) - sum(r["impressions"] for r in rows),
+                               "note": "machine and agent-like queries are left out of every analysis; --include-machine keeps them"}),
         "truncated": truncated,
         "limits": LIMITS + ([f"Row cap reached for {', '.join(truncated)}: results cover the top rows only."] if truncated else []),
         "ctr_curve": {str(k): v for k, v in curve.items()},
@@ -663,6 +883,25 @@ def print_human(result: dict) -> None:
                 c = i["clicks"]
                 tag = "seasonal" if i["seasonal"] is True else "trend" if i["seasonal"] is False else "no last-year data"
                 print(f"  {c['before_previous']:>6} -> {c['previous']:>6} -> {c['current']:>6}  [{tag}]  {i['page']}")
+    hb = result.get("human_basis")
+    if hb:
+        cur = hb["current"]
+        share = hb.get("non_human_share_of_impressions")
+        print(f"\nHuman basis: {share:.0%} of impressions are machine or agent-like" if share is not None else "\nHuman basis: no rows")
+        for name in ("blended", "human", "machine", "agent_like"):
+            b = cur[name]
+            ctr = f"{b['ctr']:.3%}" if b["ctr"] is not None else "-"
+            print(f"  {name:<10} {b['impressions']:>11,} impr {b['clicks']:>8,} clicks  CTR {ctr:>8}  pos {b['position'] if b['position'] is not None else '-'}")
+        change = hb.get("change") or {}
+        if "blended" in change:
+            print(f"  vs previous window: position {change['blended']['position']:+.2f} blended, {change['human']['position']:+.2f} human"
+                  + (f"  ({change['position_gain_from_non_human']:.0%} of the gain is non-human)" if "position_gain_from_non_human" in change else ""))
+        elif change:
+            print(f"  change: {change['status']} ({change['reason']})")
+        for i in hb["items"][:15]:
+            print(f"  {i['impressions']:>9,} impr {i['clicks']:>5} clicks  pos {i['position']:>5}  {i['label']:<10} {','.join(i['reasons']):<28} {i['query'][:45]!r}")
+        for p in hb["pages_mostly_non_human"][:10]:
+            print(f"  page {p['non_human_share']:.0%} non-human  {p['impressions']:>9,} impr  {p['page']}")
     sm = result.get("serve_map")
     if sm:
         print(f"\nServe map: {sm['count']} mismatches, {sm['no_data']} queries without data")
@@ -673,7 +912,7 @@ def print_human(result: dict) -> None:
         print(f"Note: {line}")
 
 
-ANALYSES = ("striking_distance", "low_ctr", "cannibalization", "decay", "serve_map")
+ANALYSES = ("striking_distance", "low_ctr", "cannibalization", "decay", "serve_map", "human_basis")
 
 
 def main() -> int:
@@ -686,6 +925,10 @@ def main() -> int:
     parser.add_argument("--cannibalization", action="store_true", help="Queries split across two or more URLs")
     parser.add_argument("--decay", action="store_true", help="Pages down in two consecutive windows (fetches 5 page windows)")
     parser.add_argument("--serve-map", metavar="CSV", help="CSV of query,intended_url: which page Google actually shows")
+    parser.add_argument("--human-basis", action="store_true",
+                        help="Blended vs human-only figures, now and vs the previous window (one more request)")
+    parser.add_argument("--include-machine", action="store_true",
+                        help="Keep machine and agent-like queries in every analysis (default: set aside)")
     parser.add_argument("--all", action="store_true", help="Run every analysis (--serve-map still needs its CSV)")
     parser.add_argument("--min-impressions", type=int, default=STRIKING_MIN_IMPRESSIONS,
                         help=f"Striking-distance impression floor (default: {STRIKING_MIN_IMPRESSIONS}); lower it for small sites")
@@ -702,7 +945,7 @@ def main() -> int:
     if args.serve_map:
         selected.add("serve_map")
     if not selected:
-        parser.error("choose an analysis (--striking-distance, --low-ctr, --cannibalization, --decay, --serve-map) or --all")
+        parser.error("choose an analysis (--striking-distance, --low-ctr, --cannibalization, --decay, --serve-map, --human-basis) or --all")
     if not args.replay and not args.site_url:
         parser.error("site_url is required unless --replay is given")
     if args.days < 1 or args.max_rows < 1 or args.limit < 1:
@@ -734,8 +977,8 @@ def main() -> int:
         end = date.fromisoformat(args.end_date) if args.end_date else date.today() - timedelta(days=3)
         service = gsc_query._build_service(gsc_query._load_credentials())
         try:
-            dataset = fetch_dataset(service, args.site_url, end, args.days,
-                                    history="decay" in selected, max_rows=args.max_rows)
+            dataset = fetch_dataset(service, args.site_url, end, args.days, history="decay" in selected,
+                                    max_rows=args.max_rows, previous_queries="human_basis" in selected)
         except RuntimeError as exc:
             print(json.dumps({"error": str(exc)}) if args.json else f"Error: {exc}")
             return 1
@@ -743,7 +986,8 @@ def main() -> int:
             with open(args.save_rows, "w", encoding="utf-8") as fh:
                 json.dump(dataset, fh)
 
-    result = analyse(dataset, selected, pairs, {"limit": args.limit, "min_impressions": args.min_impressions})
+    result = analyse(dataset, selected, pairs, {"limit": args.limit, "min_impressions": args.min_impressions,
+                                                "include_machine": args.include_machine})
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:

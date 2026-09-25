@@ -59,7 +59,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | SEO drift baseline / compare | §22 | `drift_monitor.py` | `python scripts/drift_monitor.py baseline URL` then `compare URL` |
 | Search Console sign-in (Tier 1) | §10 | `google_auth.py` | `python3 scripts/google_auth.py setup` once, then `python3 scripts/google_auth.py login` (browser, read-only; `status`, `logout`) |
 | GSC performance query (Tier 1) | §10 | `gsc_query.py` | `python scripts/gsc_query.py sc-domain:example.com --dimension page --json` (site URL is positional, not a flag; page rows are merged across `#fragment` URLs, `--keep-fragments` for raw) |
-| GSC opportunities: striking distance, low CTR vs the site's own curve, cannibalisation, decay, serve map (Tier 1) | §10, §6 | `gsc_insights.py` | `python scripts/gsc_insights.py sc-domain:example.com --all --json` (`--serve-map targets.csv`; `--save-rows`/`--replay` to analyse without re-fetching) |
+| GSC opportunities: striking distance, low CTR vs the site's own curve, cannibalisation, decay, serve map (Tier 1) | §10, §6 | `gsc_insights.py` | `python scripts/gsc_insights.py sc-domain:example.com --all --json` (`--human-basis` blended vs human-only; machine queries set aside unless `--include-machine`; `--serve-map targets.csv`; `--save-rows`/`--replay` to analyse without re-fetching) |
 | GSC URL inspection export (Tier 1) | §10 | `gsc_export.py` | `python scripts/gsc_export.py --property SITE --sitemap-url URL` |
 | GSC generative-AI impressions (manual CSV) | §10 | `gsc_ai_import.py` | `python scripts/gsc_ai_import.py export.csv --json` |
 | GA4 organic reporting (Tier 2) | §10 | `ga4_report.py` | `python scripts/ga4_report.py --property 123456789 --organic-only --json` |
