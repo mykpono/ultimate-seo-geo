@@ -197,3 +197,159 @@ def test_a_csv_without_the_needed_columns_is_an_error(tmp_path):
 
     proc = _cli(str(grid), "--domain", "example.com", "--json")
     assert proc.returncode == 1 and "needs engine, prompt" in proc.stdout
+
+
+# --- Brand facts (--facts): are AI answers right about the brand? ---------------------------
+
+import json  # noqa: E402
+
+FACTS = {
+    "brand": "Acme Analytics", "aliases": ["Acme"],
+    "others": ["Mixpanel", "Amplitude", "Heap"],
+    "facts": [
+        {"field": "founding year", "type": "year", "value": 2016, "source": "https://acme.example/about"},
+        {"field": "headquarters", "type": "place", "value": "Austin", "aliases": ["Austin, TX"]},
+        {"field": "founders", "type": "people", "value": ["Jane Doe", "Raj Patel"]},
+        {"field": "pricing", "type": "money", "value": [0, 29, 99], "source": "https://acme.example/pricing"},
+        {"field": "free plan", "type": "claim", "value": True, "true_phrases": ["free plan", "free tier"]},
+    ],
+    "false_claims": [{"phrase": "acquired by"}],
+}
+
+
+def facts_for(answer, engine="chatgpt"):
+    result = cs.check_brand_facts([{"engine": engine, "prompt": "p", "run": "1", "answer": answer}], FACTS)
+    return {f["field"]: (f["stated_in"], f["wrong"]) for f in result["facts"]}
+
+
+def test_a_correct_answer_states_every_fact_right():
+    answer = ("Acme Analytics was founded in 2016 by Jane Doe and Raj Patel and is headquartered in Austin, Texas. "
+              "It offers a free plan, and paid plans start at $29/month.")
+    got = facts_for(answer)
+    assert got["founding year"] == (1, 0) and got["headquarters"] == (1, 0) and got["founders"] == (1, 0)
+    assert got["pricing"] == (1, 0) and got["free plan"] == (1, 0) and got["false claim: acquired by"] == (0, 0)
+
+
+def test_wrong_facts_are_caught_with_the_sentence_quoted():
+    answer = "Founded in 2018, Acme Analytics helps SaaS teams. Acme is based in San Francisco."
+    result = cs.check_brand_facts([{"engine": "chatgpt", "prompt": "what is acme", "run": "2", "answer": answer}], FACTS)
+    by = {f["field"]: f for f in result["facts"]}
+    assert by["founding year"]["wrong"] == 1 and by["founding year"]["wrong_examples"][0]["stated"] == "2018"
+    assert by["headquarters"]["wrong_examples"][0]["sentence"] == "Acme is based in San Francisco."
+    issue = next(i for i in result["issues"] if i["code"] == "brand_fact.founding-year")
+    assert "https://acme.example/about" in issue["fix"] and issue["confidence"] == "Likely" and issue["lane"] == "Human"
+
+
+def test_a_competitors_facts_in_the_same_sentence_are_not_the_brands():
+    """Listicle answers name several companies in one sentence."""
+    answer = ("Acme Analytics and Mixpanel (founded 2009) both offer funnels. "
+              "Unlike Amplitude, which is based in San Francisco, Acme Analytics focuses on small teams. "
+              "Acme Analytics plans start at $29, compared to Mixpanel's $49.")
+    got = facts_for(answer)
+    assert got["founding year"] == (0, 0)
+    assert got["headquarters"] == (0, 0)
+    assert got["pricing"] == (1, 0)
+
+
+def test_a_pronoun_sentence_after_the_brand_is_read_as_the_brand():
+    got = facts_for("Acme Analytics was acquired by Oracle in 2023. It was founded in 2019. Its Growth plan costs $99 a month.")
+    assert got["founding year"] == (1, 1) and got["pricing"] == (1, 0) and got["false claim: acquired by"] == (1, 1)
+
+
+def test_a_pronoun_after_a_sentence_naming_a_competitor_is_not_carried():
+    assert facts_for("Acme Analytics and Heap are both popular. It was founded in 2013.")["founding year"] == (0, 0)
+
+
+def test_a_negated_claim_is_the_opposite_claim():
+    assert facts_for("Acme Analytics does not have a free plan.")["free plan"] == (1, 1)
+    assert facts_for("Acme Analytics has a generous free tier.")["free plan"] == (1, 0)
+
+
+def test_founded_when_is_not_founded_by_whom():
+    assert facts_for("Acme Analytics was founded in 2016 in Austin.")["founders"] == (0, 0)
+    assert facts_for("Maria Lopez, founder of Acme Analytics, runs sales.")["founders"] == (1, 1)
+    assert facts_for("Acme Analytics was co-founded by Raj Patel.")["founders"] == (1, 0)  # a surname or full name counts
+
+
+def test_an_unofficial_price_is_a_hypothesis():
+    result = cs.check_brand_facts([{"engine": "perplexity", "prompt": "p", "run": "1",
+                                    "answer": "Acme Analytics pricing starts at $49 per month."}], FACTS)
+    issue = next(i for i in result["issues"] if i["code"] == "brand_fact.pricing")
+    assert issue["confidence"] == "Hypothesis"
+
+
+def test_answers_that_do_not_name_the_brand_or_are_empty_are_skipped():
+    rows = [{"engine": "chatgpt", "prompt": "p", "answer": "Heap was founded in 2013."},
+            {"engine": "chatgpt", "prompt": "p", "answer": ""}]
+    result = cs.check_brand_facts(rows, FACTS)
+    assert (result["answers_recorded"], result["answers_naming_brand"]) == (1, 0)
+    assert all(f["stated_in"] == 0 for f in result["facts"]) and result["issues"] == []
+
+
+def test_wrong_rates_carry_a_wilson_interval_and_count_by_engine():
+    rows = [{"engine": e, "prompt": "p", "run": str(i), "answer": a} for i, (e, a) in enumerate([
+        ("chatgpt", "Acme Analytics was founded in 2016."), ("chatgpt", "Acme Analytics was founded in 2018."),
+        ("perplexity", "Acme Analytics was founded in 2016."), ("perplexity", "Acme Analytics was founded in 2016."),
+    ])]
+    year = next(f for f in cs.check_brand_facts(rows, FACTS)["facts"] if f["field"] == "founding year")
+    assert (year["stated_in"], year["wrong"], year["wrong_rate"]) == (4, 1, 0.25)
+    assert year["wrong_ci95"] == [pytest.approx(v, abs=1e-3) for v in cs.wilson_interval(1, 4)]
+    assert year["by_engine"] == {"chatgpt": {"stated": 2, "wrong": 1}, "perplexity": {"stated": 2, "wrong": 0}}
+
+
+@pytest.mark.parametrize("bad,message", [
+    ({"facts": []}, "brand"),
+    ({"brand": "Acme", "facts": [{"field": "x", "type": "colour", "value": 1}]}, "type"),
+    ({"brand": "Acme", "facts": [{"field": "free plan", "type": "claim", "value": "yes", "true_phrases": ["free"]}]}, "true/false"),
+    ({"brand": "Acme", "facts": [{"field": "founded", "type": "year"}]}, "no \"value\""),
+])
+def test_a_malformed_facts_file_fails_loudly(tmp_path, bad, message):
+    path = tmp_path / "facts.json"
+    path.write_text(json.dumps(bad))
+    with pytest.raises(ValueError, match=message):
+        cs.load_facts(str(path))
+
+
+def test_template_has_an_answer_column():
+    assert cs.COLUMNS[-1] == "answer"
+
+
+def test_cli_facts_only_and_combined_with_scoring(tmp_path):
+    facts = tmp_path / "facts.json"
+    facts.write_text(json.dumps(FACTS))
+    runs = tmp_path / "runs.csv"
+    with open(runs, "w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["engine", "prompt", "run", "cited_domains", "answer"])
+        w.writerow(["chatgpt", "what is acme", "1", "acme.example", "Founded in 2018, Acme Analytics helps teams."])
+    only = _cli(str(runs), "--facts", str(facts), "--json")
+    assert only.returncode == 0, only.stderr
+    out = json.loads(only.stdout)
+    assert "engines" not in out and out["brand_facts"]["answers_naming_brand"] == 1
+    assert [i["code"] for i in out["issues"]] == ["brand_fact.founding-year"]
+    both = json.loads(_cli(str(runs), "--domain", "acme.example", "--facts", str(facts), "--json").stdout)
+    assert "engines" in both and "brand_facts" in both
+    human = _cli(str(runs), "--facts", str(facts))
+    assert human.returncode == 0 and "founding year: wrong in 1/1" in human.stdout
+
+
+def test_cli_facts_only_needs_an_answer_column(tmp_path):
+    facts = tmp_path / "facts.json"
+    facts.write_text(json.dumps(FACTS))
+    runs = tmp_path / "runs.csv"
+    runs.write_text("engine,prompt,cited\nchatgpt,p,yes\n")
+    proc = _cli(str(runs), "--facts", str(facts), "--json")
+    assert proc.returncode == 1 and "answer column" in json.loads(proc.stdout)["error"]
+
+
+def test_a_parenthesis_about_an_unlisted_company_is_not_the_brands():
+    """Zendesk is not in "others": only the parenthesis rule keeps its year out."""
+    assert facts_for("Acme Analytics and Zendesk (founded 2007) both have help centres.")["founding year"] == (0, 0)
+
+
+def test_a_listed_competitor_between_the_brand_and_the_keyword_takes_the_fact():
+    assert facts_for("Acme Analytics partners with Heap, which was founded in 2013.")["founding year"] == (0, 0)
+
+
+def test_every_quoted_price_must_be_official():
+    assert facts_for("Acme Analytics plans cost $29 and $59 per month.")["pricing"] == (1, 1)
