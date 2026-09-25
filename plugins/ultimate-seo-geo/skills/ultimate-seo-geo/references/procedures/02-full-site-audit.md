@@ -139,7 +139,8 @@ Source: generate_report.py — N weighted checks measured; not measured: [checks
  and drop the Score and Share columns.]
 
 ## Executive Summary
-[2–3 sentences: biggest strength, biggest gap, single highest-impact action]
+[2–3 sentences: biggest strength, biggest gap]
+Next action: [ONE change — what, on which page or template, and the finding it closes. Not a list.]
 
 ## 🔴 Critical Issues (fix immediately)
 ## 🟠 High Priority (fix this week)
@@ -159,7 +160,7 @@ For a 3-finding excerpt showing the output format, see `references/audit-output-
 
 **Client report.** When the audit is delivered to a company rather than answered in chat, the Markdown report above is the written form; the deliverable is one `report.html` (summary, audit, strategy, plan and a folded appendix) rendered by `scripts/render_report.py` from a report source that extends the `generate_report.py --json` summary with findings, recommendations, coverage, prompts and page cards. Contract, fields and the coverage / automation-lane rules: `references/report-template/report-template.md`; lint the source with `scripts/report_data_lint.py`.
 
-**Lint before delivering.** Save the report and run `python scripts/report_lint.py report.md --summary summary.json` (drop `--summary` when `generate_report.py` did not run). It checks the title and metadata, the Health Score against the summary, the required sections, every finding's fields, severity and section, and that no Core Web Vitals or backlink numbers appear for checks that never ran. Fix every error; each warning names what it could not verify.
+**Lint before delivering.** Save the report and run `python scripts/report_lint.py report.md --summary summary.json` (drop `--summary` when `generate_report.py` did not run). It checks the title and metadata, the Health Score against the summary, the required sections, every finding's fields, severity and section, the single `Next action:` line, and that no Core Web Vitals or backlink numbers appear for checks that never ran. It warns about click, impression, session and CTR figures when no Search Console data reached the summary, and about forecasts ("+20% traffic") with no basis on the line. **A number the data cannot support is written as `cannot compute from this data`, with what would supply it** — never estimated. Fix every error; each warning names what it could not verify.
 
 ### Mode 2 Plan Entry Format
 

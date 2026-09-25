@@ -221,8 +221,9 @@ Source: generate_report.py — N weighted checks measured; not measured: [list]
 ...
 
 ## Executive Summary
+Next action: [one change only]
 ## Assumptions Audit
-[List assumptions the audit relies on so the user can reject or correct them]
+[Assumptions the user can reject or correct]
 ## 🔴 Critical Issues (fix immediately)
 ## 🟠 High Priority (fix this week)
 ## 🟡 Medium Priority (fix this month)

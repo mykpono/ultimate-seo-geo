@@ -55,6 +55,7 @@ Date | Business Type | Audited Pages | Confidence: High/Medium/Low
 | Category | Score | Share | Status |
 
 ## Executive Summary
+Next action: [ONE change, not a list]
 ## Critical Issues
 ## High Priority
 ## Medium Priority

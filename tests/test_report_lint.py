@@ -111,7 +111,8 @@ def render(summary, *, score=None, body=None):
         "| Category | Score | Share | Status |\n|---|---|---|---|\n" + "\n".join(rows)
     )
     body = body if body is not None else (
-        "## Executive Summary\nStrong technical base; schema is the gap.\n\n"
+        "## Executive Summary\nStrong technical base; schema is the gap.\n"
+        "Next action: add Product schema to the product template (the schema finding).\n\n"
         f"## 🔴 Critical Issues (fix immediately)\n\n{CRITICAL}\n\n"
         f"## 🟠 High Priority (fix this week)\n\n{HIGH}\n\n"
         f"## 🟡 Medium Priority (fix this month)\n\n{MEDIUM}\n\n"
@@ -382,3 +383,87 @@ def test_cli_json_output(tmp_path, summary):
 
     assert result["score"] == 1 and result["type"] == "audit"
     assert {"rule", "line", "message"} <= set(result["warnings"][0])
+
+
+# --- One next action; numbers with no source (the ChatSEO playbook's two rules) --------------
+
+def _with_summary_block(summary, block):
+    """The valid report with its Executive Summary replaced by block."""
+    text = render(summary)
+    start = text.index("## Executive Summary")
+    end = text.index("## 🔴")
+    return text[:start] + "## Executive Summary\n" + block + "\n\n" + text[end:]
+
+
+def test_a_full_audit_needs_a_next_action_line(summary):
+    text = _with_summary_block(summary, "Strong technical base; schema is the gap. Fixing schema matters most.")
+    result = rl.lint(text, summary=summary)
+    assert rules(result) == ["next-action"]
+
+
+def test_next_action_accepts_bold_and_list_markup(summary):
+    for line in ("**Next action:** add Product schema to the product template.",
+                 "**Next Action:** add Product schema to the product template.",
+                 "- Next action: add Product schema to the product template."):
+        assert rl.lint(_with_summary_block(summary, "Schema is the gap.\n" + line), summary=summary)["errors"] == []
+
+
+@pytest.mark.parametrize("block", [
+    "Schema is the gap.\nNext action: 1) add Product schema 2) fix the broken links",
+    "Schema is the gap.\nNext action:\n- add Product schema\n- fix the broken links",
+    "Schema is the gap.\nNext action: (1) schema (2) links (3) titles",
+])
+def test_next_action_must_be_one_action_not_a_list(summary, block):
+    assert rules(rl.lint(_with_summary_block(summary, block), summary=summary)) == ["next-action-list"]
+
+
+def test_an_empty_next_action_is_an_error(summary):
+    assert rules(rl.lint(_with_summary_block(summary, "Schema is the gap.\nNext action:"), summary=summary)) == ["next-action"]
+
+
+def test_a_number_in_one_action_is_not_a_list(summary):
+    block = "Schema is the gap.\nNext action: fix the 3 broken links on /pricing (F2)."
+    assert rl.lint(_with_summary_block(summary, block), summary=summary)["errors"] == []
+
+
+def test_excerpts_and_other_report_types_skip_the_next_action_rule(summary):
+    text = _with_summary_block(summary, "Schema is the gap.")
+    assert "next-action" not in rules(rl.lint(text, summary=summary, excerpt=True))
+
+
+def _with_line(summary, line):
+    return render(summary).replace("## Assumptions Audit\n", f"## Assumptions Audit\n- {line}\n")
+
+
+def test_traffic_figures_warn_without_search_console_data(summary):
+    result = rl.lint(_with_line(summary, "The pricing page earned 1,234 clicks last month."), summary=summary)
+    assert result["errors"] == [] and rules(result, "warnings") == ["unverified-traffic"]
+    assert "cannot compute from this data" in result["warnings"][0]["message"]
+
+
+def test_traffic_figures_are_fine_when_search_console_data_reached_the_summary(summary):
+    summary = dict(summary, search_console={"source": "gsc_insights.py", "total_clicks": 5000, "pages": 40})
+    result = rl.lint(_with_line(summary, "The pricing page earned 1,234 clicks last month."), summary=summary)
+    assert rules(result, "warnings") == []
+
+
+@pytest.mark.parametrize("line", [
+    "Pages with fewer than 100 monthly organic sessions are pruning candidates.",   # a threshold (saved eval responses)
+    "Treat > 100 organic visits/month as high priority.",
+    "Every money page sits within 3 clicks of the homepage.",                       # click depth, not traffic
+    "Organic clicks for /pricing: cannot compute from this data (Search Console not connected).",
+])
+def test_thresholds_click_depth_and_cannot_compute_are_not_traffic_claims(summary, line):
+    assert "unverified-traffic" not in rules(rl.lint(_with_line(summary, line), summary=summary), "warnings")
+
+
+@pytest.mark.parametrize("line,flagged", [
+    ("Adding FAQ content should increase organic traffic by 30%.", True),
+    ("Star ratings in SERPs (+15–30% CTR).", True),
+    ("Expect 20% more clicks once titles are rewritten.", True),
+    ("Should lift CTR by 20%, based on this property's median CTR at position 3.", False),
+    ("LCP improved from 4.1 s to 2.3 s after the image fix.", False),
+])
+def test_forecasts_need_a_basis_on_the_line(summary, line, flagged):
+    warned = "unsourced-projection" in rules(rl.lint(_with_line(summary, line), summary=summary), "warnings")
+    assert warned is flagged
