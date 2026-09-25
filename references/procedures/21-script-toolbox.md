@@ -171,6 +171,9 @@ python scripts/ai_bot_logs.py access.log --verify-ips --json
 
 # AI citation presence as a rate: write a prompt x engine x run grid, fill it in, then score it
 python scripts/citation_sampling.py --template --prompts prompts.txt --engines chatgpt,perplexity --runs 5 --output runs.csv
+
+# Check the recorded answers for wrong brand facts (answer column + a facts file)
+python scripts/citation_sampling.py runs.csv --facts references/brand-facts-example.json --json
 python scripts/citation_sampling.py runs.csv --domain example.com --json
 
 # Instructions to AI systems hidden from visitors (prompt injection, invisible Unicode)

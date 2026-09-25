@@ -6,8 +6,8 @@ Search Console data now says what to fix. A new script, `gsc_insights.py`, turns
 rows into five ranked lists. `generate_report.py` joins page clicks to every finding, so the
 action plan can order work by traffic. `index_coverage_diff.py` compares two weekly Page indexing
 exports and names the one change to investigate. `internal_links.py` audits in-content anchor
-text from the shared site graph, and `report_lint.py` holds a written audit to one next action and
-no unsourced numbers. Minor per D-020: new capability. Nothing about the score changes.
+text from the shared site graph, `report_lint.py` holds a written audit to one next action and
+no unsourced numbers, and `citation_sampling.py --facts` checks AI answers for wrong brand facts. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
 - **`gsc_insights.py`: Search Console opportunity analysis (Tier 1).** One run fetches query x
@@ -90,6 +90,23 @@ no unsourced numbers. Minor per D-020: new capability. Nothing about the score c
     raised nothing.
   - The template now says it plainly: a number the data cannot support is written as
     `cannot compute from this data`, with what would supply it.
+- **Brand-fact check in `citation_sampling.py --facts brand.json`.** It checks recorded AI answers
+  for wrong statements about the brand. The template grid gains an `answer` column, and a facts
+  file lists the official founding year, HQ, founders, prices, yes/no claims ("free plan") and
+  never-true phrases ("acquired by"), each with the page that states it; see
+  `references/brand-facts-example.json`.
+  - **What it reads.** Only sentences that name the brand, plus a pronoun sentence straight after
+    one. A value must follow its keyword closely, and "does not have a free plan" counts as the
+    opposite claim.
+  - **Other companies' facts are left out.** It skips a statement in parentheses that do not name
+    the brand ("Mixpanel (founded 2009)"), one with a listed competitor between the brand and the
+    keyword, one after a contrast ("compared to Mixpanel's $49"), and an introductory "Unlike
+    Amplitude, which is based in…".
+  - **What it reports.** For each fact: how many answers state it, how many get it wrong (with a
+    95% Wilson interval, per engine) and the wrong sentences quoted. Each wrong fact becomes one
+    finding that names the page to correct and the third-party profiles. It runs on its own or
+    with `--domain` citation scoring. Price mismatches are hypotheses, because answers quote old
+    plans.
 
 ### Changed
 - **`check_version_sync.py` reads the README version badges.** The badge in `README.md` and
