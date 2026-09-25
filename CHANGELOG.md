@@ -5,8 +5,8 @@
 Search Console data now says what to fix. A new script, `gsc_insights.py`, turns query x page
 rows into five ranked lists. `generate_report.py` joins page clicks to every finding, so the
 action plan can order work by traffic. `index_coverage_diff.py` compares two weekly Page indexing
-exports and names the one change to investigate. Minor per D-020: new capability. Nothing about
-the score changes.
+exports and names the one change to investigate. `internal_links.py` audits in-content anchor
+text from the shared site graph. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
 - **`gsc_insights.py`: Search Console opportunity analysis (Tier 1).** One run fetches query x
@@ -60,6 +60,19 @@ the score changes.
   `--examples OLD NEW` diffs one reason's example URLs and `--sitemap` marks the ones that are
   submitted; Search Console caps those lists at 1,000, and the output calls them a sample. A file
   that is not a Page indexing export fails with an error instead of reporting nothing.
+- **Anchor audit in `internal_links.py --graph site_graph.json`.** The script reads anchor text
+  per linked-to page from the shared site graph, which `generate_report.py` now passes it.
+  - **In-content links only.** It leaves out header, nav, footer and breadcrumb links, and links
+    that repeat on 80% of pages (div-built footers).
+  - **Vague anchors are flagged.** It reports vague anchors ("read more", "continue reading",
+    "click here") and the pages reached only through them. A generic word that is the target's
+    own path word is not vague: "Go" naming the Go language on developers.cloudflare.com and
+    posthog.com was a first-draft false positive.
+  - **Repeated anchors are data, not findings.** Each page's anchor mix appears in the output, but
+    a repeated anchor is never flagged. On four real sites the most repeated anchors were template
+    calls to action, and Google does not penalise repeated internal anchors.
+  - **The score does not move.** The one finding is `low`, which the internal-links score never
+    charges. The report's Internal links panel shows the audit.
 
 ### Changed
 - **`check_version_sync.py` reads the README version badges.** The badge in `README.md` and

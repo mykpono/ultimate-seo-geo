@@ -8,7 +8,7 @@
 
 1. **Identify pillar pages** — Verify they receive the most internal links from cluster posts.
 2. **Find orphan pages** — Zero internal links pointing to them. Fix: add 1+ contextual link from a related page.
-3. **Audit anchor text** — Replace "click here"/"read more" with descriptive, keyword-rich anchors.
+3. **Audit anchor text** — Replace "click here"/"read more" with descriptive, keyword-rich anchors. Measure it with `python scripts/internal_links.py URL --graph site_graph.json`: it reads in-content links only (header, nav, footer, breadcrumb and links on 80% of pages are left out) and lists vague anchors and pages reached only through them. A generic word that is the target's own path word ("Go" → `/docs/go`) is not vague. It reports each page's anchor mix but never flags a repeated anchor: Google does not penalise repeated internal anchors, and on real sites the most repeated ones are template calls to action.
 4. **Check crawl depth** — Key pages within 3 clicks from homepage.
 
 ### Standards

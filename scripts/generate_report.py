@@ -774,7 +774,7 @@ def collect_data(
         ("redirects", "redirect_checker.py", [url]),
         ("llms_txt", "llms_txt_checker.py", [url]),
         ("broken_links", "broken_links.py", broken_args),
-        ("internal_links", "internal_links.py", [url, "--depth", "1", "--max-pages", "15"]),
+        ("internal_links", "internal_links.py", [url, "--depth", "1", "--max-pages", "15"] + (["--graph", graph_path] if graph_path else [])),
         ("pagespeed", "pagespeed.py", [url, "--strategy", "mobile"]),
         # New analysis scripts (supplementary — failures don't block report)
         ("entity", "entity_checker.py", [url]),
@@ -2082,6 +2082,25 @@ def _collect_issues(data: dict) -> list:
     return issues
 
 
+def _anchor_audit_panel(audit) -> str:
+    """The in-content anchor audit internal_links.py runs on the shared site graph."""
+    if not isinstance(audit, dict) or not audit:
+        return ""
+    if audit.get("status") != "measured":
+        return _subhead("Anchor audit") + _notice(_esc(audit.get("reason") or "Not measured."))
+    excluded = audit.get("excluded") or {}
+    vague_rows = [f'<tr><td>{_esc(v.get("anchor"))}</td><td class="url">{_clip(v.get("source", ""), 60)}</td>'
+                  f'<td class="url">{_clip(v.get("target", ""), 60)}</td></tr>' for v in (audit.get("vague_links") or [])[:10]]
+    return (
+        _subhead("Anchor audit (in-content links)")
+        + _kv([("Pages sampled", _esc(audit.get("pages_sampled"))),
+               ("In-content links", _esc(audit.get("content_links"))),
+               ("Chrome / repeating links left out", _esc(f'{excluded.get("chrome", 0)} / {excluded.get("boilerplate", 0)}')),
+               ("Vague anchors", _esc(audit.get("vague_links_count")))])
+        + (_table(["Anchor", "On page", "Links to"], vague_rows) if vague_rows else "")
+    )
+
+
 def _check_panels(data: dict) -> dict:
     """Build the detail body for every check, keyed like CHECK_LABELS."""
     sections = data["sections"]
@@ -2341,6 +2360,7 @@ def _check_panels(data: dict) -> dict:
              ("Avg links per page", _esc(distribution.get("avg", 0))),
              ("Pages found", _esc(il.get("unique_pages_found", 0)))])
         + (_subhead("Top anchor texts") + _table(["Anchor text", "Links", "Share of top anchor"], anchor_rows) if anchor_rows else "")
+        + _anchor_audit_panel(il.get("anchor_audit"))
     )
 
     lp = get("link_profile")

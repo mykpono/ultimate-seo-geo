@@ -9,13 +9,23 @@ It finds pages only by following links, so every page it knows about has at
 least one inbound link. It cannot detect orphan pages; link_profile.py compares
 the crawl against the sitemap for that.
 
+With --graph (a site_graph.py output) it also audits anchor text per
+destination page, from in-content links only, and flags vague anchors ("read
+more", "click here"). Header, nav, footer and breadcrumb links, and links
+repeating on 80% of pages, are left out: a navigation label repeated on every
+page is not an anchor problem. Each destination's anchor mix is reported, but a
+repeated anchor is never a finding: on real sites the most repeated anchors are
+template calls to action, and Google does not penalise repeated internal anchors.
+
 Usage:
     python internal_links.py https://example.com
     python internal_links.py https://example.com --depth 2 --json
+    python internal_links.py https://example.com --graph site_graph.json --json
 """
 
 import argparse
 import json
+import re
 import sys
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -385,6 +395,153 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
     return result
 
 
+# ---------------------------------------------------------------------------
+# Anchor audit (from a site_graph.py graph)
+# ---------------------------------------------------------------------------
+
+# Anchors that say nothing about the target. navigation_checker.py keeps the same
+# list for navigation labels; this one adds forms seen on real blog indexes.
+VAGUE_ANCHORS = frozenset({
+    "learn more", "click here", "read more", "here", "more", "link", "this", "see more", "view", "go",
+    "continue reading", "read full article", "find out more", "details", "more info", "click", "this page",
+    "view more", "keep reading", "read", "see details", "view details",
+})
+CHROME_REGIONS = frozenset({"nav", "header", "footer", "breadcrumb"})
+ANCHOR_MIN_PAGES = 5          # fewer fetched pages than this: not measured
+ANCHOR_LIST_LIMIT = 20
+
+
+def normalise_anchor(text: str) -> str:
+    """Lower case, punctuation and arrows dropped: "Read more »" and "read more" are one anchor."""
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\s']", " ", (text or "").lower())).strip()
+
+
+def _path_words(url: str) -> set:
+    return {w for w in re.split(r"[/\-_.]+", urlparse(url).path.lower()) if w}
+
+
+def is_vague(anchor: str, target: str) -> bool:
+    """A generic anchor, unless its words are the target's own path words.
+
+    "Go" linking to /docs/installation/go names the Go language; "Go" linking
+    to /pricing names nothing. Seen on developers.cloudflare.com and posthog.com.
+    """
+    if anchor not in VAGUE_ANCHORS:
+        return False
+    return not set(anchor.split()) <= _path_words(target)
+
+
+def anchor_audit(graph: dict) -> dict:
+    """Anchor text per destination, from in-content internal links in a site graph.
+
+    Each (linking page, destination, anchor) counts once, however often the page
+    repeats the link. A link is in-content when its region and container are not
+    page chrome and it is not one of the links repeating on 80% of pages
+    (navigation_checker.global_links), which also catches footers built from
+    plain divs. Empty anchors are counted but not judged: an image link's text is
+    its alt attribute, which the graph does not record.
+    """
+    import navigation_checker  # lazy: only --graph needs the site-structure modules
+
+    pages = [p for p in (graph.get("pages") or {}).values() if p.get("out_links") is not None]
+    base = {"pages_sampled": len(pages), "method": (
+        "in-content internal links from the site graph; header/nav/footer/breadcrumb links and links on "
+        f">= {navigation_checker.GLOBAL_SHARE:.0%} of pages excluded; each linking page counts once per destination and anchor")}
+    if len(pages) < ANCHOR_MIN_PAGES:
+        return {**base, "status": "not measured",
+                "reason": f"{len(pages)} fetched page(s) in the graph; the audit needs {ANCHOR_MIN_PAGES}"}
+
+    repeating = navigation_checker.global_links(pages)
+    boilerplate = {s["key"] or s["href"] for s in repeating["repeating_unlabelled"]}
+    excluded = {"chrome": 0, "boilerplate": 0, "self": 0}
+    empty = 0
+    seen = set()
+    by_dest: dict = defaultdict(lambda: {"sources": set(), "anchors": Counter(), "vague": []})
+    for page in pages:
+        source = page.get("key") or page.get("url")
+        for link in page.get("out_links") or []:
+            if not link.get("internal") or not link.get("key"):
+                continue
+            if link.get("region") in CHROME_REGIONS or link.get("container") in ("header", "footer"):
+                excluded["chrome"] += 1
+                continue
+            if link["key"] in boilerplate:
+                excluded["boilerplate"] += 1
+                continue
+            if link["key"] == source:
+                excluded["self"] += 1
+                continue
+            anchor = normalise_anchor(link.get("anchor"))
+            if not anchor:
+                empty += 1
+                continue
+            ident = (source, link["key"], anchor)
+            if ident in seen:
+                continue
+            seen.add(ident)
+            dest = by_dest[link["key"]]
+            dest["sources"].add(source)
+            dest["anchors"][anchor] += 1
+            if is_vague(anchor, link["href"]):
+                dest["vague"].append({"source": page.get("url") or source, "target": link["href"], "anchor": link.get("anchor")})
+
+    destinations, vague_links, only_vague = [], [], []
+    for key, d in by_dest.items():
+        total = sum(d["anchors"].values())
+        top, top_count = d["anchors"].most_common(1)[0]
+        entry = {
+            "url": key, "linking_pages": len(d["sources"]), "content_links": total,
+            "distinct_anchors": len(d["anchors"]), "top_anchor": top, "top_anchor_share": round(top_count / total, 2),
+            "vague_links": len(d["vague"]),
+        }
+        destinations.append(entry)
+        vague_links.extend(d["vague"])
+        if d["vague"] and len(d["vague"]) == total:
+            only_vague.append(entry)
+    destinations.sort(key=lambda e: (-e["linking_pages"], e["url"]))
+    only_vague.sort(key=lambda e: (-e["vague_links"], e["url"]))
+    return {
+        **base,
+        "status": "measured",
+        "content_links": len(seen),
+        "destinations_count": len(destinations),
+        "excluded": {**excluded, "empty_anchor": empty},
+        "vague_links_count": len(vague_links),
+        "vague_links": vague_links[:ANCHOR_LIST_LIMIT],
+        "only_vague": only_vague[:ANCHOR_LIST_LIMIT],
+        "destinations": destinations[:ANCHOR_LIST_LIMIT],
+    }
+
+
+def anchor_issues(audit: dict) -> list:
+    """Findings from anchor_audit. Low only: _internal_links_score never charges low or info."""
+    issues = []
+    if audit.get("status") != "measured":
+        return issues
+    n = audit["pages_sampled"]
+    if audit["vague_links_count"]:
+        examples = "; ".join(f"'{v['anchor']}' on {v['source']} -> {v['target']}" for v in audit["vague_links"][:3])
+        blind = audit["only_vague"]
+        issues.append({
+            "severity": "low",
+            "code": "internal_links.vague_anchors",
+            "finding": (f"{audit['vague_links_count']} in-content internal link(s) use anchors that name nothing "
+                        f"(\"read more\", \"click here\") across {n} sampled pages"
+                        + (f"; {len(blind)} page(s) are reached only through such anchors in content" if blind else "") + "."),
+            "evidence": examples,
+            "impact": ("Google reads anchor text to understand the page it points to; a vague anchor gives it nothing, "
+                       "and screen-reader users hear the same label for different pages."),
+            "fix": ("Rewrite each anchor to say what the target is (\"read the pricing guide\", not \"read more\"). "
+                    "On card lists, put the link on the card's title instead of a trailing \"Read more\"."),
+            "confidence": "Confirmed",
+            "falsifiability": "Wrong if the vague links carry aria-label or title text naming the target (the graph records visible text only).",
+            "leading_indicator": "vague_links_count in the next run.",
+            "urls": [e["url"] for e in blind[:10]],
+            "lane": "Auto",
+        })
+    return issues
+
+
 def main():
     parser = argparse.ArgumentParser(description="Analyze internal link structure")
     parser.add_argument("url", help="Website URL (usually homepage)")
@@ -392,10 +549,22 @@ def main():
                         help="Max crawl depth (default: 2)")
     parser.add_argument("--max-pages", "-m", type=int, default=50,
                         help="Max pages to crawl (default: 50)")
+    parser.add_argument("--graph", metavar="PATH",
+                        help="site_graph.py output: also audit anchor text per destination from in-content links")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()
+    graph = None
+    if args.graph:
+        import site_graph  # lazy: the plain crawl needs none of the site-structure modules
+        try:
+            graph = site_graph.load_graph(args.graph)
+        except (OSError, ValueError) as exc:
+            parser.error(f"--graph: {exc}")
     result = crawl_site(args.url, max_depth=args.depth, max_pages=args.max_pages)
+    if graph is not None:
+        result["anchor_audit"] = anchor_audit(graph)
+        result["issues"].extend(anchor_issues(result["anchor_audit"]))
 
     if args.json:
         # Trim for readability
@@ -459,6 +628,19 @@ def main():
         print(f"\n⚠️ Nofollow Internal Links ({len(result['nofollow_links'])}):")
         for link in result["nofollow_links"][:5]:
             print(f"  • {link['url']} (from {link['source']})")
+
+    audit = result.get("anchor_audit")
+    if audit:
+        if audit["status"] != "measured":
+            print(f"\nAnchor audit: not measured — {audit['reason']}")
+        else:
+            print(f"\nAnchor audit ({audit['pages_sampled']} pages, {audit['content_links']} in-content links; "
+                  f"excluded: {audit['excluded']}):")
+            print(f"  Vague anchors: {audit['vague_links_count']}")
+            for v in audit["vague_links"][:10]:
+                print(f"    '{v['anchor']}' on {v['source']} -> {v['target']}")
+            for d in audit["only_vague"][:10]:
+                print(f"  Only vague anchors reach {d['url']} ({d['vague_links']} link(s))")
 
     if result["issues"]:
         print(f"\nIssues:")
