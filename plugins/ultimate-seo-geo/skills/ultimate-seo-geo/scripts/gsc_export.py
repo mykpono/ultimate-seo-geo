@@ -12,16 +12,10 @@ This script connects with OAuth, lists verified properties, and either:
   (B) Merges a CSV you exported from GSC ("Page indexing" → Export) with fresh
       URL Inspection results for those URLs.
 
-Setup (one-time):
-  1) Google Cloud Console → APIs & Services → Enable "Google Search Console API".
-  2) OAuth consent screen (External or Internal) + add scope:
-     https://www.googleapis.com/auth/webmasters
-  3) Credentials → OAuth 2.0 Client ID → Desktop app → Download JSON.
-  4) Save as `gsc-client-secrets.json` in this repo root (gitignored) or pass
-     `--client-secrets /path/to/client_secret.json`
-
-Install optional deps:
-  pip install -r requirements-gsc.txt
+Sign in once (a browser opens; read-only access; no Google Cloud project needed):
+  python3 scripts/google_auth.py setup    # installs the Google libraries, first time only
+  python3 scripts/google_auth.py login
+--auth does the same login. --client-secrets signs in with your own OAuth client.
 
 Examples:
   python scripts/gsc_export.py --auth
@@ -53,10 +47,11 @@ except ImportError:
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
-DEFAULT_CLIENT = os.path.join(REPO_ROOT, "gsc-client-secrets.json")
-DEFAULT_TOKEN = os.path.join(REPO_ROOT, "gsc-oauth-token.json")
+sys.path.insert(0, SCRIPT_DIR)
 
-SCOPES = ["https://www.googleapis.com/auth/webmasters"]
+import google_auth  # noqa: E402  sign-in, token location and the skill's OAuth client
+
+SCOPES = google_auth.GSC_SCOPES  # read-only: this script never writes to Search Console
 SITES_BASE = "https://www.googleapis.com/webmasters/v3/sites"
 INSPECT_URL = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect"
 
@@ -67,51 +62,14 @@ def _json_print(data: Any) -> None:
     print(json.dumps(data, indent=2, ensure_ascii=False))
 
 
-def _load_oauth_modules():
+def get_credentials(token_path: str | None = None) -> Any:
+    """Saved credentials (see google_auth.load_credentials); exits with the next step if none."""
+    if token_path:
+        os.environ["GSC_CREDENTIALS"] = token_path
     try:
-        from google.auth.transport.requests import Request
-        from google.oauth2.credentials import Credentials
-        from google_auth_oauthlib.flow import InstalledAppFlow
-    except ImportError as e:
-        raise SystemExit(
-            "Missing Google auth libraries. Install: pip install -r requirements-gsc.txt\n"
-            f"Detail: {e}"
-        )
-    return Request, Credentials, InstalledAppFlow
-
-
-def get_credentials(
-    client_secrets: str,
-    token_path: str,
-    no_browser: bool,
-) -> Any:
-    """Return valid google.oauth2.credentials.Credentials."""
-    Request, Credentials, InstalledAppFlow = _load_oauth_modules()
-
-    creds = None
-    if os.path.isfile(token_path):
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-
-    if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-
-    if not creds or not creds.valid:
-        if not os.path.isfile(client_secrets):
-            raise SystemExit(
-                f"OAuth client secrets not found at {client_secrets}\n"
-                "Download a Desktop OAuth client JSON from Google Cloud Console and save it there, "
-                "or pass --client-secrets."
-            )
-        flow = InstalledAppFlow.from_client_secrets_file(client_secrets, SCOPES)
-        if no_browser:
-            creds = flow.run_console()
-        else:
-            creds = flow.run_local_server(port=0)
-        os.makedirs(os.path.dirname(token_path) or ".", exist_ok=True)
-        with open(token_path, "w", encoding="utf-8") as f:
-            f.write(creds.to_json())
-
-    return creds
+        return google_auth.load_credentials(SCOPES)[0]
+    except google_auth.AuthError as e:
+        raise SystemExit(str(e))
 
 
 def authorized_session(creds: Any):
@@ -285,23 +243,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--client-secrets",
-        default=DEFAULT_CLIENT,
-        help=f"OAuth client JSON (default: {DEFAULT_CLIENT})",
+        help="Sign in with your own Desktop-app OAuth client JSON instead of the skill's (--auth only).",
     )
     p.add_argument(
         "--token",
-        default=DEFAULT_TOKEN,
-        help=f"Saved OAuth token path (default: {DEFAULT_TOKEN})",
+        help="Saved OAuth token path (default: the one google_auth.py login saves).",
     )
     p.add_argument(
         "--no-browser",
         action="store_true",
-        help="OAuth without local browser (print URL for --auth only).",
+        help="Print the sign-in URL instead of opening a browser (--auth only).",
     )
     p.add_argument(
         "--auth",
         action="store_true",
-        help="Run OAuth flow and save token; no API calls.",
+        help="Sign in (same as google_auth.py login) and list your properties.",
     )
     p.add_argument(
         "--list-properties",
@@ -364,17 +320,13 @@ def main() -> None:
     args = build_parser().parse_args()
 
     if args.auth:
-        get_credentials(args.client_secrets, args.token, args.no_browser)
-        _json_print(
-            {
-                "ok": True,
-                "token_saved": args.token,
-                "next": "Run: python scripts/gsc_export.py --list-properties",
-            }
-        )
+        try:
+            _json_print(google_auth.login(args.client_secrets, args.no_browser, args.token))
+        except google_auth.AuthError as e:
+            raise SystemExit(str(e))
         return
 
-    creds = get_credentials(args.client_secrets, args.token, args.no_browser)
+    creds = get_credentials(args.token)
     session = authorized_session(creds)
 
     if args.list_properties:

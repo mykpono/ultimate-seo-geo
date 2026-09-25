@@ -34,7 +34,7 @@ TIER_DEFINITIONS = [
         "env_vars": ["GOOGLE_APPLICATION_CREDENTIALS", "GSC_CREDENTIALS"],
         "description": "Google Search Console Search Analytics + URL Inspection",
         "token_files": ["gsc-oauth-token.json"],
-        "scopes": ["https://www.googleapis.com/auth/webmasters"],
+        "scopes": ["https://www.googleapis.com/auth/webmasters.readonly"],
     },
     {
         "tier": 2,
@@ -109,6 +109,13 @@ def _check_oauth_token(env_var: str, token_filename: str | None) -> dict:
     if path and os.path.isfile(path):
         return {"available": True, "source": env_var, "path": path}
 
+    if env_var == "GSC_CREDENTIALS":
+        sys.path.insert(0, SCRIPT_DIR)
+        import google_auth  # stdlib-only at import
+        login_path = google_auth.token_path()
+        if os.path.isfile(login_path):
+            return {"available": True, "source": "google_auth.py login", "path": login_path}
+
     if token_filename:
         default_path = os.path.join(REPO_ROOT, token_filename)
         if os.path.isfile(default_path):
@@ -164,9 +171,9 @@ def detect_tier() -> dict:
             "requires": "Tier 1 — OAuth2 credentials",
             "env_var": "GOOGLE_APPLICATION_CREDENTIALS or GSC_CREDENTIALS",
             "setup": (
-                "Create a service account or OAuth client in GCP, enable the "
-                "Search Console API, then set GOOGLE_APPLICATION_CREDENTIALS "
-                "to the JSON path. Or run: python scripts/gsc_export.py --auth"
+                "Sign in once: python3 scripts/google_auth.py login "
+                "(browser, read-only, no Google Cloud project). A service account "
+                "via GOOGLE_APPLICATION_CREDENTIALS also works."
             ),
         })
 

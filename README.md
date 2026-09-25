@@ -244,6 +244,7 @@ ultimate-seo-geo/
 │   ├── content_brief.py      Content brief generation
 │   ├── ecommerce_schema.py   E-commerce schema validation
 │   ├── google_api_tier.py    Google API credential detection (Tier 0–2)
+│   ├── google_auth.py        Search Console sign-in: setup, login, status, logout
 │   ├── maps_checker.py       Advanced local SEO / GBP audit
 │   ├── pdf_charts.py         SVG chart generation for PDF reports
 │   ├── pdf_template.py       Professional A4 PDF template
@@ -339,6 +340,7 @@ In CI, `--format none --json seo-summary.json --fail-under 70 --fail-on critical
 | `ecommerce_schema.py` | E-commerce schema validation (Product, Offer, Return, Shipping) |
 | `maps_checker.py` | Advanced local SEO / GBP schema audit |
 | `google_api_tier.py` | Detect available Google API credentials (Tier 0–2) |
+| `google_auth.py` | Sign in to Search Console once per user (browser, read-only); every copy of the skill reads the token |
 | `crux_history.py` | CrUX History API — historical CWV data (Tier 0) |
 | `gsc_query.py` | Google Search Console queries (Tier 1, OAuth) |
 | `link_opportunities.py` | Pages that name a target's topic but do not link to it: the sentence and the anchor |

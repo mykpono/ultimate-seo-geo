@@ -194,6 +194,11 @@ python scripts/preferred_sources_checker.py https://example.com
 # Page indexing week over week, from two GSC exports (the report is not in the API)
 python scripts/index_coverage_diff.py last-week.zip this-week.zip --shipped shipped.txt --json
 
+# Search Console sign-in, once per user (browser, read-only; all GSC scripts read the token)
+python3 scripts/google_auth.py setup     # first time: installs the Google libraries in the skill's venv
+python3 scripts/google_auth.py login
+python3 scripts/google_auth.py status
+
 # Every internal link that redirects, followed hop by hop, ranked by linking pages
 python scripts/redirect_checker.py --graph site_graph.json --json
 
