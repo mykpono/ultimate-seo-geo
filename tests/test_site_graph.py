@@ -461,3 +461,29 @@ def test_fetch_url_refuses_unsafe_targets_without_raising(url):
     res = site_graph.fetch_url(url, timeout=1)
     assert res["html"] == "" and res["status"] is None
     assert "safety" in (res["error"] or "")
+
+
+def test_relative_links_resolve_against_the_url_the_fetch_ended_on():
+    """smashingmagazine.com: a crawl started at the apex lands on www; its relative links live on www."""
+    html = _page('<a href="/articles/">Articles</a><link rel="canonical" href="/guide/">')
+    page = site_graph.extract_page(html, "https://ex.com/guide/", "ex.com", base_url="https://www.ex.com/guide/")
+    assert page["out_links"][0]["href"] == "https://www.ex.com/articles/"
+    assert page["canonical"] == "https://www.ex.com/guide/"
+    assert page["url"] == "https://ex.com/guide/"  # the page is still recorded under the URL the crawl asked for
+    assert site_graph.extract_page(html, "https://ex.com/guide/", "ex.com")["out_links"][0]["href"] == "https://ex.com/articles/"
+
+
+def test_a_crawl_that_lands_on_www_records_the_pages_relative_links_on_www(monkeypatch):
+    """smashingmagazine.com started at the apex: every page 301s to www and links relatively."""
+    def fetch(url, timeout=10):
+        if url.endswith("/robots.txt") or "sitemap" in url:
+            return {"status": 404, "final_url": url, "html": "", "headers": {}, "error": "HTTP 404"}
+        final = url.replace("https://ex.com", "https://www.ex.com")
+        return {"status": 200, "final_url": final, "html": _page('<a href="/articles/">A</a>'),
+                "headers": {"content-type": "text/html"}, "error": None}
+    monkeypatch.setattr(site_graph, "fetch_url", fetch)
+    c = site_graph.crawl("https://ex.com/", max_pages=5, max_depth=1)
+    home = c["pages"][site_graph.page_key("https://ex.com/")]
+    assert home["out_links"][0]["href"] == "https://www.ex.com/articles/"
+    assert site_graph.page_key("https://www.ex.com/articles/") in c["pages"]
+    assert not any(k.startswith("https://ex.com/articles") for k in c["pages"])

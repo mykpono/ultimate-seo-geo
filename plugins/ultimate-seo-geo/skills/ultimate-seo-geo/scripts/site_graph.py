@@ -490,8 +490,17 @@ def _main_text(soup) -> str:
     return root.get_text(separator=" ", strip=True)
 
 
-def extract_page(html: str, url: str, site_host: str) -> dict:
-    """Structural facts about one fetched page, links annotated by region."""
+def extract_page(html: str, url: str, site_host: str, base_url: str | None = None) -> dict:
+    """Structural facts about one fetched page, links annotated by region.
+
+    Relative links and the canonical resolve against base_url, the URL the
+    fetch ended on after redirects (the browser's base), not the URL asked for.
+    A crawl started at https://smashingmagazine.com/ lands on https://www. and
+    its relative links live there; resolving them against the apex put every
+    link on a host that redirects, and gave the graph a www and an apex copy of
+    each page.
+    """
+    base = base_url or url
     soup = BeautifulSoup(html, "html.parser")
     title_tag = soup.find("title")
     h1_tag = soup.find("h1")
@@ -505,7 +514,7 @@ def extract_page(html: str, url: str, site_host: str) -> dict:
         href = (a.get("href") or "").strip()
         if not is_crawlable_href(href):
             continue
-        full = urljoin(url, href)
+        full = urljoin(base, href)
         parsed = urlparse(full)
         if parsed.scheme not in ("http", "https"):
             continue
@@ -537,7 +546,7 @@ def extract_page(html: str, url: str, site_host: str) -> dict:
         "title": title_tag.get_text(strip=True)[:300] if title_tag else None,
         "h1": h1_tag.get_text(" ", strip=True)[:300] if h1_tag else None,
         "h1_count": len(soup.find_all("h1")),
-        "canonical": urljoin(url, canonical_tag["href"].strip()) if canonical_tag and canonical_tag.get("href") else None,
+        "canonical": urljoin(base, canonical_tag["href"].strip()) if canonical_tag and canonical_tag.get("href") else None,
         "robots_meta": (robots_tag.get("content") or "").strip().lower() if robots_tag else None,
         "lang": (html_tag.get("lang") or "").strip().lower() if html_tag and html_tag.get("lang") else None,
         "jsonld_types": jsonld_types,
@@ -602,7 +611,7 @@ def crawl(site_url: str, max_pages: int = 100, max_depth: int = 3, timeout: int 
             if res["error"] or not res["html"]:
                 failed.append({"url": url, "status": res["status"], "error": res["error"] or "empty body", "depth": depth})
                 continue
-            page = extract_page(res["html"], url, site_host)
+            page = extract_page(res["html"], url, site_host, base_url=res["final_url"])
             page["status"] = res["status"]
             page["final_url"] = res["final_url"]
             page["redirected"] = page_key(res["final_url"]) != key
