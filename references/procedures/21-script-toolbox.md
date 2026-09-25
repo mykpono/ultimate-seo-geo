@@ -191,6 +191,9 @@ python scripts/preferred_sources_checker.py https://example.com
 # Page indexing week over week, from two GSC exports (the report is not in the API)
 python scripts/index_coverage_diff.py last-week.zip this-week.zip --shipped shipped.txt --json
 
+# Demo requests on two rulers: GA4 events vs clean CRM people (CRM export, no API)
+python scripts/conversion_reconcile.py --crm submissions.csv --ga4 ga4-monthly.csv --production-host example.com --compare 2025-06:2025-08,2026-06:2026-08 --json
+
 # Search Console sign-in, once per user (browser, read-only; all GSC scripts read the token)
 python3 scripts/google_auth.py setup     # first time: installs the Google libraries in the skill's venv
 python3 scripts/google_auth.py login
