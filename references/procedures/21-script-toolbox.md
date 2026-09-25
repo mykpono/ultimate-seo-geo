@@ -191,6 +191,9 @@ python scripts/preferred_sources_checker.py https://example.com
 # Page indexing week over week, from two GSC exports (the report is not in the API)
 python scripts/index_coverage_diff.py last-week.zip this-week.zip --shipped shipped.txt --json
 
+# GA4 conversion event audit before quoting it: test hosts, bursts, repeats, tracking steps (Tier 2)
+python scripts/ga4_audit.py --property 123456789 --event generate_lead --production-host example.com --save-monthly ga4-monthly.csv --json
+
 # Demo requests on two rulers: GA4 events vs clean CRM people (CRM export, no API)
 python scripts/conversion_reconcile.py --crm submissions.csv --ga4 ga4-monthly.csv --production-host example.com --compare 2025-06:2025-08,2026-06:2026-08 --json
 
