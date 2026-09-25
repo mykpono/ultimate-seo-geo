@@ -17,6 +17,15 @@ Usage:
     python scripts/gsc_query.py https://example.com/ --query "keyword" --json
     python scripts/gsc_query.py https://example.com/ --top-pages 10 --json
     python scripts/gsc_query.py https://example.com/ --dimension country --json
+    python scripts/gsc_query.py sc-domain:example.com --top-pages 10 --keep-fragments --json
+
+Page rows are merged by page before they are returned. Search Console reports
+jump links and sitelinks as their own URLs (/guide#faq, /guide#pricing), so a
+long post with a table of contents is split across many rows and any one row
+undercounts the page. Rows whose URLs differ only by fragment, query string,
+trailing slash or host case are summed (gsc_insights.page_key), position is
+re-weighted by impressions and CTR recomputed. --keep-fragments returns the
+raw rows instead.
 """
 
 from __future__ import annotations
@@ -29,6 +38,18 @@ from datetime import date, timedelta
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
+sys.path.insert(0, SCRIPT_DIR)
+
+from gsc_insights import page_key  # noqa: E402  stdlib-only; the one page-identity rule
+
+PAGE_SUM_LIMIT = (
+    "Page rows merged across fragment URLs are an upper bound for the page: when one result "
+    "shows both /guide and /guide#faq, Search Console counts an impression at each URL."
+)
+PROPERTY_LIMIT = (
+    "Figures from a domain property (sc-domain:) and a URL-prefix property never add; "
+    "quote the property with every number."
+)
 
 SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
 GSC_API_BASE = "https://www.googleapis.com/webmasters/v3"
@@ -157,6 +178,50 @@ def format_rows(raw_response: dict, dimensions: list[str]) -> list[dict]:
     return result
 
 
+def property_type(site_url: str) -> str:
+    """'domain' for sc-domain: properties, 'url_prefix' otherwise."""
+    return "domain" if str(site_url).strip().lower().startswith("sc-domain:") else "url_prefix"
+
+
+def merge_page_rows(rows: list[dict], dimensions: list[str]) -> tuple[list[dict], dict]:
+    """Sum rows whose page differs only by fragment, query, trailing slash or host case.
+
+    Other dimensions stay part of the key, so query x page rows merge per query.
+    Returns (rows, stats); a merged row carries "merged_urls" with every spelling
+    it absorbed, and keeps the shortest spelling as "page".
+    """
+    stats = {"rows_in": len(rows), "rows_out": len(rows), "merged_rows": 0}
+    if "page" not in dimensions:
+        return rows, stats
+    others = [d for d in dimensions if d != "page"]
+    slots: dict = {}
+    for row in rows:
+        key = tuple(str(row.get(d, "")) for d in others) + (page_key(row.get("page", "")),)
+        slot = slots.get(key)
+        if slot is None:
+            slot = slots[key] = {**row, "clicks": 0, "impressions": 0, "_pos": 0.0, "_urls": []}
+        impressions = row.get("impressions", 0) or 0
+        slot["clicks"] += row.get("clicks", 0) or 0
+        slot["impressions"] += impressions
+        slot["_pos"] += (row.get("position", 0) or 0) * impressions
+        slot["_urls"].append(row.get("page", ""))
+        if len(str(row.get("page", ""))) < len(str(slot["page"])):
+            slot["page"] = row.get("page", "")
+    out = []
+    for slot in slots.values():
+        urls = slot.pop("_urls")
+        pos = slot.pop("_pos")
+        impressions = slot["impressions"]
+        slot["ctr"] = round(slot["clicks"] / impressions, 4) if impressions else 0.0
+        slot["position"] = round(pos / impressions, 1) if impressions else 0.0
+        if len(urls) > 1:
+            slot["merged_urls"] = urls
+        out.append(slot)
+    stats["rows_out"] = len(out)
+    stats["merged_rows"] = len(rows) - len(out)
+    return out, stats
+
+
 def print_human(result: dict) -> None:
     """Print GSC query results in a human-readable table."""
     if "error" in result:
@@ -166,6 +231,10 @@ def print_human(result: dict) -> None:
     print(f"Search Console — {result['site_url']}")
     print(f"Date range: {result['start_date']} to {result['end_date']}")
     print(f"Dimensions: {', '.join(result['dimensions'])}")
+    norm = result.get("page_normalization") or {}
+    if norm.get("applied"):
+        print(f"Page rows merged: {norm['rows_in']} rows -> {norm['rows_out']} pages "
+              f"({norm['merged_rows']} fragment/variant rows folded in)")
     print("=" * 70)
 
     rows = result.get("rows", [])
@@ -245,6 +314,10 @@ def main():
         help="Max rows to return (default: 1000, API max: 25000)",
     )
     parser.add_argument(
+        "--keep-fragments", action="store_true",
+        help="Return raw page rows; do not merge /page#fragment and other spellings of one page",
+    )
+    parser.add_argument(
         "--json", "-j", action="store_true",
         help="Output as JSON",
     )
@@ -259,13 +332,18 @@ def main():
 
     dimension = args.dimension
     row_limit = args.limit
+    top_n = None
 
     if args.top_pages:
         dimension = "page"
-        row_limit = args.top_pages
+        top_n = args.top_pages
     elif args.top_queries:
         dimension = "query"
-        row_limit = args.top_queries
+        top_n = args.top_queries
+    if top_n and dimension == "query":
+        row_limit = top_n
+    # --top-pages fetches --limit rows, merges, then keeps N: the fragment rows of a
+    # top page can sit far below it in the API's click order.
 
     creds = _load_credentials()
     service = _build_service(creds)
@@ -288,13 +366,26 @@ def main():
         sys.exit(1)
 
     rows = format_rows(raw, [dimension])
+    fetched = len(rows)
+    limits = [PROPERTY_LIMIT]
+    normalization = {"applied": False}
+    if dimension == "page" and not args.keep_fragments:
+        rows, stats = merge_page_rows(rows, [dimension])
+        normalization = {"applied": True, **stats}
+        limits.insert(0, PAGE_SUM_LIMIT)
+    if top_n:
+        rows = sorted(rows, key=lambda r: r.get("impressions", 0), reverse=True)[:top_n]
 
     result = {
         "site_url": args.site_url,
+        "property_type": property_type(args.site_url),
         "start_date": start.isoformat(),
         "end_date": end.isoformat(),
         "dimensions": [dimension],
         "row_count": len(rows),
+        "truncated": fetched >= min(row_limit, 25000),
+        "page_normalization": normalization,
+        "limits": limits,
         "rows": rows,
     }
 
