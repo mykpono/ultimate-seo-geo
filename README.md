@@ -5,6 +5,10 @@
 [![Version](https://img.shields.io/badge/version-1.22.1-green.svg)](CHANGELOG.md)
 [![LLM-Agnostic](https://img.shields.io/badge/LLM--Agnostic-7%2B%20platforms-purple.svg)](#platform-compatibility)
 
+<!-- yarkr:badges:start -->
+[![Indexed on Yarkr](https://api.yarkr.com/functions/v1/api/api/v1/badges/repos/mykpono/ultimate-seo-geo/version.svg)](https://yarkr.com/arks/mykpono/ultimate-seo-geo)
+<!-- yarkr:badges:end -->
+
 The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML, Excel, and PDF reports.
 
 Works with **any AGENTS.md-compatible tool**: Claude Code, Cursor, OpenAI Codex, Gemini CLI, GitHub Copilot, Windsurf, Cline, Aider, Devin, and more.
@@ -182,6 +186,38 @@ The Claude desktop app does not load skills from `~/.claude/skills/`. Instead:
 3. Upload `SKILL.md` as a file, or paste its contents into custom instructions
 
 ---
+
+<!-- yarkr:install:start -->
+## Install with Yarkr
+
+This repo is indexed on [Yarkr](https://yarkr.com/arks/mykpono/ultimate-seo-geo) as the ark [mykpono/ultimate-seo-geo](https://yarkr.com/arks/mykpono/ultimate-seo-geo), so its skills install into Claude Code, Codex, Cursor and other agent harnesses with one command.
+
+### CLI
+
+Install the whole ark, which Yarkr keeps equal to this repo:
+
+```bash
+npx yarkr-cli sync mykpono/ultimate-seo-geo
+```
+
+Or add individual skills:
+
+```bash
+npx yarkr-cli add skill:mykpono/ultimate-seo-geo/ultimate-seo-geo
+```
+
+No Node.js? `curl -fsSL https://yarkr.com/install.sh | sh` (macOS, Linux) or `irm https://yarkr.com/install.ps1 | iex` (Windows PowerShell) installs `yarkr` as a standalone binary; then type `yarkr` in place of `npx yarkr-cli`.
+
+### MCP
+
+Connect your agent to the ark over MCP:
+
+```bash
+npx yarkr-cli mcp add mykpono/ultimate-seo-geo
+```
+
+Or point any MCP client at `https://api.yarkr.com/functions/v1/api/mcp/o/mykpono/ultimate-seo-geo`.
+<!-- yarkr:install:end -->
 
 ## Usage Examples
 
