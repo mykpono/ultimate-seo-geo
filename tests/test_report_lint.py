@@ -467,3 +467,16 @@ def test_thresholds_click_depth_and_cannot_compute_are_not_traffic_claims(summar
 def test_forecasts_need_a_basis_on_the_line(summary, line, flagged):
     warned = "unsourced-projection" in rules(rl.lint(_with_line(summary, line), summary=summary), "warnings")
     assert warned is flagged
+
+
+def test_a_health_score_taken_from_a_quick_run_is_an_error(summary):
+    quick = dict(summary, scope="quick")
+    assert rules(rl.lint(render(summary), summary=quick)) == ["quick-score"]
+
+
+def test_not_scored_on_a_quick_run_is_clean(summary):
+    head = ("## SEO Health Score: not scored\nReason: --quick run (homepage checks only)\n\n"
+            "| Category | Status |\n|---|---|\n| Technical SEO | Needs work |")
+    text = re.sub(r"## SEO Health Score:.*?(?=\n\n## Executive)", head, render(summary), flags=re.S)
+    result = rl.lint(text, summary=dict(summary, scope="quick"))
+    assert (rules(result), rules(result, "warnings")) == ([], [])

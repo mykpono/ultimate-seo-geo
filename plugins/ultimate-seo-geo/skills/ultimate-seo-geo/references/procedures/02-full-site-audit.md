@@ -2,21 +2,13 @@
 
 ## 2. Full Site Audit
 
+**This file is the whole Mode 1 playbook.** A standard audit needs no other procedure or reference file: the finding fields, the score rules, the report template and the pre-delivery checks are all below. Open `references/procedures/21-script-toolbox.md` or `references/audit-script-matrix.md` only to run one script on its own, `references/procedures/19-quality-gates-hard-rules.md` only for a rule's full wording, and `references/industry-templates.md` only when the business type changes what to prioritise.
+
 ### Process
 
-**In a bash-capable environment**: Run `python scripts/generate_report.py https://example.com --output report.html --json summary.json` first (the summary is the score source for the written report) — it runs the **bundled analysis pipeline** in `generate_report.py` (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap discovery, local signals, IndexNow probe, on-page parse, readability, article SEO, JSON-LD validation, image alt coverage, and — from one shared 80-page crawl — page-type coverage, navigation and site architecture, shown but not weighted; § 26). Then use `finding_verifier.py` to deduplicate at the end. For any single dimension, run the matching script from **`references/audit-script-matrix.md`** or **§21**.
+**In a bash-capable environment**: Run `python scripts/generate_report.py https://example.com --output report.html --json summary.json --digest digest.md` first. **Read `digest.md`, not `summary.json`**: it carries the score, group scores, every non-info finding (ID, severity, lane, fix), the action plan and the open questions in about a tenth of the tokens. Open `summary.json` only to copy one finding's `evidence`, `impact` or `falsifiability` fields by its ID; it stays the score source that `report_lint.py` checks. The run covers the **bundled analysis pipeline** in `generate_report.py` (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap discovery, local signals, IndexNow probe, on-page parse, readability, article SEO, JSON-LD validation, image alt coverage, and — from one shared 80-page crawl — page-type coverage, navigation and site architecture, shown but not weighted; § 26). Then use `finding_verifier.py` to deduplicate at the end. For any single dimension, run the matching script from **`references/audit-script-matrix.md`** or **§21**.
 
-**Evidence Integrity — do not state the following unless the corresponding data source ran or was provided:**
-
-| Claim | Only state if |
-|---|---|
-| LCP / INP / CLS / performance score | `pagespeed.py` ran successfully, or user pasted PageSpeed Insights / CrUX output |
-| Backlink count or referring domains | `link_profile.py` ran and returned data |
-| Organic traffic or impression numbers | GSC / GA4 access confirmed and data retrieved |
-| Health Score /100 | Internal Mode + `generate_report.py` measured at least 5 weighted checks |
-| Thin content finding | `readability.py` + `duplicate_content.py` both ran |
-| Schema errors or validation status | `validate_schema.py` ran against the page |
-| Schema "not found" on a CMS site | Confirmed via Rich Results Test or browser JS console — `web_fetch`/`curl`/raw HTML cannot detect JS-injected schema (Yoast, RankMath, AIOSEO inject via client-side JS) |
+**Evidence Integrity** — the table in `SKILL.md` (Global guardrails) applies in full. Two more rows for audits: a **thin content** finding needs `readability.py` and `duplicate_content.py` both to have run, and **schema "not found" on a CMS site** needs the Rich Results Test or a browser check, because Yoast, RankMath and AIOSEO inject JSON-LD with client-side JS that raw HTML cannot show.
 
 **When data is absent:** replace the claim with `[metric] not measured — run [script] for actual data` or ask the user to provide it. If `pagespeed.py` failed, lacks an API key, or the environment blocks googleapis.com, say **performance data unavailable** and give checklist-level guidance (§ 4, `references/technical-checklist.md`) or ask the user to run PSI / WebPageTest manually.
 
@@ -69,7 +61,7 @@ For the on-page element checklist (title tags, meta descriptions, H1, URLs, cano
 
 ### Thinking Framework
 
-Before assembling recommendations, apply the **PERCEIVE → ANALYZE → VALIDATE → ACT** framework from `references/thinking-framework.md`. This ensures every finding traces to a first-principle observation, maps its dependencies, includes a falsifiability check, and names a leading indicator. For Critical and High findings, all four framework fields are required. For Medium findings, Falsifiability and Leading Indicator are sufficient.
+Apply **PERCEIVE → ANALYZE → VALIDATE → ACT**: observe the raw signal before concluding, trace each finding to that observation, map what it blocks or depends on, state what would prove it wrong, and name the metric to watch after the fix. The fields this produces are in the Finding Format below: all four for Critical and High findings, Falsifiability and Leading Indicator for Medium. `references/thinking-framework.md` has a worked example; it is not needed to run an audit.
 
 ### Severity Scale
 
@@ -161,6 +153,21 @@ For a 3-finding excerpt showing the output format, see `references/audit-output-
 **Client report.** When the audit is delivered to a company rather than answered in chat, the Markdown report above is the written form; the deliverable is one `report.html` (summary, audit, strategy, plan and a folded appendix) rendered by `scripts/render_report.py` from a report source that extends the `generate_report.py --json` summary with findings, recommendations, coverage, prompts and page cards. Contract, fields and the coverage / automation-lane rules: `references/report-template/report-template.md`; lint the source with `scripts/report_data_lint.py`.
 
 **Lint before delivering.** Save the report and run `python scripts/report_lint.py report.md --summary summary.json` (drop `--summary` when `generate_report.py` did not run). It checks the title and metadata, the Health Score against the summary, the required sections, every finding's fields, severity and section, the single `Next action:` line, and that no Core Web Vitals or backlink numbers appear for checks that never ran. It warns about click, impression, session and CTR figures when no Search Console data reached the summary, and about forecasts ("+20% traffic") with no basis on the line. **A number the data cannot support is written as `cannot compute from this data`, with what would supply it** — never estimated. Fix every error; each warning names what it could not verify.
+
+### Before delivering: judgment checks
+
+`report_lint.py` checks the score, the required sections, each finding's fields and unsupported numbers. It cannot judge these; check each, and revise before delivering (full wording: `references/procedures/19-quality-gates-hard-rules.md`):
+
+1. Every Critical and High finding has Evidence from script output or an observed page; otherwise downgrade it to Medium.
+2. No duplicates: run `finding_verifier.py` when findings came from more than one source.
+3. Scope: a scored audit only for a site the user owns; a competitor's site is labelled "External Observation Only" and not scored.
+4. Every fix names the page, element, file or template to change.
+5. No authority-claiming YMYL schema (MedicalWebPage, LegalService, FinancialProduct and similar) without verified credentials.
+6. No 10+ page changes with no ranking effect (removing `keywords` meta, cosmetic HTML).
+7. Never recommend removing valid schema, FAQPage markup or FAQ content because a rich result was retired; prune only on quality grounds.
+8. No tactic whose stated purpose is to manipulate AI answers (placed citations, seeded listicles, coordinated posts), and no text aimed at AI that visitors cannot see.
+9. High-Risk deliverables (robots.txt, redirects, noindex, canonicals, hreflang) are described, not output, until the user confirms.
+10. The Assumptions Audit section names what the audit relies on.
 
 ### Mode 2 Plan Entry Format
 

@@ -289,6 +289,12 @@ class Linter:
             return
         summary = self.summary
         measured = summary.get("measured_categories") or 0
+        if summary.get("scope") == "quick":
+            # A --quick run skips the crawls, PageSpeed and backlinks: its number is a snapshot.
+            if self.score != "not scored":
+                self.error("quick-score", heading_line, "The summary is a --quick run, which produces no Health "
+                                                        "Score; write \"not scored\" or run the full report.")
+            return
         if self.score == "not scored":
             if measured >= MIN_MEASURED:
                 self.warn("score-available", heading_line, f"The summary measured {measured} weighted checks and "

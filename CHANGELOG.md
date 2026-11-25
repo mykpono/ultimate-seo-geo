@@ -1,5 +1,49 @@
 # Changelog
 
+## [1.23.0] - 2026-11-25
+
+A full audit costs far fewer tokens. Before this release a Mode 1 audit read six instruction files
+(about 89 KB) and then a 30–50 KB `summary.json`, so roughly 30k tokens went in before any analysis
+started. Minor per D-020: three new capabilities (`--digest`, `--quick`, `brief.py`) and a restructured audit path; the score,
+findings and summary JSON are unchanged.
+
+### Added
+- **`generate_report.py --digest PATH`** writes a short Markdown digest of the summary: Health Score
+  (or "not scored" below 5 measured checks), group scores, counts, one line per non-info finding
+  (ID, severity, lane, kind, fix, traffic at stake), info findings by ID, the action plan by lane,
+  open questions, and the change since `--previous`. It is built from the summary, never re-scored.
+  On two real audits it was 5.3 KB against a 43.8 KB summary and 3.8 KB against 30.4 KB.
+  `--digest-max-findings N` (default 15) caps the full lines and lists the rest by ID, so nothing is
+  dropped silently. `--digest -` prints to stdout with progress on stderr. Site text is flattened to
+  one line and cut at 240 characters, so a page title cannot add headings or lines to the digest.
+- **`generate_report.py --quick`** runs only the checks that read the homepage or a site file
+  (robots.txt, headers, sitemap, schema, on-page, entity, AI access): no crawl, PageSpeed or
+  backlink sample. With no other output named it prints the digest, so `generate_report.py URL
+  --quick` is a one-command snapshot. Its number is labelled "Quick check … NOT a Health Score"
+  everywhere: the summary carries `"scope": "quick"` and a `skipped` list, the ten skipped checks
+  become one open question (`Q-quick`) instead of ten, no HTML/XLSX/PDF is written (their masthead
+  says "Health Score"), `--fail-under` and `--crawl-deep` are refused, and `report_lint.py` errors
+  (`quick-score`) on a report that gives a `/100` from a quick summary.
+- **`scripts/brief.py`** runs any one audit script, saves its full output to a file, and prints a
+  short view: lists cut to 8 items, strings to 300 characters, maps keyed by URL or path cut like
+  lists, deep nesting folded. Every cut says how much it left out, and the script's exit code
+  passes through. Only scripts in `scripts/` can be run, by file name. On a live 30-page crawl,
+  `site_graph.py --json` printed 3.4 MB and its short view 26 KB; `internal_links.py` went from
+  10.9 KB to 5.6 KB and `broken_links.py` from 8.7 KB to 4.8 KB. Most other scripts already print
+  under 4 KB and pass through almost unchanged.
+
+### Changed
+- **One file for a full audit.** `references/procedures/02-full-site-audit.md` is now the whole
+  Mode 1 playbook. It runs `generate_report.py` with `--digest`, reads the digest first, and ends
+  with the ten judgment checks from § 19 that `report_lint.py` cannot make. The script toolbox
+  (§ 21), the script matrix, § 19 and the thinking framework are opened only for a script run on
+  its own or a rule's full wording. Instructions read for an audit drop from about 89 KB to about
+  33 KB (`SKILL.md` plus § 2).
+- **`SKILL.md` is shorter (about 20 KB to 14 KB).** Its two routing tables are one table, the mode
+  decision tree is a paragraph, and the procedure index is a single line. `SKILL.md` loads on every
+  use of the skill, so this saving applies to every task, not only audits.
+- `AGENTS.md` and § 21 give the audit command with `--digest`.
+
 ## [1.22.1] - 2026-10-01
 
 The skill's files no longer name client or personal projects. Patch per D-020: wording, test data
