@@ -1,0 +1,68 @@
+# Weekly SEO monitoring: audit the live site, compare with last week's run, and open an
+# issue when the gate fails. Copy to .github/workflows/seo-monitor.yml and set SITE_URL.
+name: SEO monitor
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'   # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      # Last week's summary, if any. The first run has none and audits without a comparison.
+      - name: Restore the previous summary
+        uses: actions/cache/restore@v4
+        with:
+          path: previous/
+          key: seo-summary-${{ github.run_id }}
+          restore-keys: seo-summary-
+
+      - name: Audit the live site
+        id: seo
+        uses: mykpono/ultimate-seo-geo@v1.23.0
+        with:
+          url: https://www.example.com/   # SITE_URL
+          previous: previous/summary.json
+          fail-on: critical
+          fail-under: 70
+          polite: true                    # one request at a time: kinder to production
+          report: true
+
+      - name: Store this summary for next week
+        if: always() && steps.seo.outputs.summary-path != ''
+        shell: bash
+        env:
+          SUMMARY: ${{ steps.seo.outputs.summary-path }}
+        run: mkdir -p previous && cp "$SUMMARY" previous/summary.json
+
+      - name: Save it
+        if: always() && steps.seo.outputs.summary-path != ''
+        uses: actions/cache/save@v4
+        with:
+          path: previous/
+          key: seo-summary-${{ github.run_id }}
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-report-${{ github.run_number }}
+          path: seo-report/
+
+      - name: Open an issue when the gate fails
+        if: failure() && steps.seo.outputs.result == 'fail'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIGEST: ${{ steps.seo.outputs.digest-path }}
+          SCORE: ${{ steps.seo.outputs.score }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          { echo "The weekly SEO audit failed its gate (score: $SCORE). Run: $RUN_URL"; echo; cat "$DIGEST"; } > issue.md
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "SEO monitor: gate failed ($SCORE)" --body-file issue.md

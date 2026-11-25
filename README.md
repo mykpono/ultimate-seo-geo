@@ -202,6 +202,62 @@ The Claude desktop app does not load skills from `~/.claude/skills/`. Instead:
 
 ---
 
+## What an Audit Returns
+
+The audit script also runs without an agent. A quick check of the homepage takes a few seconds and prints the digest that the agent reads first:
+
+```bash
+python3 scripts/generate_report.py https://example.com --quick
+```
+
+Excerpt of the output for example.com (IANA's reserved example domain), 2026-11-25:
+
+```
+Quick check: 58/100 from 13 homepage checks. This is NOT a Health Score: never report it as one.
+
+## Groups
+- Technical SEO: 56 · Needs work · 39.1% of score
+- On-page SEO: 43 · Gap · 21.7% of score
+- AI search readiness (GEO): 73 · Needs work · 18.8% of score
+
+## Findings
+Counts: critical 6, high 2, medium 6, low 0, info 4
+- F06 [critical · Human · defect] entity: No Organization/Person entity found in JSON-LD. Fix: Add Organization or Person schema …
+- F07 [high · Assisted · defect] canonical: No canonical URL in HTML or HTTP Link header. Fix: Add <link rel="canonical" …>
+- F08 [high · Assisted · defect] sitemap: No Sitemap: lines in robots.txt and no fallback sitemap.xml …
+```
+
+Each finding carries a severity, a lane (Auto: safe to apply without sign-off; Assisted: applied after approval; Human or Decision: needs a person's facts or choice) and the fix. The full audit drops `--quick`, crawls the site, and gives a Health Score with an HTML report.
+
+## GitHub Action and Scheduled Monitoring
+
+The repository is also a GitHub Action. It runs the audit, writes the digest to the job summary, prints findings as annotations, and fails the build on a score threshold or on critical findings:
+
+```yaml
+- uses: mykpono/ultimate-seo-geo@v1.23.0
+  with:
+    url: https://staging.example.com/
+    fail-on: critical      # or warning
+    fail-under: 70         # optional Health Score threshold
+```
+
+| Input | What it does |
+|---|---|
+| `url` | Page or site to audit (required) |
+| `fail-under` / `fail-on` | Gate on the Health Score, or on findings at or above `critical` or `warning` |
+| `inconclusive` | `warn` (default) or `fail` when fewer than 5 checks could be measured or the site answered HTTP 429 |
+| `quick` | Homepage checks only; its number is not a Health Score, so it cannot be used with `fail-under` |
+| `polite`, `delay` | For sites that rate-limit: one request at a time, with a crawl delay |
+| `previous` | Last run's `summary.json`; the digest then shows what changed |
+| `report` | Also write `report.html` |
+
+Outputs: `score`, `result` (pass, fail, inconclusive, not set), `summary-path`, `digest-path`, `report-path`, `exit-code`. Two ready-to-copy workflows:
+
+- [`examples/github-actions/seo-gate.yml`](examples/github-actions/seo-gate.yml): fail a pull request when the staging site gains critical findings.
+- [`examples/github-actions/seo-monitor.yml`](examples/github-actions/seo-monitor.yml): a weekly audit of the live site that compares with last week's summary, keeps the HTML report as an artifact, and opens an issue when the gate fails.
+
+---
+
 ## Architecture
 
 ```

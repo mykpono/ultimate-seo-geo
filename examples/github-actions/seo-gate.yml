@@ -1,0 +1,30 @@
+# Fail a pull request when the staging site gains critical SEO findings.
+# Copy to .github/workflows/seo-gate.yml in your own repository and set STAGING_URL.
+name: SEO gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Audit staging
+        id: seo
+        uses: mykpono/ultimate-seo-geo@v1.23.0
+        with:
+          url: https://staging.example.com/   # STAGING_URL: the deployed preview of this branch
+          fail-on: critical                    # or: warning
+          fail-under: 70                       # optional: also gate on the Health Score
+          # polite: true                       # if the site answers HTTP 429 to the audit
+
+      - name: Keep the summary and digest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-audit
+          path: seo-report/

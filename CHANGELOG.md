@@ -4,7 +4,7 @@
 
 A full audit costs far fewer tokens. Before this release a Mode 1 audit read six instruction files
 (about 89 KB) and then a 30–50 KB `summary.json`, so roughly 30k tokens went in before any analysis
-started. Minor per D-020: new capabilities (`--digest`, `--quick`, `--polite`, `brief.py`, 429 detection), a CI context budget, and a restructured audit path; the score,
+started. Minor per D-020: new capabilities (`--digest`, `--quick`, `--polite`, `brief.py`, 429 detection, a GitHub Action), a CI context budget, and a restructured audit path; the score,
 findings and summary JSON are unchanged.
 
 ### Added
@@ -35,6 +35,21 @@ findings and summary JSON are unchanged.
 - **`generate_report.py --polite` and `--delay SECONDS`** for sites that rate-limit: one check at a
   time, one worker for `site_graph.py`, `broken_links.py` and `canonical_checker.py`, and a delay
   (default 2 s) between site-graph requests. `--delay` alone implies `--polite`.
+- **A GitHub Action.** `uses: mykpono/ultimate-seo-geo@v1.23.0` runs the audit, writes the
+  digest to the job summary, prints findings as annotations, and fails the build on `fail-under`
+  or `fail-on`. An inconclusive gate (fewer than 5 checks measured, or HTTP 429) warns by default;
+  `inconclusive: fail` makes it fail. `quick` cannot be combined with `fail-under` or `report`,
+  because a quick check is not a Health Score. Outputs: `score`, `result`, `summary-path`,
+  `digest-path`, `report-path`, `exit-code`. Inputs reach `scripts/github_action.py` (CI-only, not
+  in the plugin) as environment variables, never through the shell, and a test fails if any
+  `${{ }}` expression appears in a `run:` line of the action or its examples.
+  `.github/workflows/action-smoke.yml` runs the action from the repository (`uses: ./`) on
+  pull requests that change it.
+- **Ready-to-copy workflows** in `examples/github-actions/`: `seo-gate.yml` fails a pull request on
+  critical findings on staging; `seo-monitor.yml` audits the live site weekly, compares with last
+  week's summary, keeps the HTML report, and opens an issue when the gate fails.
+- **README: "What an Audit Returns"** with a real quick-check digest of example.com, and a
+  "GitHub Action and Scheduled Monitoring" section.
 - **A context budget, checked in CI.** `scripts/context_budget.py` (maintainer tool, not in the
   plugin) reads `SKILL.md`'s routing table and reports the bytes and approximate tokens each route
   makes an agent read. `tests/test_context_budget.py` fails when a route passes its ceiling in

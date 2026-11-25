@@ -18,6 +18,7 @@ SCRIPT_EXCLUDE = frozenset({
     "check_tag_matches_version.py",
     "release_tools.py",
     "context_budget.py",
+    "github_action.py",
 })
 
 

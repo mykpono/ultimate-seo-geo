@@ -1,0 +1,113 @@
+name: Ultimate SEO + GEO audit
+description: >-
+  Audit a URL for technical SEO and AI search readiness, write the digest to the job summary,
+  and fail the build on a score threshold or on critical or warning findings.
+author: mykpono
+branding:
+  icon: search
+  color: blue
+
+inputs:
+  url:
+    description: Page or site to audit (http:// or https://)
+    required: true
+  fail-under:
+    description: Fail when the Health Score is below this number (0-100). Not with quick
+    required: false
+    default: ''
+  fail-on:
+    description: Fail when any finding is at or above this severity (critical or warning)
+    required: false
+    default: ''
+  inconclusive:
+    description: >-
+      What to do when the gate is inconclusive (fewer than 5 checks measured, or the site answered
+      HTTP 429): warn (pass with a warning) or fail
+    required: false
+    default: warn
+  quick:
+    description: Homepage checks only, a few seconds. Its number is not a Health Score
+    required: false
+    default: 'false'
+  polite:
+    description: For sites that rate-limit, one check at a time with a 2 s crawl delay
+    required: false
+    default: 'false'
+  delay:
+    description: Seconds between crawl requests (0-30); implies polite
+    required: false
+    default: ''
+  previous:
+    description: An earlier summary.json of the same site; the digest then shows what changed
+    required: false
+    default: ''
+  report:
+    description: Also write an HTML report (report.html in output-dir). Not with quick
+    required: false
+    default: 'false'
+  annotations:
+    description: Print critical and warning findings as GitHub annotations
+    required: false
+    default: 'true'
+  digest-max-findings:
+    description: Findings listed in full in the digest (the rest by ID)
+    required: false
+    default: ''
+  output-dir:
+    description: Where summary.json, digest.md and report.html are written
+    required: false
+    default: seo-report
+  python-version:
+    description: Python used to run the audit
+    required: false
+    default: '3.12'
+
+outputs:
+  score:
+    description: Health Score, "not scored", or the quick-check number labelled as not a Health Score
+    value: ${{ steps.audit.outputs.score }}
+  result:
+    description: 'Gate result: pass, fail, inconclusive, not set, or error'
+    value: ${{ steps.audit.outputs.result }}
+  summary-path:
+    description: Path of the JSON summary
+    value: ${{ steps.audit.outputs.summary-path }}
+  digest-path:
+    description: Path of the Markdown digest
+    value: ${{ steps.audit.outputs.digest-path }}
+  report-path:
+    description: Path of the HTML report, when report is true
+    value: ${{ steps.audit.outputs.report-path }}
+  exit-code:
+    description: Exit code of generate_report.py (0 pass, 1 fail, 3 inconclusive)
+    value: ${{ steps.audit.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install audit dependencies
+      shell: bash
+      run: python -m pip install --quiet --disable-pip-version-check -r "$GITHUB_ACTION_PATH/requirements.txt"
+
+    # Inputs reach the script as environment variables, never pasted into the shell.
+    - name: Run the audit
+      id: audit
+      shell: bash
+      env:
+        SEO_URL: ${{ inputs.url }}
+        SEO_FAIL_UNDER: ${{ inputs.fail-under }}
+        SEO_FAIL_ON: ${{ inputs.fail-on }}
+        SEO_INCONCLUSIVE: ${{ inputs.inconclusive }}
+        SEO_QUICK: ${{ inputs.quick }}
+        SEO_POLITE: ${{ inputs.polite }}
+        SEO_DELAY: ${{ inputs.delay }}
+        SEO_PREVIOUS: ${{ inputs.previous }}
+        SEO_REPORT: ${{ inputs.report }}
+        SEO_ANNOTATIONS: ${{ inputs.annotations }}
+        SEO_DIGEST_MAX_FINDINGS: ${{ inputs.digest-max-findings }}
+        SEO_OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: python "$GITHUB_ACTION_PATH/scripts/github_action.py"
