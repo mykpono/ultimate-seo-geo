@@ -4,7 +4,7 @@
 
 A full audit costs far fewer tokens. Before this release a Mode 1 audit read six instruction files
 (about 89 KB) and then a 30–50 KB `summary.json`, so roughly 30k tokens went in before any analysis
-started. Minor per D-020: new capabilities (`--digest`, `--quick`, `--polite`, `brief.py`, 429 detection) and a restructured audit path; the score,
+started. Minor per D-020: new capabilities (`--digest`, `--quick`, `--polite`, `brief.py`, 429 detection), a CI context budget, and a restructured audit path; the score,
 findings and summary JSON are unchanged.
 
 ### Added
@@ -35,6 +35,12 @@ findings and summary JSON are unchanged.
 - **`generate_report.py --polite` and `--delay SECONDS`** for sites that rate-limit: one check at a
   time, one worker for `site_graph.py`, `broken_links.py` and `canonical_checker.py`, and a delay
   (default 2 s) between site-graph requests. `--delay` alone implies `--polite`.
+- **A context budget, checked in CI.** `scripts/context_budget.py` (maintainer tool, not in the
+  plugin) reads `SKILL.md`'s routing table and reports the bytes and approximate tokens each route
+  makes an agent read. `tests/test_context_budget.py` fails when a route passes its ceiling in
+  `tests/context_budget.json` (about 10% above today's sizes; a full audit is 33.9 KB against 38 KB),
+  when `SKILL.md` passes 16 KB, when a route names a missing file, or when the digest of a
+  500-finding run passes 12 KB. Growing a route means raising its ceiling on purpose in that PR.
 - **`scripts/brief.py`** runs any one audit script, saves its full output to a file, and prints a
   short view: lists cut to 8 items, strings to 300 characters, maps keyed by URL or path cut like
   lists, deep nesting folded. Every cut says how much it left out, and the script's exit code

@@ -1,0 +1,26 @@
+{
+  "_comment": "Ceilings for scripts/context_budget.py --check: bytes an agent reads per SKILL.md route (SKILL.md included). About 10% above the measured size on 2026-11-25 (1.23.0). Raise one only in the PR that grows it, and say why in the PR body.",
+  "skill_md_max_bytes": 16000,
+  "default_route_max_bytes": 60000,
+  "routes": {
+    "Quick look (\"how does my site look?\", first call, no time for a crawl)": 17000,
+    "Full scored audit": 38000,
+    "AI citations / GEO": 79000,
+    "Content, E-E-A-T, AI-drafted text": 37000,
+    "Schema": 44000,
+    "Technical / CWV": 47000,
+    "Crawl / indexation": 55000,
+    "Site structure, page types, navigation": 36000,
+    "Keywords, clusters, briefs (no URL yet)": 24000,
+    "Strategy / roadmap": 19000,
+    "Links / authority": 43000,
+    "Local and maps": 34000,
+    "E-commerce": 30000,
+    "Images · international · programmatic": 62000,
+    "Migration": 30000,
+    "Traffic drop, analytics, GSC / GA4": 49000,
+    "Drift / change tracking": 23000,
+    "Client report (`report.html`)": 33000,
+    "Running one script by hand": 44000
+  }
+}
