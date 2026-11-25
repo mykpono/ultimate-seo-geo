@@ -380,7 +380,9 @@ Lighthouse 13.4.0 is the latest stable version as of August 2026. Key changes:
 
 ## Google Core Updates (2026)
 
-- **May 2026 Core Update**: Completed May 21, 2026. Continued the December 2025 trajectory of universal E-E-A-T enforcement.
+- **December 2026 Core Update**: Listed on the Search Status Dashboard on November 24, 2026; check its status before citing it.
+- **November 2026 Core Update**: November 10 to about November 24, 2026 (dashboard duration 13 days 20 hours).
+- **May 2026 Core Update**: Rolled out May 21 to June 2, 2026. Continued the December 2025 trajectory of universal E-E-A-T enforcement.
 - **March 2026 Core Update**: Completed April 8, 2026 (rollout March 27 to April 8).
 
 ## WebMCP (Emerging Standard)

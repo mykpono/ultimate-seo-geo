@@ -224,6 +224,27 @@ AI search engines increasingly cite product pages. For AI citation readiness:
 2. **Comparison-friendly content** — include specs tables, pro/con lists
 3. **Brand authority signals** — consistent brand entity across product pages
 4. **Review richness** — real reviews with specific use cases get cited more than generic "great product" reviews
+5. **Prices and specs on the product page** — ChatGPT's price sub-queries rose from 6.0% to 8.9% of its fan-out queries in one month (Ahrefs, Aug–Sep 2026), and brand-scoped sub-queries look for the official page. State price, availability and key specs in page text, not only in a script or an image.
+
+#### ChatGPT product feeds (OpenAI Agentic Commerce)
+
+ChatGPT surfaces products from merchant feeds as well as the public web (OpenAI, [Powering product discovery in ChatGPT](https://openai.com/index/powering-product-discovery-in-chatgpt/), March 24, 2026). Shopify stores are covered through Shopify Catalog with no extra work; other merchants submit a feed. Facts from OpenAI's [product feed spec](https://developers.openai.com/commerce/specs/feed), checked 2026-11-25:
+
+| Topic | What the spec says |
+|---|---|
+| Setup | Business Hub: claim the business and verify identity before uploading; choose countries and currencies; deliver full snapshots by manual upload, hosted HTTPS URL or SFTP |
+| Format | JSONL (CSV/TSV accepted, with JSON serialized in cells); UTF-8; absolute, publicly reachable URLs; identifiers kept as strings |
+| Required fields | `item_id`, `title`, `description`, `url`, `brand`, `seller_name`, `image_url`, `availability`, `price`, plus `target_countries` and `store_country` |
+| Values | `price` as amount plus ISO 4217 code ("79.99 USD"); `availability` one of `in_stock`, `out_of_stock`, `pre_order`, `backorder`, `unknown` (anything else rejects the row); title ≤150 and description ≤5,000 characters |
+| Identifiers | `gtin` (8/12/13/14 digits, valid check digit) or `mpn` with `brand` |
+| Flags | `is_eligible_search` (alias `enable_search`, default true, does not guarantee display); `is_eligible_checkout` (alias `enable_checkout`, only with search on; checkout needs a separately enabled integration and `seller_privacy_policy` / `seller_tos` URLs) |
+| Freshness | No fixed schedule: send a new snapshot when price or availability changes; the live site is checked at purchase time |
+
+**In an audit:**
+- Ask whether the store sends a ChatGPT feed (or is on Shopify). The skill cannot see a merchant's feed, so record it as an open question, not a finding.
+- Where a feed exists, check that its price, availability, GTIN and product URL agree with the product page and its `Product`/`Offer` markup: the same agreement rule as Merchant Center (Step 6).
+- OpenAI documents no ranking criteria for feed products. Do not promise placement; say what the spec requires and that eligibility is not display.
+- Product feeds are separate from crawling: keep OAI-SearchBot allowed so the product pages themselves can be found and cited (§ 3).
 
 ---
 

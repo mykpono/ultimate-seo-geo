@@ -50,6 +50,26 @@ findings and summary JSON are unchanged.
   under 4 KB and pass through almost unchanged.
 
 ### Changed
+- **AI search guidance refreshed against primary sources (checked 2026-11-25).**
+  - `references/ai-search-geo.md` cites Google's own guide to generative AI features: still SEO, no
+    llms.txt, special schema or chunking needed, and pages made for fan-out queries count as scaled
+    content abuse.
+  - A new Query Fan-Out section covers Google's definition, Ahrefs' study of 15 million ChatGPT
+    fan-out queries, and a mapping method that fills gaps on existing pages rather than adding a
+    page per sub-query. § 3 gains a fan-out step, and its quick check now asks whether the brand's
+    own pages state its facts, prices and specs.
+  - The Reddit advice is rewritten. ChatGPT answers citing Reddit fell from about 1 in 5 to 1 in 43
+    between March and September 2026, and those citing Wikipedia from 1 in 7 to 1 in 35, while
+    official sources rose. Being the original source now comes first, and the older 47.9% and
+    11.3% citation shares are marked out of date.
+  - § 24 E-commerce gains a ChatGPT product feed section from OpenAI's feed spec: setup, required
+    fields, value formats, the search and checkout flags, and how to audit feed and page agreement.
+  - The update timeline adds the September 2026 spam update, the November 2026 core update
+    (10 Nov to about 24 Nov) and the December 2026 core update entry listed on 24 Nov.
+  - The analytics reference flags the Search Console logging errors that lowered Generative AI
+    report impressions on 9–11 Nov and 13–17 Aug 2026.
+  - The May 2026 core update is corrected to 21 May – 2 Jun in two files, which had given it as
+    completed on 21 May.
 - **One file for a full audit.** `references/procedures/02-full-site-audit.md` is now the whole
   Mode 1 playbook. It runs `generate_report.py` with `--digest`, reads the digest first, and ends
   with the ten judgment checks from § 19 that `report_lint.py` cannot make. The script toolbox
