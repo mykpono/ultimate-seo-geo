@@ -133,7 +133,8 @@ review the output, confirm it resolves the original finding.
 2. **Scope narrow tasks.** Schema, robots.txt or llms.txt questions run one script; never a full crawl.
 3. **Run a single script through `brief.py`**: `python scripts/brief.py internal_links.py https://example.com --json` prints a short view (lists cut to 8 items, each cut counted) and saves the full output to a file. Use it for any script whose output you have not seen; `site_graph.py --json` alone can print megabytes.
 4. **Prefer partial delivery over a timeout.** Deliver the score and the findings you have, and list what was skipped and why.
-5. **If context fills mid-audit**, compress finished sections into bullets and continue (`procedures/21-script-toolbox.md`, Context Management).
+5. **A site that rate-limits** (digest line `⚠ THROTTLED`, HTTP 429): the listed checks were discarded. Wait 1–2 minutes and re-run with `--polite`.
+6. **If context fills mid-audit**, compress finished sections into bullets and continue (`procedures/21-script-toolbox.md`, Context Management).
 
 ---
 

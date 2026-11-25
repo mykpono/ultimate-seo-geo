@@ -4,7 +4,7 @@
 
 A full audit costs far fewer tokens. Before this release a Mode 1 audit read six instruction files
 (about 89 KB) and then a 30–50 KB `summary.json`, so roughly 30k tokens went in before any analysis
-started. Minor per D-020: three new capabilities (`--digest`, `--quick`, `brief.py`) and a restructured audit path; the score,
+started. Minor per D-020: new capabilities (`--digest`, `--quick`, `--polite`, `brief.py`, 429 detection) and a restructured audit path; the score,
 findings and summary JSON are unchanged.
 
 ### Added
@@ -24,6 +24,17 @@ findings and summary JSON are unchanged.
   become one open question (`Q-quick`) instead of ten, no HTML/XLSX/PDF is written (their masthead
   says "Health Score"), `--fail-under` and `--crawl-deep` are refused, and `report_lint.py` errors
   (`quick-score`) on a report that gives a `/100` from a quick summary.
+- **Rate-limited sites no longer poison the audit.** A check whose output reports an HTTP 429
+  (Too Many Requests) from the audited site is discarded: unmeasured, out of the score, its findings
+  dropped, and listed under `"throttled"` in the summary. Checks reading the shared site graph inherit
+  its 429s. The digest opens with `⚠ THROTTLED`, the console warns, the checks are one open question
+  (`Q-throttled`), and a `--fail-under` gate is inconclusive (exit 3) rather than a fail. PageSpeed and
+  Search Console quota errors are not counted. On the summary of a real throttled run (85/100, 93 when
+  re-run politely) the detector flags exactly the three checks that hit 429s, and nothing on its clean
+  re-run or on eleven live outputs, including a 3.4 MB site graph.
+- **`generate_report.py --polite` and `--delay SECONDS`** for sites that rate-limit: one check at a
+  time, one worker for `site_graph.py`, `broken_links.py` and `canonical_checker.py`, and a delay
+  (default 2 s) between site-graph requests. `--delay` alone implies `--polite`.
 - **`scripts/brief.py`** runs any one audit script, saves its full output to a file, and prints a
   short view: lists cut to 8 items, strings to 300 characters, maps keyed by URL or path cut like
   lists, deep nesting folded. Every cut says how much it left out, and the script's exit code

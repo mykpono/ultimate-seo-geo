@@ -714,7 +714,7 @@ SITE_GRAPH_MAX_PAGES = 80
 SITE_GRAPH_DEPTH = 2
 
 
-def build_site_graph(url: str) -> str | None:
+def build_site_graph(url: str, polite: bool = False, delay: float = 0.0) -> str | None:
     """Run site_graph.py once and return the saved graph's path, or None.
 
     A failed graph never fails the report: the structure checkers then crawl
@@ -722,11 +722,10 @@ def build_site_graph(url: str) -> str | None:
     """
     fd, path = tempfile.mkstemp(prefix="site_graph_", suffix=".json")
     os.close(fd)
-    result = run_script(
-        "site_graph.py",
-        [url, "--max-pages", str(SITE_GRAPH_MAX_PAGES), "--depth", str(SITE_GRAPH_DEPTH), "--out", path],
-        timeout=_SCRIPT_TIMEOUT_CRAWL,
-    )
+    args = [url, "--max-pages", str(SITE_GRAPH_MAX_PAGES), "--depth", str(SITE_GRAPH_DEPTH), "--out", path]
+    if polite:
+        args += ["--workers", "1", "--delay", str(delay)]
+    result = run_script("site_graph.py", args, timeout=_SCRIPT_TIMEOUT_CRAWL * (3 if polite else 1))
     if result.get("error") or not os.path.exists(path) or os.path.getsize(path) == 0:
         print(f"  ⚠️ site_graph.py: {result.get('error') or 'no graph written'} — structure checks will crawl individually")
         if os.path.exists(path):
@@ -745,11 +744,89 @@ QUICK_SKIPPED_CHECKS = (
 )
 QUICK_SKIP_REASON = "skipped by --quick (homepage checks only)"
 
+# ---------------------------------------------------------------------------
+# Throttling: a site that answers HTTP 429 (Too Many Requests) mid-run poisons
+# the checks that hit it. Their findings then describe the refusal, not the
+# site, and the score moves (a live audit read 85 throttled, 93 when re-run
+# politely). Any check that saw a 429 from the audited site is discarded and
+# listed, never scored on partial data.
+# ---------------------------------------------------------------------------
+
+THROTTLE_STATUS = 429
+_THROTTLE_TEXT = re.compile(r"\bHTTP\s*429\b|\b429\s+(?:Client Error|Too Many Requests)\b|\bToo Many Requests\b",
+                            re.IGNORECASE)
+_STATUS_KEY = re.compile(r"(?:^|_)(?:status|status_code|http_status|code)$", re.IGNORECASE)
+# Google API quotas, not the audited site: PageSpeed and Search Console have their own hints.
+THROTTLE_IGNORED_CHECKS = ("pagespeed", "search_performance")
+# Checks that read the shared site graph inherit its throttling.
+GRAPH_CHECKS = ("internal_links", "page_types", "navigation", "architecture", "sitemap")
+POLITE_DELAY_DEFAULT = 2.0
+
+
+def _is_throttle_status(key, value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value == THROTTLE_STATUS \
+        and bool(_STATUS_KEY.search(str(key)))
+
+
+def count_throttle_signals(value) -> int:
+    """How many 429 responses a script's output reports.
+
+    A record (dict) counts once when a status field is 429 or one of its own
+    strings says so ("HTTP 429", "Too Many Requests"), so a failed fetch listed
+    with both a status and an error message is one refusal, not two.
+    """
+    if isinstance(value, dict):
+        own = any(_is_throttle_status(k, v) or (isinstance(v, str) and _THROTTLE_TEXT.search(v))
+                  for k, v in value.items())
+        return int(own) + sum(count_throttle_signals(v) for v in value.values() if isinstance(v, (dict, list)))
+    if isinstance(value, list):
+        return sum(count_throttle_signals(v) for v in value)
+    if isinstance(value, str):
+        return int(bool(_THROTTLE_TEXT.search(value)))
+    return 0
+
+
+def graph_throttle_count(graph_path) -> int:
+    """429s among the site graph's failed fetches."""
+    if not graph_path or not os.path.exists(graph_path):
+        return 0
+    try:
+        with open(graph_path, encoding="utf-8") as fh:
+            failed = (json.load(fh).get("crawl") or {}).get("failed") or []
+    except (OSError, ValueError, AttributeError):
+        return 0
+    return count_throttle_signals(failed)
+
+
+def discard_throttled(data: dict, graph_hits: int = 0) -> dict:
+    """Replace every section that saw a 429 with an unmeasured stub; return {check: 429 count}."""
+    hits = {}
+    for name, section in data["sections"].items():
+        if name in THROTTLE_IGNORED_CHECKS or not isinstance(section, dict) or section.get("skipped"):
+            continue
+        n = count_throttle_signals(section)
+        if n:
+            hits[name] = n
+    if graph_hits:
+        for name in GRAPH_CHECKS:
+            if name in data["sections"] and not (data["sections"][name] or {}).get("skipped"):
+                hits[name] = hits.get(name, 0) + graph_hits
+    for name, n in hits.items():
+        data["sections"][name] = {
+            "error": f"the site answered HTTP 429 (Too Many Requests) {n} time(s); results discarded",
+            "measured": False,
+            "throttled": True,
+        }
+    data["throttled"] = dict(sorted(hits.items()))
+    return data["throttled"]
+
 
 def collect_data(
     url: str,
     *,
     quick: bool = False,
+    polite: bool = False,
+    delay: float = POLITE_DELAY_DEFAULT,
     crawl_deep: bool = False,
     crawl_max_pages: int = 30,
     crawl_depth: int = 2,
@@ -778,7 +855,10 @@ def collect_data(
         "crawl_depth": crawl_depth,
         "render_mode": render,
         "scope": "quick" if quick else "full",
+        "polite": polite,
     }
+    if polite:
+        print(f"  🐢 --polite: one check at a time, {delay:g} s between crawl requests, one worker per crawler.")
 
     # Fetch page for parse_html and readability
     print("  ⏳ Fetching page HTML...")
@@ -800,13 +880,13 @@ def collect_data(
             page_html = ""
     data["environment"] = detect_environment(page_html, url)
 
-    broken_args = [url, "--workers", "5", "--timeout", "8"]
+    broken_args = [url, "--workers", "1" if polite else "5", "--timeout", "8"]
     if crawl_deep:
         broken_args.extend(
             ["--crawl", "--depth", str(crawl_depth), "--max-pages", str(crawl_max_pages)]
         )
 
-    canonical_args = [url]
+    canonical_args = [url] + (["--workers", "1"] if polite else [])
     if crawl_deep:
         canonical_args.extend(
             ["--crawl", "--depth", str(crawl_depth), "--max-pages", str(crawl_max_pages)]
@@ -818,9 +898,11 @@ def collect_data(
     if quick:
         print("  ⚡ --quick: homepage checks only; no crawl, PageSpeed or backlink sample.")
         graph_path = None
+        graph_hits = 0
     else:
         print("  ⏳ Building site graph (one crawl, up to %d pages)..." % SITE_GRAPH_MAX_PAGES)
-        graph_path = build_site_graph(url)
+        graph_path = build_site_graph(url, polite=True, delay=delay) if polite else build_site_graph(url)
+    graph_hits = graph_throttle_count(graph_path)
     sitemap_args = [url]
     if graph_path:
         sitemap_args += ["--lastmod", "--no-page-dates", "--structure", "--reconcile", graph_path]
@@ -894,8 +976,9 @@ def collect_data(
         elapsed = round(time.time() - start, 1)
         return name, script, result, elapsed
 
-    print(f"  ⏳ Running {len(analyses)} checks in parallel (max {_MAX_PARALLEL_SCRIPTS} workers)...")
-    with ThreadPoolExecutor(max_workers=_MAX_PARALLEL_SCRIPTS) as pool:
+    workers = 1 if polite else _MAX_PARALLEL_SCRIPTS
+    print(f"  ⏳ Running {len(analyses)} checks (max {workers} at a time)...")
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(_run_one, item): item for item in analyses}
         for fut in as_completed(futures):
             name, script, result, elapsed = fut.result()
@@ -913,6 +996,11 @@ def collect_data(
             op["canonical"] = c
             op["canonical_from_audit"] = True
             data["sections"]["onpage"] = op
+
+    throttled = discard_throttled(data, graph_hits)
+    if throttled:
+        print(f"  ⚠️  The site answered HTTP 429 (Too Many Requests) to: {', '.join(throttled)}. "
+              "Those results are discarded; wait 1-2 minutes and re-run with --polite.")
 
     # Cleanup temp files
     if html_path and os.path.exists(html_path):
@@ -1557,8 +1645,21 @@ def build_open_questions(data: dict, scores: dict, issues: list) -> list:
             "close": "Run the report without --quick for the Health Score and these checks.",
             "unlocks": f"{sum(weights.get(k) or 0 for k in skipped)} points of weight",
         })
+    throttled = data.get("throttled") or {}
+    if throttled:
+        questions.append({
+            "id": "Q-throttled",
+            "check": "throttled",
+            "question": (f"The site answered HTTP 429 (Too Many Requests) to {len(throttled)} check(s): "
+                         f"{', '.join(throttled)}. Their results were discarded."),
+            "why": "The server rate-limited the audit, so those checks saw refusals, not the site.",
+            "close": "Wait 1-2 minutes, then re-run with --polite (one check at a time, a delay between "
+                     "crawl requests). Never run two crawls of the same site at once.",
+            "unlocks": (f"{sum(weights.get(k) or 0 for k in throttled)} points of weight"
+                        if any(weights.get(k) for k in throttled) else None),
+        })
     for key in scores.get("unmeasured") or []:
-        if key in skipped:
+        if key in skipped or key in throttled:
             continue
         section = _source_section(data["sections"], key)
         error = section.get("error") if isinstance(section, dict) else None
@@ -1650,6 +1751,8 @@ def build_summary(data: dict, scores: dict) -> dict:
         },
         "scope": data.get("scope") or "full",
         "skipped": _quick_skipped(data, scores),
+        "throttled": sorted(data.get("throttled") or {}),
+        "polite": bool(data.get("polite")),
         "measured_categories": scores.get("measured_categories"),
         "unmeasured": scores.get("unmeasured", []),
         "categories": categories,
@@ -1784,11 +1887,16 @@ def evaluate_gate(summary: dict, fail_under=None, fail_on=None) -> dict:
             reasons.append(f"{len(hits)} finding(s) at or above {fail_on}: {listed}")
     if fail_under is not None:
         measured = summary.get("measured_categories") or 0
+        throttled = summary.get("throttled") or []
         if measured < MIN_MEASURED_FOR_GATE:
             inconclusive = (
                 f"only {measured} weighted check(s) were measured (need {MIN_MEASURED_FOR_GATE}); "
                 f"unmeasured: {', '.join(summary.get('unmeasured') or []) or 'none'}"
             )
+        elif throttled:
+            # The site refused the audit machine; the score left those checks out and is not comparable.
+            inconclusive = (f"the site answered HTTP 429 to {', '.join(throttled)}; "
+                            "re-run with --polite before judging the score")
         elif summary["overall"] < fail_under:
             reasons.append(f"overall score {summary['overall']} is below --fail-under {fail_under}")
     if reasons:
@@ -1866,9 +1974,13 @@ def build_digest(summary: dict, max_findings: int = DIGEST_MAX_FINDINGS) -> str:
     else:
         lines.append(f"Health Score: {summary['overall']}/100 ({summary.get('grade')}) "
                      f"from {measured} measured checks")
+    throttled = summary.get("throttled") or []
+    if throttled:
+        lines.append(f"⚠ THROTTLED: the site answered HTTP 429 to {', '.join(throttled)}. Those results were "
+                     "discarded and are not in the score. Re-run with --polite before trusting this audit.")
     if skipped:
         lines.append(f"Skipped by --quick: {', '.join(skipped)}")
-    failed = [k for k in unmeasured if k not in skipped]
+    failed = [k for k in unmeasured if k not in skipped and k not in throttled]
     if failed:
         lines.append(f"Not measured (left out of the score): {', '.join(failed)}")
     if summary.get("render_warning"):
@@ -4343,6 +4455,18 @@ def main():
              "Health Score. Best with --format none --digest -",
     )
     parser.add_argument(
+        "--polite",
+        action="store_true",
+        help="For sites that rate-limit (HTTP 429): run one check at a time, one worker per crawler, "
+             f"and wait --delay seconds between crawl requests (default {POLITE_DELAY_DEFAULT:g}). Slower",
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        metavar="SECONDS",
+        help=f"With --polite: seconds between crawl requests (default {POLITE_DELAY_DEFAULT:g}); implies --polite",
+    )
+    parser.add_argument(
         "--crawl-deep",
         action="store_true",
         help="Multi-page crawl for broken_links + canonical_checker (capped; slower, more server load)",
@@ -4460,6 +4584,10 @@ def main():
             args.digest = "-"
     elif args.fmt is None:
         args.fmt = "html"
+    if args.delay is not None:
+        if not 0 <= args.delay <= 30:
+            parser.error("--delay must be between 0 and 30 seconds")
+        args.polite = True
     if args.quick and args.crawl_deep:
         parser.error("--quick skips every crawl; drop --crawl-deep or --quick")
     if args.quick and args.fail_under is not None:
@@ -4476,6 +4604,8 @@ def main():
     data = collect_data(
         args.url,
         quick=args.quick,
+        polite=args.polite,
+        delay=POLITE_DELAY_DEFAULT if args.delay is None else args.delay,
         crawl_deep=args.crawl_deep,
         crawl_max_pages=max(1, args.crawl_max_pages),
         crawl_depth=max(1, args.crawl_depth),
@@ -4536,9 +4666,12 @@ def main():
     else:
         print(f"   Overall Score: {scores['overall']}/100")
     skipped = summary.get("skipped") or []
+    throttled = summary.get("throttled") or []
+    if throttled:
+        print(f"   ⚠️  Throttled (HTTP 429, discarded): {', '.join(throttled)}. Re-run with --polite.")
     if skipped:
         print(f"   Skipped by --quick: {', '.join(skipped)}")
-    failed = [k for k in scores.get("unmeasured") or [] if k not in skipped]
+    failed = [k for k in scores.get("unmeasured") or [] if k not in skipped and k not in throttled]
     if failed:
         print(f"   Unmeasured (left out of the score): {', '.join(failed)}")
 
