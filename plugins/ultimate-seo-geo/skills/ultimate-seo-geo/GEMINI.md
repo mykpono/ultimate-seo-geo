@@ -1,6 +1,6 @@
 # Ultimate SEO + GEO — Gemini CLI Context
 
-This project is a comprehensive SEO and Generative Engine Optimization (GEO) skill with
+This project is a comprehensive SEO and Generative Engine Optimization (GEO, also called AEO) skill with
 diagnostic Python scripts, scored audit frameworks, and AI search citation optimization.
 
 ## Instructions

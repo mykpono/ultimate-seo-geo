@@ -5,7 +5,7 @@
 [![Version](https://img.shields.io/badge/version-1.23.0-green.svg)](CHANGELOG.md)
 [![LLM-Agnostic](https://img.shields.io/badge/LLM--Agnostic-7%2B%20platforms-purple.svg)](#platform-compatibility)
 
-The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML, Excel, and PDF reports.
+The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search (GEO, also called AEO: Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML, Excel, and PDF reports.
 
 Works with **any AGENTS.md-compatible tool**: Claude Code, Cursor, OpenAI Codex, Gemini CLI, GitHub Copilot, Windsurf, Cline, Aider, Devin, and more.
 
@@ -53,7 +53,7 @@ Built for **developers, founders, and marketers using AI coding agents** who wan
 - **Semantic Topic Clustering** — SERP-overlap clustering, hub-and-spoke architecture, internal link matrices
 - **Analytics & Reporting** — GA4/GSC setup, traffic drop diagnostics, CTR benchmarks, monthly maintenance, Google API tier system (Tier 0–2)
 
-### GEO (AI Search Optimization)
+### GEO / AEO (AI Search Optimization)
 
 - **Platform Coverage** — Google AI Overviews, Google AI Mode, ChatGPT Search, Perplexity, Bing Copilot
 - **Citability Scoring** — Passage-level optimization (134–167 word answer blocks), answer placement in first 60 words

@@ -1,6 +1,6 @@
 {
   "name": "ultimate-seo-geo",
-  "description": "Scored SEO audits for developers and marketers using AI agents: technical health, Schema.org JSON-LD, E-E-A-T, backlinks, domain signals, GEO (AI Overviews, ChatGPT, Perplexity). 66 bundled scripts; HTML/Excel/PDF reports. E-commerce schema, drift monitoring, topic clustering, Google API tiers (GSC/GA4), maps intelligence. Optional MCP (Firecrawl, DataForSEO): references/optional-extensions-mcp.md. Modes: Audit → Plan → Execute.",
+  "description": "Scored SEO audits for developers and marketers using AI agents: technical health, Schema.org JSON-LD, E-E-A-T, backlinks, domain signals, GEO/AEO for AI search (AI Overviews, AI Mode, ChatGPT, Perplexity). 66 bundled scripts; HTML/Excel/PDF reports. E-commerce schema, drift monitoring, topic clustering, Google API tiers (GSC/GA4), maps intelligence. Optional MCP (Firecrawl, DataForSEO): references/optional-extensions-mcp.md. Modes: Audit → Plan → Execute.",
   "version": "1.23.0",
   "author": {
     "name": "Myk Pono",
@@ -16,6 +16,10 @@
     "schema",
     "e-e-a-t",
     "ai-search",
+    "aeo",
+    "answer-engine-optimization",
+    "generative-engine-optimization",
+    "ai-overviews",
     "structured-data",
     "mcp",
     "pdf",

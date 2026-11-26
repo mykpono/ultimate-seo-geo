@@ -118,7 +118,7 @@ Edge cases and ambiguous requests: `references/procedures/01-request-detection-r
 |---|---|---|
 | **Full Audit** | "audit", "analyze my site", "full check", "site review" | § 2 |
 | **Traffic Drop** | "traffic dropped", "lost rankings", "core update" | § 10 → § 4 / § 6 |
-| **GEO / AI Search** | "AI Overviews", "ChatGPT", "Perplexity", "GEO", "llms.txt" | § 3 |
+| **GEO / AI Search** | "AI Overviews", "ChatGPT", "Perplexity", "GEO", "AEO", "llms.txt" | § 3 |
 | **Technical SEO** | "crawl", "robots.txt", "Core Web Vitals", "speed", "indexing" | § 4 |
 | **Schema** | "schema", "JSON-LD", "rich results", "structured data" | § 5 |
 | **Content / E-E-A-T** | "content quality", "E-E-A-T", "thin content", "CORE-EEAT" | § 6 |

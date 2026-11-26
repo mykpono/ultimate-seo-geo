@@ -65,6 +65,12 @@ findings and summary JSON are unchanged.
   under 4 KB and pass through almost unchanged.
 
 ### Changed
+- **The skill now says "AEO" and "AI search" where people look for it.** The `SKILL.md`
+  description, the plugin and marketplace descriptions, the README headline, `GEMINI.md` and the
+  Custom GPT instructions name GEO "also called AEO (answer engine optimization)" and list AI Mode.
+  The plugin keywords add `aeo`, `answer-engine-optimization`, `generative-engine-optimization`
+  and `ai-overviews`. Routing sends "AEO", "AI visibility" and "answer engine optimization"
+  requests to § 3. A bare "AEO" goes to § 3 first, then to § 7c for featured-snippet formatting.
 - **AI search guidance refreshed against primary sources (checked 2026-11-25).**
   - `references/ai-search-geo.md` cites Google's own guide to generative AI features: still SEO, no
     llms.txt, special schema or chunking needed, and pages made for fan-out queries count as scaled
