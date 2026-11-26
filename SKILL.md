@@ -1,15 +1,15 @@
 ---
 name: ultimate-seo-geo
-description: Audits and optimizes websites for search engine visibility (SEO) and AI search citation (GEO), covering technical health, E-E-A-T content scoring, domain authority, structured data, rich results, and entity signals. Use when running SEO audits, diagnosing traffic drops or ranking losses, generating Schema.org JSON-LD, checking Core Web Vitals, crawlability, robots.txt, sitemaps, hreflang, backlinks, planning content strategy or site migrations, fixing indexing issues, or optimizing for AI Overviews, ChatGPT, and Perplexity. NOT for paid ads (PPC/SEM), social media strategy, email marketing, or general web development unrelated to search.
-version: 1.22.1
+description: Audits and optimizes websites for search engine visibility (SEO) and AI search citation (GEO, also called AEO or answer engine optimization), covering technical health, E-E-A-T content scoring, domain authority, structured data, rich results, and entity signals. Use when running SEO audits, diagnosing traffic drops or ranking losses, generating Schema.org JSON-LD, checking Core Web Vitals, crawlability, robots.txt, sitemaps, hreflang, backlinks, planning content strategy or site migrations, fixing indexing issues, or optimizing for AI search: AI Overviews, AI Mode, ChatGPT, and Perplexity. NOT for paid ads (PPC/SEM), social media strategy, email marketing, or general web development unrelated to search.
+version: 1.23.0
 ---
 
 # Ultimate SEO + GEO — LLM-Agnostic SEO Agent
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.22.1 |
-| **Updated** | 2026-10-01 |
+| **Version** | 1.23.0 |
+| **Updated** | 2026-11-25 |
 | **License** | MIT |
 | **Author** | Myk Pono |
 | **Lab** | [lab.mykpono.com](https://lab.mykpono.com) |
@@ -22,59 +22,37 @@ platform that reads `AGENTS.md`. Merges Google's official SEO guidance, 2026 GEO
 and practitioner best practices into one universal framework. Every finding comes with a
 clear fix directive — not just diagnosis.
 
-**This file is the routing shell.** Detailed step-by-step procedures for §1–§26 live under `references/procedures/` — read them only when the user's task requires that section (see §0 below). Domain knowledge tables live in `references/*.md` as before.
+**This file is the routing shell.** Procedures for §1–§26 live under `references/procedures/` and domain tables under `references/*.md`; read only what the task needs (see Routing below).
 
 ## 0. Before You Start
 
-### Routing index (read only what you need)
+### Routing (read only what you need)
 
-| Goal | Procedure file(s) | Also read / run |
-|------|-------------------|-----------------|
-| Full scored audit | `references/procedures/02-full-site-audit.md`, `references/procedures/21-script-toolbox.md` | `references/audit-script-matrix.md`, `references/thinking-framework.md`, `generate_report.py` |
-| AI citations / GEO | `references/procedures/03-geo-ai-search.md` | `references/ai-search-geo.md`, `entity_checker.py`, `citability_checker.py`, `llms_txt_checker.py`, `robots_checker.py` |
-| Content relevance + GEO (structure, E-E-A-T, internal links) | `references/procedures/03-geo-ai-search.md`, `references/procedures/06-content-eeat-and-pruning.md` | `references/eeat-framework.md`, `article_seo.py`, `readability.py`, `internal_links.py`, `generate_report.py` |
-| AI-drafted content review (artifacts, generated-text tells) | `references/procedures/06-content-eeat-and-pruning.md` | `references/ai-generated-content-artifacts.md`, `content_quality.py`, `readability.py` |
-| Schema only | `references/procedures/05-schema-structured-data.md` | `references/schema-types.md`, `validate_schema.py` |
-| Local | `references/procedures/12-local-seo.md` | `references/local-seo.md`, `local_signals_checker.py` |
-| Crawl / index / performance | `references/procedures/04-technical-seo.md`, `references/procedures/11-crawl-indexation.md` | Matrix scripts (`robots_checker`, `sitemap_checker`, `pagespeed.py` if API works) |
-| Migration | `references/procedures/20-site-migration.md` | `references/site-migration.md`, `redirect_checker.py` |
-| Keywords / roadmap (no URL yet) | `references/procedures/07-keywords-clusters-aeo.md`, `references/procedures/16-strategy-roadmap.md` | **Do not** invent a live-site `/100` score |
-| SEO drift / change tracking | `references/procedures/22-drift-monitoring.md` | `drift_monitor.py` |
-| Semantic topic clustering | `references/procedures/23-semantic-clustering.md` | `topic_cluster.py` |
-| Content brief generation | `references/procedures/07-keywords-clusters-aeo.md` | `content_brief.py` |
-| E-commerce SEO | `references/procedures/24-ecommerce-seo.md` | `ecommerce_schema.py`, `validate_schema.py` |
-| Advanced local / maps | `references/procedures/25-maps-intelligence.md` | `maps_checker.py`, `local_signals_checker.py` |
-| Site structure / content-type coverage / navigation / sitemap vs crawl | `references/procedures/26-site-structure-content-types.md` | `references/page-types.md`, `site_graph.py`, `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py`, `sitemap_checker.py --reconcile` |
-| Client report (`report.html`: summary, audit, strategy, plan, appendix) | `references/report-template/report-template.md` | `render_report.py`, `report_data_lint.py`, `report.css` |
-| Google API credentials | `references/procedures/21-script-toolbox.md` | `google_api_tier.py`, `crux_history.py`, `gsc_query.py`, `gsc_insights.py`, `ga4_report.py` |
+Read **one** procedure file and at most **two** topical `references/*.md` files per task. Loading more adds tokens and latency with no quality gain ([Skills progressive disclosure](https://github.com/anthropics/claude-cookbooks/tree/main/skills)). A full audit reads only `02-full-site-audit.md`: it is the complete Mode 1 playbook.
 
-Section numbers **§1–§26** match `AGENTS.md` and the filenames in `references/procedures/`. Full index: [`references/procedures/README.md`](references/procedures/README.md).
-
-### Reference Reading Guide
-
-When a section points to a reference file, read only what you need for the current task.
-
-**Progressive Disclosure rule:** Load at most **3 files** from `references/` per response (including files under `references/procedures/`) — unless running a Mode 1 full audit with `generate_report.py`, which implicitly covers all dimensions. For single-topic Mode 2 or Mode 3 tasks (e.g., "fix my schema", "write an llms.txt"), the routing tables identify 1–2 topical `references/*.md` files plus **at most one** `references/procedures/*.md` file when procedural detail is required. Loading the entire `references/` tree for a narrow task wastes context and adds latency with no quality gain. This pattern follows Anthropic's [Skills progressive disclosure architecture](https://github.com/anthropics/claude-cookbooks/tree/main/skills).
-
-| Task | Read | Run |
+| Goal | Read | Run |
 |------|------|-----|
-| Full audit (any type) | `references/audit-script-matrix.md` | `generate_report.py` |
-| GEO / AI citations | `references/ai-search-geo.md`, `references/entity-optimization.md` | `robots_checker.py`, `entity_checker.py`, `citability_checker.py`, `llms_txt_checker.py` |
-| Schema markup | `references/schema-types.md` | `validate_schema.py` |
-| Technical / CWV | `references/technical-checklist.md` | `pagespeed.py`, `robots_checker.py`, `security_headers.py` |
-| Content / E-E-A-T | `references/eeat-framework.md`, `references/core-eeat-framework.md` | `readability.py`, `article_seo.py` |
-| AI-drafted content artifacts | `references/ai-generated-content-artifacts.md` | `content_quality.py`, `readability.py` |
-| CITE domain audit | `references/cite-domain-rating.md` | `link_profile.py` |
-| Keywords / clusters | `references/keyword-strategy.md` | — |
-| Links | `references/link-building.md` | `internal_links.py`, `broken_links.py`, `link_profile.py` |
-| Local SEO | `references/local-seo.md` | `local_signals_checker.py` |
-| Images | `references/image-seo.md` | `image_checker.py` |
-| International / hreflang | `references/international-seo.md` | `hreflang_checker.py` |
-| Programmatic SEO | `references/programmatic-seo.md` | `programmatic_seo_auditor.py` |
-| Migration | `references/site-migration.md` | `redirect_checker.py` |
-| Analytics / myths | `references/analytics-reporting.md` | — |
-| Crawl / indexation | `references/crawl-indexation.md` | `sitemap_checker.py`, `index_coverage_diff.py`, `duplicate_content.py`, `canonical_checker.py`, `broken_links.py`, `internal_links.py` |
-| Site structure / page types / navigation | `references/page-types.md`, `references/industry-templates.md` | `site_graph.py`, `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py` |
+| Quick look ("how does my site look?", first call, no time for a crawl) | — | `generate_report.py URL --quick`: prints a digest of the homepage checks. Its number is **not** a Health Score; offer the full audit |
+| Full scored audit | `procedures/02-full-site-audit.md` | `generate_report.py --json summary.json --digest digest.md`, then read `digest.md` |
+| AI citations / GEO | `procedures/03-geo-ai-search.md`, `ai-search-geo.md` | `robots_checker.py`, `entity_checker.py`, `citability_checker.py`, `llms_txt_checker.py` |
+| Content, E-E-A-T, AI-drafted text | `procedures/06-content-eeat-and-pruning.md`, `eeat-framework.md` or `ai-generated-content-artifacts.md` | `article_seo.py`, `readability.py`, `content_quality.py` |
+| Schema | `procedures/05-schema-structured-data.md`, `schema-types.md` | `validate_schema.py` |
+| Technical / CWV | `procedures/04-technical-seo.md`, `technical-checklist.md` | `pagespeed.py`, `robots_checker.py`, `security_headers.py` |
+| Crawl / indexation | `procedures/11-crawl-indexation.md`, `crawl-indexation.md` | `sitemap_checker.py`, `index_coverage_diff.py`, `canonical_checker.py`, `duplicate_content.py` |
+| Site structure, page types, navigation | `procedures/26-site-structure-content-types.md`, `page-types.md` | `site_graph.py`, `page_type_classifier.py`, `navigation_checker.py`, `site_architecture.py` |
+| Keywords, clusters, briefs (no URL yet) | `procedures/07-keywords-clusters-aeo.md` or `23-semantic-clustering.md` | `content_brief.py`, `topic_cluster.py`; never invent a `/100` score |
+| Strategy / roadmap | `procedures/16-strategy-roadmap.md` | — |
+| Links / authority | `procedures/09-link-building-internal.md`, `link-building.md` or `cite-domain-rating.md` | `internal_links.py`, `broken_links.py`, `link_profile.py` |
+| Local and maps | `procedures/12-local-seo.md` or `25-maps-intelligence.md`, `local-seo.md` | `local_signals_checker.py`, `maps_checker.py` |
+| E-commerce | `procedures/24-ecommerce-seo.md` | `ecommerce_schema.py`, `validate_schema.py` |
+| Images · international · programmatic | `procedures/13-…`, `14-…`, `15-…` with `image-seo.md`, `international-seo.md`, `programmatic-seo.md` | `image_checker.py`, `hreflang_checker.py`, `programmatic_seo_auditor.py` |
+| Migration | `procedures/20-site-migration.md`, `site-migration.md` | `redirect_checker.py` |
+| Traffic drop, analytics, GSC / GA4 | `procedures/10-analytics-reporting.md`, `analytics-reporting.md` | `gsc_insights.py`, `ga4_report.py`, `google_api_tier.py` |
+| Drift / change tracking | `procedures/22-drift-monitoring.md` | `drift_monitor.py`, or `generate_report.py --previous` |
+| Client report (`report.html`) | `report-template/report-template.md` | `render_report.py`, `report_data_lint.py` |
+| Running one script by hand | `procedures/21-script-toolbox.md` or `audit-script-matrix.md` | `brief.py SCRIPT.py ARGS`; the script's `--help` |
+
+Paths are under `references/`. Every topic's section number (§1–§26) and request phrasing: `references/procedures/01-request-detection-routing.md`.
 
 ### When *not* to run Mode 1 (full audit)
 
@@ -134,34 +112,9 @@ Three questions only — skip any already answered in the user's message.
 
 Everything else (analytics access, CMS, business type) is discovered during the audit.
 
-### Mode Routing
+### Mode order
 
-```
-User request + URL
-│
-├─ "audit", "analyze", "full check", "what's wrong"
-│   └─ Mode 1 → read procedures/02-full-site-audit.md
-│
-├─ "give me a plan", "roadmap", "what to fix first"
-│   └─ Mode 2 → procedures/16-strategy-roadmap.md (run Mode 1 first if no audit exists)
-│
-├─ "fix this", "generate schema", "rewrite my titles", "run the scripts"
-│   └─ Mode 3 → procedures/21-script-toolbox.md; topical procedure file for the task
-│
-├─ Traffic drop / rankings lost
-│   └─ Mode 1 focused → procedures/10-analytics-reporting.md first, then procedures/06-content-eeat-and-pruning.md / procedures/04-technical-seo.md
-│
-├─ AI citations / GEO question
-│   └─ Mode 1 focused → procedures/03-geo-ai-search.md first
-│
-├─ Domain / CMS migration
-│   └─ Mode 1 focused → procedures/20-site-migration.md
-│
-└─ No mode stated + URL / "audit + fix everything"
-    └─ Mode 1 → 2 → 3 (procedures/02, then 16, then execute top findings)
-```
-
-Topic-to-section routing table: **`references/procedures/01-request-detection-routing.md`** (same content as former SKILL §1).
+Most requests run **Audit → Plan → Execute**. Skip to Mode 2 if audit findings already exist; skip to Mode 3 when the user names a specific fix. A traffic drop starts with `procedures/10-analytics-reporting.md`; an AI-citation question with `procedures/03-geo-ai-search.md`; a URL with "audit and fix everything" runs Modes 1, 2 and 3 in turn.
 
 ### What "Done" Looks Like per Mode
 
@@ -174,16 +127,14 @@ Scale / Authority), each item has an owner action, expected outcome, effort esti
 **Execute complete** when: every fix implemented AND verified — run the relevant validation script,
 review the output, confirm it resolves the original finding.
 
-### Context Budget Awareness
+### Context budget
 
-If you are running on a model or configuration with limited context length or execution time (e.g., fast-model subagents, CI pipelines, or agentic chains), apply graceful degradation before hitting a wall:
-
-1. **Estimate before executing.** A full Mode 1 audit with `generate_report.py` and all scripts can produce 50k+ tokens of output. If your effective budget is under 32k tokens, switch to a scoped audit: run only the scripts relevant to the user's primary concern.
-2. **Prefer partial delivery over timeout.** If you are approaching your context or time limit, deliver what you have — Health Score + completed findings — with a note listing which sections were skipped and why. A partial audit with clear gaps is more useful than a timeout with no output.
-3. **Web fetches are expensive.** Each site fetch adds latency and tokens. For scoped tasks (schema only, robots.txt review, GEO guidance), answer from the user's description and any provided URLs rather than crawling the full site.
-4. **Compaction fallback.** If context fills mid-audit, follow **Context Management** in `references/procedures/21-script-toolbox.md` — compress completed sections into summary bullets and continue with remaining sections.
-
-This is a **fallback**, not a default. When context budget allows, always prefer the full audit pipeline.
+1. **Read the digest, not the JSON.** `generate_report.py --digest digest.md` writes a 3–6 KB summary of a 30–50 KB `summary.json`. Open the JSON only for one finding's detail, by ID.
+2. **Scope narrow tasks.** Schema, robots.txt or llms.txt questions run one script; never a full crawl.
+3. **Run a single script through `brief.py`**: `python scripts/brief.py internal_links.py https://example.com --json` prints a short view (lists cut to 8 items, each cut counted) and saves the full output to a file. Use it for any script whose output you have not seen; `site_graph.py --json` alone can print megabytes.
+4. **Prefer partial delivery over a timeout.** Deliver the score and the findings you have, and list what was skipped and why.
+5. **A site that rate-limits** (digest line `⚠ THROTTLED`, HTTP 429): the listed checks were discarded. Wait 1–2 minutes and re-run with `--polite`.
+6. **If context fills mid-audit**, compress finished sections into bullets and continue (`procedures/21-script-toolbox.md`, Context Management).
 
 ---
 
@@ -214,37 +165,12 @@ Every finding: **Finding** / **Evidence** / **Impact** / **Fix** / **Confidence*
 
 ### Before delivering any Mode 1 audit
 
-Run `python scripts/report_lint.py report.md --summary summary.json` when a shell is available, then the internal self-evaluation pass in `references/procedures/19-quality-gates-hard-rules.md` (Evaluator-Optimizer checklist).
+Run `python scripts/report_lint.py report.md --summary summary.json` when a shell is available, then the judgment checks at the end of `references/procedures/02-full-site-audit.md` (full wording in `references/procedures/19-quality-gates-hard-rules.md`).
 
 ---
 
-## Procedure file index (§1–§26)
+## Procedure files (§1–§26)
 
-| § | File |
-|---|------|
-| 1 | [`references/procedures/01-request-detection-routing.md`](references/procedures/01-request-detection-routing.md) |
-| 2 | [`references/procedures/02-full-site-audit.md`](references/procedures/02-full-site-audit.md) |
-| 3 | [`references/procedures/03-geo-ai-search.md`](references/procedures/03-geo-ai-search.md) |
-| 4 | [`references/procedures/04-technical-seo.md`](references/procedures/04-technical-seo.md) |
-| 5 | [`references/procedures/05-schema-structured-data.md`](references/procedures/05-schema-structured-data.md) |
-| 6–6b | [`references/procedures/06-content-eeat-and-pruning.md`](references/procedures/06-content-eeat-and-pruning.md) |
-| 7–7c | [`references/procedures/07-keywords-clusters-aeo.md`](references/procedures/07-keywords-clusters-aeo.md) |
-| 8 | [`references/procedures/08-competitor-analysis.md`](references/procedures/08-competitor-analysis.md) |
-| 9 | [`references/procedures/09-link-building-internal.md`](references/procedures/09-link-building-internal.md) |
-| 10 | [`references/procedures/10-analytics-reporting.md`](references/procedures/10-analytics-reporting.md) |
-| 11 | [`references/procedures/11-crawl-indexation.md`](references/procedures/11-crawl-indexation.md) |
-| 12 | [`references/procedures/12-local-seo.md`](references/procedures/12-local-seo.md) |
-| 13 | [`references/procedures/13-image-seo.md`](references/procedures/13-image-seo.md) |
-| 14 | [`references/procedures/14-international-hreflang.md`](references/procedures/14-international-hreflang.md) |
-| 15 | [`references/procedures/15-programmatic-seo.md`](references/procedures/15-programmatic-seo.md) |
-| 16 | [`references/procedures/16-strategy-roadmap.md`](references/procedures/16-strategy-roadmap.md) |
-| 17 | [`references/procedures/17-monthly-maintenance.md`](references/procedures/17-monthly-maintenance.md) |
-| 18 | [`references/procedures/18-myths.md`](references/procedures/18-myths.md) |
-| 19 | [`references/procedures/19-quality-gates-hard-rules.md`](references/procedures/19-quality-gates-hard-rules.md) |
-| 20 | [`references/procedures/20-site-migration.md`](references/procedures/20-site-migration.md) |
-| 21 | [`references/procedures/21-script-toolbox.md`](references/procedures/21-script-toolbox.md) |
-| 22 | [`references/procedures/22-drift-monitoring.md`](references/procedures/22-drift-monitoring.md) |
-| 23 | [`references/procedures/23-semantic-clustering.md`](references/procedures/23-semantic-clustering.md) |
-| 24 | [`references/procedures/24-ecommerce-seo.md`](references/procedures/24-ecommerce-seo.md) |
-| 25 | [`references/procedures/25-maps-intelligence.md`](references/procedures/25-maps-intelligence.md) |
-| 26 | [`references/procedures/26-site-structure-content-types.md`](references/procedures/26-site-structure-content-types.md) |
+`references/procedures/01-request-detection-routing.md` · `references/procedures/02-full-site-audit.md` · `references/procedures/03-geo-ai-search.md` · `references/procedures/04-technical-seo.md` · `references/procedures/05-schema-structured-data.md` · `references/procedures/06-content-eeat-and-pruning.md` · `references/procedures/07-keywords-clusters-aeo.md` · `references/procedures/08-competitor-analysis.md` · `references/procedures/09-link-building-internal.md` · `references/procedures/10-analytics-reporting.md` · `references/procedures/11-crawl-indexation.md` · `references/procedures/12-local-seo.md` · `references/procedures/13-image-seo.md` · `references/procedures/14-international-hreflang.md` · `references/procedures/15-programmatic-seo.md` · `references/procedures/16-strategy-roadmap.md` · `references/procedures/17-monthly-maintenance.md` · `references/procedures/18-myths.md` · `references/procedures/19-quality-gates-hard-rules.md` · `references/procedures/20-site-migration.md` · `references/procedures/21-script-toolbox.md` · `references/procedures/22-drift-monitoring.md` · `references/procedures/23-semantic-clustering.md` · `references/procedures/24-ecommerce-seo.md` · `references/procedures/25-maps-intelligence.md` · `references/procedures/26-site-structure-content-types.md`
+
+Index with one line per section: [`references/procedures/README.md`](references/procedures/README.md)

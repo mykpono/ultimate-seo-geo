@@ -2,8 +2,8 @@
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.22.1 |
-| **Updated** | 2026-10-01 |
+| **Version** | 1.23.0 |
+| **Updated** | 2026-11-25 |
 | **License** | MIT |
 | **Author** | Myk Pono |
 | **Homepage** | [lab.mykpono.com](https://lab.mykpono.com) |
@@ -118,7 +118,7 @@ Edge cases and ambiguous requests: `references/procedures/01-request-detection-r
 |---|---|---|
 | **Full Audit** | "audit", "analyze my site", "full check", "site review" | § 2 |
 | **Traffic Drop** | "traffic dropped", "lost rankings", "core update" | § 10 → § 4 / § 6 |
-| **GEO / AI Search** | "AI Overviews", "ChatGPT", "Perplexity", "GEO", "llms.txt" | § 3 |
+| **GEO / AI Search** | "AI Overviews", "ChatGPT", "Perplexity", "GEO", "AEO", "llms.txt" | § 3 |
 | **Technical SEO** | "crawl", "robots.txt", "Core Web Vitals", "speed", "indexing" | § 4 |
 | **Schema** | "schema", "JSON-LD", "rich results", "structured data" | § 5 |
 | **Content / E-E-A-T** | "content quality", "E-E-A-T", "thin content", "CORE-EEAT" | § 6 |
@@ -151,7 +151,7 @@ Edge cases and ambiguous requests: `references/procedures/01-request-detection-r
 
 ## 2. Full Site Audit
 
-**In a bash-capable environment:** Run `python scripts/generate_report.py https://example.com --output report.html --json summary.json` first. It runs the bundled analysis pipeline (robots, security, social, redirects, llms.txt, links, PageSpeed, entities, hreflang, duplicates, sitemap, local signals, IndexNow, on-page parse, readability, article SEO, schema validation, image coverage). Then use `finding_verifier.py` to deduplicate.
+**In a bash-capable environment:** Run `python scripts/generate_report.py https://example.com --output report.html --json summary.json --digest digest.md` first and read `digest.md`; open the JSON only for one finding's detail. It runs every bundled check (list: §21). Then use `finding_verifier.py` to deduplicate.
 
 ### Evidence Integrity
 

@@ -714,7 +714,7 @@ SITE_GRAPH_MAX_PAGES = 80
 SITE_GRAPH_DEPTH = 2
 
 
-def build_site_graph(url: str) -> str | None:
+def build_site_graph(url: str, polite: bool = False, delay: float = 0.0) -> str | None:
     """Run site_graph.py once and return the saved graph's path, or None.
 
     A failed graph never fails the report: the structure checkers then crawl
@@ -722,11 +722,10 @@ def build_site_graph(url: str) -> str | None:
     """
     fd, path = tempfile.mkstemp(prefix="site_graph_", suffix=".json")
     os.close(fd)
-    result = run_script(
-        "site_graph.py",
-        [url, "--max-pages", str(SITE_GRAPH_MAX_PAGES), "--depth", str(SITE_GRAPH_DEPTH), "--out", path],
-        timeout=_SCRIPT_TIMEOUT_CRAWL,
-    )
+    args = [url, "--max-pages", str(SITE_GRAPH_MAX_PAGES), "--depth", str(SITE_GRAPH_DEPTH), "--out", path]
+    if polite:
+        args += ["--workers", "1", "--delay", str(delay)]
+    result = run_script("site_graph.py", args, timeout=_SCRIPT_TIMEOUT_CRAWL * (3 if polite else 1))
     if result.get("error") or not os.path.exists(path) or os.path.getsize(path) == 0:
         print(f"  ⚠️ site_graph.py: {result.get('error') or 'no graph written'} — structure checks will crawl individually")
         if os.path.exists(path):
@@ -735,9 +734,99 @@ def build_site_graph(url: str) -> str | None:
     return path
 
 
+# --quick runs only the checks that read one page or one file (robots.txt, headers,
+# sitemap) and skips every crawl, PageSpeed and the backlink sample. A quick run
+# is a snapshot, never a Health Score: the skipped checks carry about a third of
+# the weight, so its number is not comparable with a full run's.
+QUICK_SKIPPED_CHECKS = (
+    "broken_links", "internal_links", "pagespeed", "link_profile", "duplicate_content",
+    "programmatic_seo", "page_types", "navigation", "architecture", "article",
+)
+QUICK_SKIP_REASON = "skipped by --quick (homepage checks only)"
+
+# ---------------------------------------------------------------------------
+# Throttling: a site that answers HTTP 429 (Too Many Requests) mid-run poisons
+# the checks that hit it. Their findings then describe the refusal, not the
+# site, and the score moves (a live audit read 85 throttled, 93 when re-run
+# politely). Any check that saw a 429 from the audited site is discarded and
+# listed, never scored on partial data.
+# ---------------------------------------------------------------------------
+
+THROTTLE_STATUS = 429
+_THROTTLE_TEXT = re.compile(r"\bHTTP\s*429\b|\b429\s+(?:Client Error|Too Many Requests)\b|\bToo Many Requests\b",
+                            re.IGNORECASE)
+_STATUS_KEY = re.compile(r"(?:^|_)(?:status|status_code|http_status|code)$", re.IGNORECASE)
+# Google API quotas, not the audited site: PageSpeed and Search Console have their own hints.
+THROTTLE_IGNORED_CHECKS = ("pagespeed", "search_performance")
+# Checks that read the shared site graph inherit its throttling.
+GRAPH_CHECKS = ("internal_links", "page_types", "navigation", "architecture", "sitemap")
+POLITE_DELAY_DEFAULT = 2.0
+
+
+def _is_throttle_status(key, value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value == THROTTLE_STATUS \
+        and bool(_STATUS_KEY.search(str(key)))
+
+
+def count_throttle_signals(value) -> int:
+    """How many 429 responses a script's output reports.
+
+    A record (dict) counts once when a status field is 429 or one of its own
+    strings says so ("HTTP 429", "Too Many Requests"), so a failed fetch listed
+    with both a status and an error message is one refusal, not two.
+    """
+    if isinstance(value, dict):
+        own = any(_is_throttle_status(k, v) or (isinstance(v, str) and _THROTTLE_TEXT.search(v))
+                  for k, v in value.items())
+        return int(own) + sum(count_throttle_signals(v) for v in value.values() if isinstance(v, (dict, list)))
+    if isinstance(value, list):
+        return sum(count_throttle_signals(v) for v in value)
+    if isinstance(value, str):
+        return int(bool(_THROTTLE_TEXT.search(value)))
+    return 0
+
+
+def graph_throttle_count(graph_path) -> int:
+    """429s among the site graph's failed fetches."""
+    if not graph_path or not os.path.exists(graph_path):
+        return 0
+    try:
+        with open(graph_path, encoding="utf-8") as fh:
+            failed = (json.load(fh).get("crawl") or {}).get("failed") or []
+    except (OSError, ValueError, AttributeError):
+        return 0
+    return count_throttle_signals(failed)
+
+
+def discard_throttled(data: dict, graph_hits: int = 0) -> dict:
+    """Replace every section that saw a 429 with an unmeasured stub; return {check: 429 count}."""
+    hits = {}
+    for name, section in data["sections"].items():
+        if name in THROTTLE_IGNORED_CHECKS or not isinstance(section, dict) or section.get("skipped"):
+            continue
+        n = count_throttle_signals(section)
+        if n:
+            hits[name] = n
+    if graph_hits:
+        for name in GRAPH_CHECKS:
+            if name in data["sections"] and not (data["sections"][name] or {}).get("skipped"):
+                hits[name] = hits.get(name, 0) + graph_hits
+    for name, n in hits.items():
+        data["sections"][name] = {
+            "error": f"the site answered HTTP 429 (Too Many Requests) {n} time(s); results discarded",
+            "measured": False,
+            "throttled": True,
+        }
+    data["throttled"] = dict(sorted(hits.items()))
+    return data["throttled"]
+
+
 def collect_data(
     url: str,
     *,
+    quick: bool = False,
+    polite: bool = False,
+    delay: float = POLITE_DELAY_DEFAULT,
     crawl_deep: bool = False,
     crawl_max_pages: int = 30,
     crawl_depth: int = 2,
@@ -765,7 +854,11 @@ def collect_data(
         "crawl_max_pages": crawl_max_pages,
         "crawl_depth": crawl_depth,
         "render_mode": render,
+        "scope": "quick" if quick else "full",
+        "polite": polite,
     }
+    if polite:
+        print(f"  🐢 --polite: one check at a time, {delay:g} s between crawl requests, one worker per crawler.")
 
     # Fetch page for parse_html and readability
     print("  ⏳ Fetching page HTML...")
@@ -787,13 +880,13 @@ def collect_data(
             page_html = ""
     data["environment"] = detect_environment(page_html, url)
 
-    broken_args = [url, "--workers", "5", "--timeout", "8"]
+    broken_args = [url, "--workers", "1" if polite else "5", "--timeout", "8"]
     if crawl_deep:
         broken_args.extend(
             ["--crawl", "--depth", str(crawl_depth), "--max-pages", str(crawl_max_pages)]
         )
 
-    canonical_args = [url]
+    canonical_args = [url] + (["--workers", "1"] if polite else [])
     if crawl_deep:
         canonical_args.extend(
             ["--crawl", "--depth", str(crawl_depth), "--max-pages", str(crawl_max_pages)]
@@ -802,8 +895,14 @@ def collect_data(
     # One shared crawl for the site-structure checks (page types, navigation,
     # architecture, sitemap reconciliation). Built before the parallel batch,
     # like html_path; if it fails the three checkers crawl for themselves.
-    print("  ⏳ Building site graph (one crawl, up to %d pages)..." % SITE_GRAPH_MAX_PAGES)
-    graph_path = build_site_graph(url)
+    if quick:
+        print("  ⚡ --quick: homepage checks only; no crawl, PageSpeed or backlink sample.")
+        graph_path = None
+        graph_hits = 0
+    else:
+        print("  ⏳ Building site graph (one crawl, up to %d pages)..." % SITE_GRAPH_MAX_PAGES)
+        graph_path = build_site_graph(url, polite=True, delay=delay) if polite else build_site_graph(url)
+    graph_hits = graph_throttle_count(graph_path)
     sitemap_args = [url]
     if graph_path:
         sitemap_args += ["--lastmod", "--no-page-dates", "--structure", "--reconcile", graph_path]
@@ -851,6 +950,11 @@ def collect_data(
         for name in PAGE_LEVEL_CHECKS:
             data["sections"][name] = {"error": page_error, "measured": False}
 
+    if quick:
+        analyses = [item for item in analyses if item[0] not in QUICK_SKIPPED_CHECKS]
+        for name in QUICK_SKIPPED_CHECKS:
+            data["sections"].setdefault(name, {"error": QUICK_SKIP_REASON, "measured": False, "skipped": True})
+
     # Merge HTML-file-based checks into the same parallel batch.
     # html_path is already written to disk at this point, so all tasks are
     # ready to run concurrently.
@@ -872,8 +976,9 @@ def collect_data(
         elapsed = round(time.time() - start, 1)
         return name, script, result, elapsed
 
-    print(f"  ⏳ Running {len(analyses)} checks in parallel (max {_MAX_PARALLEL_SCRIPTS} workers)...")
-    with ThreadPoolExecutor(max_workers=_MAX_PARALLEL_SCRIPTS) as pool:
+    workers = 1 if polite else _MAX_PARALLEL_SCRIPTS
+    print(f"  ⏳ Running {len(analyses)} checks (max {workers} at a time)...")
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(_run_one, item): item for item in analyses}
         for fut in as_completed(futures):
             name, script, result, elapsed = fut.result()
@@ -891,6 +996,11 @@ def collect_data(
             op["canonical"] = c
             op["canonical_from_audit"] = True
             data["sections"]["onpage"] = op
+
+    throttled = discard_throttled(data, graph_hits)
+    if throttled:
+        print(f"  ⚠️  The site answered HTTP 429 (Too Many Requests) to: {', '.join(throttled)}. "
+              "Those results are discarded; wait 1-2 minutes and re-run with --polite.")
 
     # Cleanup temp files
     if html_path and os.path.exists(html_path):
@@ -1509,6 +1619,14 @@ def build_action_plan(issues: list, scores: dict) -> dict:
     return plan
 
 
+def _quick_skipped(data: dict, scores: dict) -> list:
+    """Weighted checks a --quick run left out on purpose, in weight order."""
+    if data.get("scope") != "quick":
+        return []
+    return [k for k in scores.get("unmeasured") or []
+            if isinstance(data["sections"].get(k), dict) and data["sections"][k].get("skipped")]
+
+
 def build_open_questions(data: dict, scores: dict, issues: list) -> list:
     """What the run could not see: unmeasured checks, then data-gap findings.
 
@@ -1517,7 +1635,32 @@ def build_open_questions(data: dict, scores: dict, issues: list) -> list:
     """
     questions = []
     weights = scores.get("weights") or {}
+    skipped = _quick_skipped(data, scores)
+    if skipped:
+        questions.append({
+            "id": "Q-quick",
+            "check": "quick",
+            "question": f"Quick run: {len(skipped)} weighted checks were skipped ({', '.join(skipped)}).",
+            "why": "--quick reads the homepage and site files only; it does not crawl.",
+            "close": "Run the report without --quick for the Health Score and these checks.",
+            "unlocks": f"{sum(weights.get(k) or 0 for k in skipped)} points of weight",
+        })
+    throttled = data.get("throttled") or {}
+    if throttled:
+        questions.append({
+            "id": "Q-throttled",
+            "check": "throttled",
+            "question": (f"The site answered HTTP 429 (Too Many Requests) to {len(throttled)} check(s): "
+                         f"{', '.join(throttled)}. Their results were discarded."),
+            "why": "The server rate-limited the audit, so those checks saw refusals, not the site.",
+            "close": "Wait 1-2 minutes, then re-run with --polite (one check at a time, a delay between "
+                     "crawl requests). Never run two crawls of the same site at once.",
+            "unlocks": (f"{sum(weights.get(k) or 0 for k in throttled)} points of weight"
+                        if any(weights.get(k) for k in throttled) else None),
+        })
     for key in scores.get("unmeasured") or []:
+        if key in skipped or key in throttled:
+            continue
         section = _source_section(data["sections"], key)
         error = section.get("error") if isinstance(section, dict) else None
         label = CHECK_LABELS.get(key, key)
@@ -1606,6 +1749,10 @@ def build_summary(data: dict, scores: dict) -> dict:
             group: {k: v for k, v in entry.items() if not k.startswith("_")}
             for group, entry in group_scores(scores).items()
         },
+        "scope": data.get("scope") or "full",
+        "skipped": _quick_skipped(data, scores),
+        "throttled": sorted(data.get("throttled") or {}),
+        "polite": bool(data.get("polite")),
         "measured_categories": scores.get("measured_categories"),
         "unmeasured": scores.get("unmeasured", []),
         "categories": categories,
@@ -1740,11 +1887,16 @@ def evaluate_gate(summary: dict, fail_under=None, fail_on=None) -> dict:
             reasons.append(f"{len(hits)} finding(s) at or above {fail_on}: {listed}")
     if fail_under is not None:
         measured = summary.get("measured_categories") or 0
+        throttled = summary.get("throttled") or []
         if measured < MIN_MEASURED_FOR_GATE:
             inconclusive = (
                 f"only {measured} weighted check(s) were measured (need {MIN_MEASURED_FOR_GATE}); "
                 f"unmeasured: {', '.join(summary.get('unmeasured') or []) or 'none'}"
             )
+        elif throttled:
+            # The site refused the audit machine; the score left those checks out and is not comparable.
+            inconclusive = (f"the site answered HTTP 429 to {', '.join(throttled)}; "
+                            "re-run with --polite before judging the score")
         elif summary["overall"] < fail_under:
             reasons.append(f"overall score {summary['overall']} is below --fail-under {fail_under}")
     if reasons:
@@ -1777,6 +1929,127 @@ def github_annotations(summary: dict) -> list:
         message = finding["finding"] + (f" Fix: {finding['fix']}" if finding.get("fix") else "")
         lines.append(f"::{level} title={title}::{_escape_command_data(message)}")
     return lines
+
+
+# ---------------------------------------------------------------------------
+# Audit digest: the short Markdown view of the summary an agent reads first.
+#
+# A full summary.json runs 30-50 KB (8-12k tokens). The digest carries what
+# the agent needs to write the audit and work the action plan, in about a
+# tenth of that; the agent opens the JSON only to read one finding's detail.
+# Every line is derived from the summary, so the two can never disagree.
+# ---------------------------------------------------------------------------
+
+DIGEST_MAX_FINDINGS = 15
+_DIGEST_FIELD_CHARS = 240
+
+
+def _digest_text(value, limit: int = _DIGEST_FIELD_CHARS) -> str:
+    """One line of site-controlled text: newlines and pipes flattened, long text cut."""
+    text = " ".join(str(value or "").split()).replace("|", "/")
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def build_digest(summary: dict, max_findings: int = DIGEST_MAX_FINDINGS) -> str:
+    """A compact Markdown digest of one ``--json`` summary.
+
+    Info findings are counted and listed by ID only; every other finding gets
+    one line, most severe first, up to ``max_findings``. The score line follows
+    the evidence rule: below MIN_MEASURED_FOR_GATE measured checks it says
+    "not scored", never a number.
+    """
+    findings = [f for f in summary.get("findings") or [] if isinstance(f, dict)]
+    measured = summary.get("measured_categories") or 0
+    unmeasured = summary.get("unmeasured") or []
+    lines = [f"# Audit digest: {_digest_text(summary.get('url'), 200)}", ""]
+    lines.append(f"Run {summary.get('timestamp') or 'unknown'} · summary schema {summary.get('schema_version')}")
+    skipped = summary.get("skipped") or []
+    if summary.get("scope") == "quick":
+        lines.append(f"Quick check: {summary.get('overall')}/100 from {measured} homepage checks. "
+                     "This is NOT a Health Score: never report it as one. "
+                     "Run without --quick for the Health Score.")
+    elif summary.get("overall") is None or measured < MIN_MEASURED_FOR_GATE:
+        lines.append(f"Health Score: not scored (only {measured} weighted checks measured; "
+                     f"at least {MIN_MEASURED_FOR_GATE} are needed)")
+    else:
+        lines.append(f"Health Score: {summary['overall']}/100 ({summary.get('grade')}) "
+                     f"from {measured} measured checks")
+    throttled = summary.get("throttled") or []
+    if throttled:
+        lines.append(f"⚠ THROTTLED: the site answered HTTP 429 to {', '.join(throttled)}. Those results were "
+                     "discarded and are not in the score. Re-run with --polite before trusting this audit.")
+    if skipped:
+        lines.append(f"Skipped by --quick: {', '.join(skipped)}")
+    failed = [k for k in unmeasured if k not in skipped and k not in throttled]
+    if failed:
+        lines.append(f"Not measured (left out of the score): {', '.join(failed)}")
+    if summary.get("render_warning"):
+        lines.append(f"Render warning: {_digest_text(summary['render_warning'])}")
+
+    groups = summary.get("group_scores") or {}
+    if groups:
+        lines += ["", "## Groups"]
+        for entry in groups.values():
+            score = entry.get("score")
+            shown = f"{score}" if score is not None else "-"
+            lines.append(f"- {entry.get('label')}: {shown} · {entry.get('status')} · {entry.get('share')}% of score")
+
+    counts = summary.get("counts") or {}
+    lines += ["", "## Findings",
+              "Counts: " + ", ".join(f"{sev} {counts.get(sev, 0)}" for sev in SEVERITY_SCALE)]
+    rank = {sev: i for i, sev in enumerate(SEVERITY_SCALE)}
+    ranked = sorted((f for f in findings if f.get("severity") != "info"),
+                    key=lambda f: rank.get(f.get("severity"), len(rank)))
+    for f in ranked[:max_findings]:
+        tags = " · ".join(t for t in (f.get("severity"), f.get("lane"), f.get("kind")) if t)
+        line = f"- {f.get('id')} [{tags}] {f.get('section')}: {_digest_text(f.get('finding'))}"
+        if f.get("fix"):
+            line += f" Fix: {_digest_text(f['fix'])}"
+        traffic = traffic_text(f.get("traffic_at_stake"))
+        if traffic:
+            line += f" Traffic: {_digest_text(traffic, 160)}"
+        if f.get("status"):
+            line += f" ({f['status']})"
+        lines.append(line)
+    if len(ranked) > max_findings:
+        lines.append(f"- … {len(ranked) - max_findings} more non-info findings: "
+                     + ", ".join(str(f.get("id")) for f in ranked[max_findings:]))
+    info = [f for f in findings if f.get("severity") == "info"]
+    if info:
+        lines.append(f"- Info ({len(info)}): " + ", ".join(str(f.get("id")) for f in info))
+
+    plan = summary.get("action_plan") or {}
+    if any(plan.values()):
+        lines += ["", "## Action plan (work in this order)"]
+        for lane in LANES:
+            ids = plan.get(lane) or []
+            if ids:
+                lines.append(f"- {lane}: {', '.join(ids)}")
+
+    questions = summary.get("open_questions") or []
+    if questions:
+        lines += ["", "## Open questions (missing data, not findings)"]
+        for q in questions:
+            line = f"- {q.get('id')}: {_digest_text(q.get('question'))}"
+            if q.get("close"):
+                line += f" Close it: {_digest_text(q['close'])}"
+            lines.append(line)
+
+    previous = summary.get("previous")
+    if previous:
+        delta = previous.get("score_delta")
+        lines += ["", f"## Since {previous.get('timestamp') or 'the previous run'}",
+                  f"Score change: {delta:+d}" if isinstance(delta, int) else "Score change: not comparable",
+                  ", ".join(f"{name.replace('_', ' ')} {len(previous.get(name) or [])}"
+                            for name in ("resolved", "new", "persisting", "not_rechecked"))]
+
+    gate = summary.get("gate") or {}
+    if gate.get("result") not in (None, "not set"):
+        lines += ["", f"Gate: {gate['result']}"] + [f"- {_digest_text(r)}" for r in gate.get("reasons") or []]
+
+    lines += ["", "Detail for any finding (evidence, impact, falsifiability, traffic): look up its id in the "
+              "JSON summary's findings list."]
+    return "\n".join(lines) + "\n"
 
 
 # ---------------------------------------------------------------------------
@@ -4170,10 +4443,28 @@ def main():
     parser.add_argument("url", help="Website URL to analyze")
     parser.add_argument("--output", "-o", help="Output filename (default: seo-report-<domain>.<ext>)")
     parser.add_argument(
-        "--format", "-f", dest="fmt", default="html",
+        "--format", "-f", dest="fmt", default=None,
         choices=["html", "xlsx", "pdf", "all", "none"],
         help="Output format: html (default), xlsx (Excel), pdf (WeasyPrint), all (HTML + XLSX), "
              "none (no report file; use with --json in CI)",
+    )
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="Homepage checks only (no crawl, PageSpeed or backlink sample): a fast snapshot, not a "
+             "Health Score. Best with --format none --digest -",
+    )
+    parser.add_argument(
+        "--polite",
+        action="store_true",
+        help="For sites that rate-limit (HTTP 429): run one check at a time, one worker per crawler, "
+             f"and wait --delay seconds between crawl requests (default {POLITE_DELAY_DEFAULT:g}). Slower",
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        metavar="SECONDS",
+        help=f"With --polite: seconds between crawl requests (default {POLITE_DELAY_DEFAULT:g}); implies --polite",
     )
     parser.add_argument(
         "--crawl-deep",
@@ -4205,6 +4496,20 @@ def main():
         metavar="PATH",
         help="Write a machine-readable summary (schema_version 2) to PATH; - writes it to stdout "
              "and sends progress to stderr",
+    )
+    parser.add_argument(
+        "--digest",
+        metavar="PATH",
+        help="Write a compact Markdown digest of the summary (score, groups, top findings, action plan, "
+             "open questions) to PATH; - writes it to stdout. Agents read this first, then the --json "
+             "summary only for one finding's detail",
+    )
+    parser.add_argument(
+        "--digest-max-findings",
+        type=int,
+        default=DIGEST_MAX_FINDINGS,
+        metavar="N",
+        help=f"With --digest: non-info findings listed in full (default: {DIGEST_MAX_FINDINGS})",
     )
     parser.add_argument(
         "--fail-under",
@@ -4268,15 +4573,39 @@ def main():
     report_options = {"prepared_for": args.prepared_for, "prepared_by": args.prepared_by, "accent": args.accent}
     if args.fail_under is not None and not 0 <= args.fail_under <= 100:
         parser.error("--fail-under must be between 0 and 100")
+    if args.quick:
+        # A quick run is a snapshot for the agent, not a client report: no HTML/XLSX/PDF, whose
+        # masthead would title its number "Health Score". With no output named, print the digest.
+        if args.fmt not in (None, "none"):
+            parser.error("--quick writes no report file (its number is not a Health Score); "
+                         "use --digest and/or --json, or drop --quick")
+        args.fmt = "none"
+        if not args.json and not args.digest and not args.github_annotations:
+            args.digest = "-"
+    elif args.fmt is None:
+        args.fmt = "html"
+    if args.delay is not None:
+        if not 0 <= args.delay <= 30:
+            parser.error("--delay must be between 0 and 30 seconds")
+        args.polite = True
+    if args.quick and args.crawl_deep:
+        parser.error("--quick skips every crawl; drop --crawl-deep or --quick")
+    if args.quick and args.fail_under is not None:
+        parser.error("--fail-under gates on the Health Score, which a --quick run does not produce; use --fail-on")
     if args.json == "-" and args.github_annotations:
         parser.error("--json - and --github-annotations both write to stdout; write the JSON to a file")
+    if args.digest == "-" and (args.json == "-" or args.github_annotations):
+        parser.error("--digest - shares stdout with --json - or --github-annotations; write one of them to a file")
     domain = urlparse(args.url).netloc.replace(".", "_")
     real_stdout = sys.stdout
-    if args.json == "-":
+    if "-" in (args.json, args.digest):
         sys.stdout = sys.stderr
 
     data = collect_data(
         args.url,
+        quick=args.quick,
+        polite=args.polite,
+        delay=POLITE_DELAY_DEFAULT if args.delay is None else args.delay,
         crawl_deep=args.crawl_deep,
         crawl_max_pages=max(1, args.crawl_max_pages),
         crawl_depth=max(1, args.crawl_depth),
@@ -4332,9 +4661,19 @@ def main():
             if result:
                 print(f"✅ PDF report saved to: {os.path.abspath(result)}")
 
-    print(f"   Overall Score: {scores['overall']}/100")
-    if scores.get("unmeasured"):
-        print(f"   Unmeasured (left out of the score): {', '.join(scores['unmeasured'])}")
+    if data.get("scope") == "quick":
+        print(f"   Quick check: {scores['overall']}/100 (homepage checks only; not a Health Score)")
+    else:
+        print(f"   Overall Score: {scores['overall']}/100")
+    skipped = summary.get("skipped") or []
+    throttled = summary.get("throttled") or []
+    if throttled:
+        print(f"   ⚠️  Throttled (HTTP 429, discarded): {', '.join(throttled)}. Re-run with --polite.")
+    if skipped:
+        print(f"   Skipped by --quick: {', '.join(skipped)}")
+    failed = [k for k in scores.get("unmeasured") or [] if k not in skipped and k not in throttled]
+    if failed:
+        print(f"   Unmeasured (left out of the score): {', '.join(failed)}")
 
     gate = evaluate_gate(summary, args.fail_under, args.fail_on)
     summary["gate"] = {"fail_under": args.fail_under, "fail_on": args.fail_on, **gate}
@@ -4344,6 +4683,8 @@ def main():
             print(f"     - {reason}")
 
     sys.stdout = real_stdout
+    # When stdout carries the JSON or the digest, file notices go to stderr so it stays parseable.
+    notice = sys.stderr if "-" in (args.json, args.digest) else sys.stdout
     if args.json:
         text = json.dumps(summary, indent=2, ensure_ascii=False)
         if args.json == "-":
@@ -4354,7 +4695,18 @@ def main():
                 os.makedirs(out_dir, exist_ok=True)
             with open(args.json, "w", encoding="utf-8") as f:
                 f.write(text + "\n")
-            print(f"✅ JSON summary saved to: {os.path.abspath(args.json)}")
+            print(f"✅ JSON summary saved to: {os.path.abspath(args.json)}", file=notice)
+    if args.digest:
+        digest = build_digest(summary, max(0, args.digest_max_findings))
+        if args.digest == "-":
+            print(digest, end="")
+        else:
+            out_dir = os.path.dirname(args.digest)
+            if out_dir:
+                os.makedirs(out_dir, exist_ok=True)
+            with open(args.digest, "w", encoding="utf-8") as f:
+                f.write(digest)
+            print(f"✅ Audit digest saved to: {os.path.abspath(args.digest)}", file=notice)
     if args.github_annotations:
         for line in github_annotations(summary):
             print(line)

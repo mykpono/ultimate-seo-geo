@@ -73,18 +73,37 @@ def test_documented_scripts_exist():
     assert not missing, "documented commands reference scripts that do not exist:\n  " + "\n  ".join(sorted(missing))
 
 
+# brief.py runs another script: its own flags come first, then the wrapped script and that
+# script's flags. Check each part against the script that reads it.
+WRAPPED = re.compile(r"^((?:\s+--[\w-]+(?:\s+[^\s-][^\s]*)?)*)\s+([\w-]+\.py)(.*)$")
+
+
+def _split_wrapped(script, args):
+    if script != "brief.py":
+        return [(script, args)]
+    m = WRAPPED.match(args)
+    return [(script, m.group(1)), (m.group(2), m.group(3))] if m else [(script, args)]
+
+
 def test_documented_flags_are_accepted_by_the_script():
     """Every `--flag` in a documented command must be declared by that script."""
     bad = []
-    for doc, line, script, args in _iter_invocations():
-        src = _script_source(script)
-        if src is None:
-            continue
-        declared = set(re.findall(r'"(--[\w-]+)"', src)) | set(re.findall(r"'(--[\w-]+)'", src))
-        for flag in re.findall(r"(?<![\w-])(--[\w-]+)", args):
-            if flag not in declared:
-                bad.append(f"{doc}:{line} -> {script} does not accept {flag}")
+    for doc, line, outer, outer_args in _iter_invocations():
+        for script, args in _split_wrapped(outer, outer_args):
+            src = _script_source(script)
+            if src is None:
+                continue
+            declared = set(re.findall(r'"(--[\w-]+)"', src)) | set(re.findall(r"'(--[\w-]+)'", src))
+            for flag in re.findall(r"(?<![\w-])(--[\w-]+)", args):
+                if flag not in declared:
+                    bad.append(f"{doc}:{line} -> {script} does not accept {flag}")
     assert not bad, "documented commands use flags the script does not declare:\n  " + "\n  ".join(bad)
+
+
+def test_brief_invocations_are_split_into_wrapper_and_wrapped_script():
+    assert _split_wrapped("brief.py", " --max-items 5 internal_links.py https://ex.com --json") == [
+        ("brief.py", " --max-items 5"), ("internal_links.py", " https://ex.com --json")]
+    assert _split_wrapped("robots_checker.py", " https://ex.com --json") == [("robots_checker.py", " https://ex.com --json")]
 
 
 def test_documented_choice_values_are_valid():

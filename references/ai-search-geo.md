@@ -1,9 +1,9 @@
-<!-- Updated: 2026-10-01 | Review: 2027-04-01 -->
+<!-- Updated: 2026-11-25 | Review: 2027-05-01 -->
 
 # GEO Signals & AI Search Optimization Reference
-## Updated: October 2026
+## Updated: November 2026
 
-**Contents:** 2026 AI Search Landscape · GEO Health Score · Citability Signals · Structural Readability · Authority & Brand Signals · Technical Accessibility · Multi-Modal Content · Platform-Specific Optimization · GEO Quick Wins · Brand Facts Page · Brand Mention Strategy · Wikipedia & Wikidata Entity Setup · Passage Indexing Optimization · DataForSEO MCP Integration · GEO Error Handling
+**Contents:** 2026 AI Search Landscape · Google's Own Guidance · Query Fan-Out · GEO Health Score · Citability Signals · Structural Readability · Authority & Brand Signals · Technical Accessibility · Multi-Modal Content · Platform-Specific Optimization · GEO Quick Wins · Brand Facts Page · Brand Mention Strategy · Wikipedia & Wikidata Entity Setup · Passage Indexing Optimization · DataForSEO MCP Integration · GEO Error Handling
 
 ---
 
@@ -20,6 +20,48 @@
 **AI-referred sessions grew 527% year-over-year** (Jan–May 2025, SparkToro/Previsible).
 
 **Platform citation overlap**: Only 11–13.7% of domains cited by both ChatGPT and Google AI Overviews for the same query. AI Mode and AI Overviews share only 13.7% URL overlap — they are functionally separate citation engines requiring distinct optimization. Platform-specific optimization is essential.
+
+---
+
+## Google's Own Guidance (primary source)
+
+Google's [Optimizing your website for generative AI features on Google Search](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) (Search Central, 2026) is the source to cite for anything about AI Overviews and AI Mode. What it says, checked 2026-11-25:
+
+- **It is still SEO.** Optimizing for generative AI search is optimizing for search; AEO and GEO are named as other labels for the same work.
+- **Nothing special is required.** No llms.txt or other "special" markup, no new machine-readable files, no special schema.org type, no chunking content into small pieces, no "ideal" page length, no writing differently for AI. llms.txt made for other services neither harms nor helps in Google Search.
+- **Structured data is not required** for generative AI features; it stays worth using for rich-result eligibility.
+- **Eligibility:** the page must be indexed and eligible to show a snippet, and the guide says the site must be included in the "Search generative AI features" setting in Search Console. Indexing and serving are not guaranteed.
+- **What it asks for:** non-commodity content (a distinct point of view, first-hand experience, expert takes), crawlable and indexable pages, semantic HTML, sound JavaScript SEO, less duplicate content, supporting images and video, Merchant Center feeds for retailers and a Business Profile for local businesses.
+- **What it warns against:** inauthentic "mentions" across the web, tools that promise ranking success or claim internal Google metrics, and pages made at scale for fan-out queries (scaled content abuse; see § 19 rule 10c).
+- **Measurement:** the Search Console Generative AI performance report (AI features in Search and Discover). It has no API; see `references/analytics-reporting.md`.
+
+When a third-party claim about Google AI features conflicts with this page, the page wins.
+
+---
+
+## Query Fan-Out
+
+AI search answers one question by running several. Google defines fan-out as a set of concurrent, related queries the model generates to fetch more results; for "how to fix a lawn that's full of weeds" one sub-query might be "best herbicides for lawns". Retrieval then uses the normal ranking systems, so a page is cited for a question mostly by ranking for its sub-queries.
+
+**What ChatGPT's fan-out looks like** (Ahrefs, [15 million fan-out queries](https://ahrefs.com/blog/query-fan-out-chatgpt/), Aug–Sep 2026, one model, logged-out free responses):
+
+| Finding | Figure |
+|---|---|
+| Responses that ran fan-out queries | 14.4%, about 1.6 sub-queries each |
+| Sub-queries using `site:` | 6.8%; of the most common `site:` targets, 75.9% were brand sites |
+| English sub-queries containing "official" | 13.1% in September (10.1% in August) |
+| Sub-queries about price | 6.0% → 8.9% of sub-queries in one month |
+| Factual questions citing at least one official source | 84.4% (comparison questions: 68.3%) |
+
+The pattern: ChatGPT increasingly looks for the brand's own page for facts, prices and specs, and prefers original sources over summaries.
+
+**Fan-out mapping (in an audit or content plan):**
+1. For each priority query, list the sub-queries an engine is likely to run: the definition, price, specs or features, comparisons and alternatives, "official" or brand-scoped checks, and the main how-to step.
+2. For each sub-query, find the page on the site that answers it and check that the answer is in the page text, near the top of its section, with the figure or fact stated plainly.
+3. A missing answer is a content gap on an existing page: add it there. Prices, plans, specs and company facts belong on the brand's own site in crawlable HTML, because that is what brand-scoped sub-queries look for.
+4. **Never** propose one page per sub-query. Google names pages made for fan-out queries as scaled content abuse.
+
+Report fan-out coverage as a judgment (Assisted lane); no script measures it.
 
 ---
 
@@ -44,13 +86,13 @@ Different AI platforms prioritize different GEO dimensions. Use this matrix to a
 |---|---|---|---|---|---|
 | **Google AI Overviews** | Critical (44.2% of citations in first 30%) | High — question-based H2/H3 | High — entity signals matter | Essential — SEO foundational | Moderate — images boost |
 | **Google AI Mode** | High — deep, comprehensive | Critical — multi-turn requires clarity | High — expertise signals | Essential — server-side rendering | High — images + video |
-| **ChatGPT Search** | High — quotable facts | Moderate — less structured | Critical — 3× more important than backlinks; Wikipedia/Reddit favored | Essential — Allow OAI-SearchBot | Moderate |
+| **ChatGPT Search** | High — quotable facts | Moderate — less structured | Critical — official/primary sources increasingly favored (Reddit citations −88% Mar–Sep 2026) | Essential — Allow OAI-SearchBot | Moderate |
 | **Perplexity** | Critical — factual, data-driven | High — Q&A format, definitive opens | High — brand mentions tracked | Essential — Allow PerplexityBot | Moderate — GA trackable |
 | **Bing Copilot** | High | Moderate | Moderate | Essential — IndexNow, HTTPS | Moderate |
 
 **Key Takeaways**:
 - **If optimizing for all platforms**: Prioritize Citability (25%) and Technical Accessibility (20%) universally
-- **If ChatGPT Search is priority**: Over-invest in Authority & Brand (Wikipedia, Reddit, LinkedIn presence)
+- **If ChatGPT Search is priority**: Be the primary source: facts, prices and specs on the brand's own pages (see Query Fan-Out), then third-party presence
 - **If Google AI Mode is priority**: Over-invest in Structural Readability and Multi-Modal content
 - **If Perplexity is priority**: Focus on Citability with fresh data and trackable Authority signals
 
@@ -129,6 +171,8 @@ Content under 3 months old receives approximately **3x the AI citation rate** co
 **48% of all AI citations** come from user-generated/community sources (Reddit, LinkedIn, Wikipedia, YouTube, arXiv).
 
 **<20% of brands** achieve both frequent mentions AND consistent citations (the "Mention-Source Divide").
+
+**2026 shift on ChatGPT:** Ahrefs Brand Radar (US, 2.4–3.8M answers a month) found the share of ChatGPT answers citing Reddit fell from about 1 in 5 in March 2026 to 1 in 43 by late September (−88%), and Wikipedia from 1 in 7 to 1 in 35 (−80%), while official sources such as PubMed and the FDA rose. Treat the correlations above as older, cross-engine data. Reddit participation is still worth doing where the audience is, but do not sell it as the main ChatGPT lever; being the original source is.
 
 ### Brand Mention Channels (Priority Order)
 1. **YouTube** — create video content; get mentioned in others' videos
@@ -415,7 +459,8 @@ never a defect.
 - Images and video inputs supported (multi-modal input)
 
 ### ChatGPT Search
-- Citations heavily favor Wikipedia (47.9%), Reddit (11.3%), and LinkedIn
+- Citations moved toward official and original sources in 2026: Reddit fell from ~1 in 5 answers to 1 in 43 and Wikipedia from 1 in 7 to 1 in 35 (Mar–Sep 2026, Ahrefs Brand Radar). Older figures (Wikipedia 47.9%, Reddit 11.3%) are out of date
+- Brand-scoped fan-out queries (`site:brand.com`, "official") look for the brand's own page; see Query Fan-Out
 - No referral traffic header — cannot track via GA
 - Brand mentions and entity strength matter more than traditional SEO
 - Content freshness: update within 2 months for 28% more citations
@@ -481,7 +526,7 @@ Ahrefs/75k brand study: brand mention correlation with AI citations = **0.664** 
 | **LinkedIn articles** | Medium | Thought leadership from author profiles |
 | **G2, Trustpilot, Capterra** | Medium | Third-party review profiles |
 
-For each channel with zero presence, create a plan to establish it. YouTube and Reddit drive the highest AI citation correlation — prioritize first.
+For each channel with zero presence, create a plan to establish it. YouTube and Reddit had the highest correlation in older cross-engine data; for ChatGPT in 2026, Reddit citations fell sharply (see Authority & Brand Signals), so put the brand's own fact, pricing and spec pages first.
 
 ## Wikipedia & Wikidata Entity Setup (Full Steps)
 
@@ -683,4 +728,4 @@ Some pages carry text written for AI crawlers and assistants rather than readers
 | No llms.txt found | **Not a finding for Google** — Google Search ignores llms.txt (June 2026), so absence costs nothing and presence earns nothing. Do not score it and do not raise it unscoped. Offer a generated template only if the user has named a non-Google AI engine as a target. |
 | No structured data detected | Report the gap and provide specific schema recommendations (Article, Organization, Person) for AI discoverability. |
 | Content is JS-rendered only | Flag that AI crawlers cannot execute JavaScript. Recommend SSR or pre-rendering. Test raw HTML vs. rendered DOM. |
-| Brand has zero external platform presence | Prioritize YouTube and Reddit first (highest correlation). Provide a 30-day brand mention launch plan. |
+| Brand has zero external platform presence | First make the brand's own site the primary source (facts, prices, specs in crawlable HTML), then YouTube and the community where the audience is. Provide a 30-day brand mention launch plan. |

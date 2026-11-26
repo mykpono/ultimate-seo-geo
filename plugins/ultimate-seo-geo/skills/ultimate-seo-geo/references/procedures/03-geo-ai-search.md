@@ -4,6 +4,8 @@
 
 GEO = getting content cited by AI engines: Google AI Overviews, AI Mode, ChatGPT Search, Perplexity.
 
+**Primary source for Google:** Google's own guide says optimizing for AI features is still SEO and needs no llms.txt, special schema or chunking (`references/ai-search-geo.md` → Google's Own Guidance). Cite it rather than third-party claims.
+
 ### GEO Quick Check (run first — 5 yes/no questions)
 
 | # | Question | If No → Action |
@@ -12,7 +14,7 @@ GEO = getting content cited by AI engines: Google AI Overviews, AI Mode, ChatGPT
 | 2 | Does the page answer its target query in the first 60 words? | Move key answer to opening paragraph |
 | 3 | Is page content present in raw HTML (not JS-rendered only)? | Implement SSR or pre-rendering |
 | 4 | Does the page have a named author with credentials and a publication date? | Add author bio + date to every key page |
-| 5 | Is the brand mentioned on YouTube or Reddit? | Start a presence on the missing platform |
+| 5 | Do the brand's own pages state its facts, prices and specs in crawlable text? | Add them: brand-scoped fan-out queries look for the official page first |
 
 Any "No" = fix before deeper analysis. All "Yes" → proceed to full GEO Score.
 
@@ -30,9 +32,10 @@ For 2026 platform reach and traffic signal data, see `references/ai-search-geo.m
    - **Visible-HTML parity for FAQ answers.** Answer text present in JSON-LD but absent from the rendered HTML is a specific instance of this: the markup satisfies a parser while the user and the AI crawler see nothing. `scripts/parse_html.py` and `scripts/article_seo.py` flag this at High on fetched pages. Treat it as a Citability deduction, not a schema error.
    - **Hidden instructions to AI systems.** Run `scripts/hidden_instructions.py` on key pages; the full report runs it on the audited page. Instruction-like text hidden from visitors is Critical. It is either a compromise to clean up or spam under Google's policy on manipulating generative AI responses. See `references/ai-search-geo.md` → Hidden Instructions to AI Systems.
 5. **Check preferred sources (publisher sites only)** — Run `scripts/preferred_sources_checker.py`. Since the Top Stories carousel went live inside AI Overviews (July 17, 2026), a reader's preferred sources can surface in AI answers on developing-news queries — the only AI-visibility lever the reader controls. Selection is **host-level**: a publication in a subdirectory is structurally ineligible. Report at Info; **skip entirely** on sites that publish no dated news-style content. See `references/ai-search-geo.md` → Preferred Sources.
-6. **Audit brand signals** — Search brand on YouTube, Reddit, Wikipedia. Missing platforms = highest-priority targets. See `references/ai-search-geo.md` for correlation data and Wikipedia/Wikidata setup.
-7. **Test AI citation presence** — Measure it as a rate, not a single search: AI answers change between runs. Run a fixed set of 10–30 user-phrased prompts at least 5 times per engine, in fresh sessions. Record whether the site was cited and which domains were, then score the runs with `scripts/citation_sampling.py` (95% Wilson intervals). Report an "inconsistent" result as needing more runs, and never call a change real when the intervals overlap. With the answers pasted into the `answer` column, `--facts brand.json` also checks them for wrong brand facts (founding year, HQ, founders, prices, claims) and names the page to correct. Method: `references/ai-search-geo.md` → Measuring AI Citation Presence.
-8. **Output GEO Score** using component weights below.
+6. **Map query fan-out** — For the priority queries, list the likely sub-queries (price, specs, comparisons, "official", how-to) and check that a page on the site answers each in its text. Gaps are content to add to existing pages, never one new page per sub-query (scaled content abuse). See `references/ai-search-geo.md` → Query Fan-Out.
+7. **Audit brand signals** — Search the brand on YouTube, Reddit, Wikipedia and review sites. ChatGPT's Reddit and Wikipedia citations fell sharply in 2026 while official sources rose, so a missing platform is a target, not automatically the top priority. See `references/ai-search-geo.md` for the data and Wikipedia/Wikidata setup.
+8. **Test AI citation presence** — Measure it as a rate, not a single search: AI answers change between runs. Run a fixed set of 10–30 user-phrased prompts at least 5 times per engine, in fresh sessions. Record whether the site was cited and which domains were, then score the runs with `scripts/citation_sampling.py` (95% Wilson intervals). Report an "inconsistent" result as needing more runs, and never call a change real when the intervals overlap. With the answers pasted into the `answer` column, `--facts brand.json` also checks them for wrong brand facts (founding year, HQ, founders, prices, claims) and names the page to correct. Method: `references/ai-search-geo.md` → Measuring AI Citation Presence.
+9. **Output GEO Score** using component weights below.
 
 ### GEO Score Components
 

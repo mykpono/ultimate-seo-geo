@@ -7,6 +7,7 @@ Each major automated check has a **script** you can run alone (usually with `--j
 | Audit area | SKILL § | Script | CLI example |
 |------------|---------|--------|-------------|
 | Full bundled report | §2, §21 | `generate_report.py` | `python scripts/generate_report.py https://example.com -o report.html` |
+| Short view of any one script's output (full output saved to a file) | §21 | `brief.py` | `python scripts/brief.py internal_links.py https://example.com --json` |
 | CI gate on the full report (JSON summary, exit codes) | §21, §22 | `generate_report.py` | `python scripts/generate_report.py URL --format none --json summary.json --fail-under 70 --fail-on critical` |
 | Monthly re-run with the delta since last time | §21 | `generate_report.py` | `python scripts/generate_report.py URL --json summary.json --previous last-month.json` |
 | Robots.txt + AI crawlers | §4, §3 | `robots_checker.py` | `python scripts/robots_checker.py URL --json` |

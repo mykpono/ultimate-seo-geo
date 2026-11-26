@@ -1,5 +1,107 @@
 # Changelog
 
+## [1.23.0] - 2026-11-25
+
+A full audit costs far fewer tokens. Before this release a Mode 1 audit read six instruction files
+(about 89 KB) and then a 30–50 KB `summary.json`, so roughly 30k tokens went in before any analysis
+started. Minor per D-020: new capabilities (`--digest`, `--quick`, `--polite`, `brief.py`, 429 detection, a GitHub Action), a CI context budget, and a restructured audit path; the score,
+findings and summary JSON are unchanged.
+
+### Added
+- **`generate_report.py --digest PATH`** writes a short Markdown digest of the summary: Health Score
+  (or "not scored" below 5 measured checks), group scores, counts, one line per non-info finding
+  (ID, severity, lane, kind, fix, traffic at stake), info findings by ID, the action plan by lane,
+  open questions, and the change since `--previous`. It is built from the summary, never re-scored.
+  On two real audits it was 5.3 KB against a 43.8 KB summary and 3.8 KB against 30.4 KB.
+  `--digest-max-findings N` (default 15) caps the full lines and lists the rest by ID, so nothing is
+  dropped silently. `--digest -` prints to stdout with progress on stderr. Site text is flattened to
+  one line and cut at 240 characters, so a page title cannot add headings or lines to the digest.
+- **`generate_report.py --quick`** runs only the checks that read the homepage or a site file
+  (robots.txt, headers, sitemap, schema, on-page, entity, AI access): no crawl, PageSpeed or
+  backlink sample. With no other output named it prints the digest, so `generate_report.py URL
+  --quick` is a one-command snapshot. Its number is labelled "Quick check … NOT a Health Score"
+  everywhere: the summary carries `"scope": "quick"` and a `skipped` list, the ten skipped checks
+  become one open question (`Q-quick`) instead of ten, no HTML/XLSX/PDF is written (their masthead
+  says "Health Score"), `--fail-under` and `--crawl-deep` are refused, and `report_lint.py` errors
+  (`quick-score`) on a report that gives a `/100` from a quick summary.
+- **Rate-limited sites no longer poison the audit.** A check whose output reports an HTTP 429
+  (Too Many Requests) from the audited site is discarded: unmeasured, out of the score, its findings
+  dropped, and listed under `"throttled"` in the summary. Checks reading the shared site graph inherit
+  its 429s. The digest opens with `⚠ THROTTLED`, the console warns, the checks are one open question
+  (`Q-throttled`), and a `--fail-under` gate is inconclusive (exit 3) rather than a fail. PageSpeed and
+  Search Console quota errors are not counted. On the summary of a real throttled run (85/100, 93 when
+  re-run politely) the detector flags exactly the three checks that hit 429s, and nothing on its clean
+  re-run or on eleven live outputs, including a 3.4 MB site graph.
+- **`generate_report.py --polite` and `--delay SECONDS`** for sites that rate-limit: one check at a
+  time, one worker for `site_graph.py`, `broken_links.py` and `canonical_checker.py`, and a delay
+  (default 2 s) between site-graph requests. `--delay` alone implies `--polite`.
+- **A GitHub Action.** `uses: mykpono/ultimate-seo-geo@v1.23.0` runs the audit, writes the
+  digest to the job summary, prints findings as annotations, and fails the build on `fail-under`
+  or `fail-on`. An inconclusive gate (fewer than 5 checks measured, or HTTP 429) warns by default;
+  `inconclusive: fail` makes it fail. `quick` cannot be combined with `fail-under` or `report`,
+  because a quick check is not a Health Score. Outputs: `score`, `result`, `summary-path`,
+  `digest-path`, `report-path`, `exit-code`. Inputs reach `scripts/github_action.py` (CI-only, not
+  in the plugin) as environment variables, never through the shell, and a test fails if any
+  `${{ }}` expression appears in a `run:` line of the action or its examples.
+  `.github/workflows/action-smoke.yml` runs the action from the repository (`uses: ./`) on
+  pull requests that change it.
+- **Ready-to-copy workflows** in `examples/github-actions/`: `seo-gate.yml` fails a pull request on
+  critical findings on staging; `seo-monitor.yml` audits the live site weekly, compares with last
+  week's summary, keeps the HTML report, and opens an issue when the gate fails.
+- **README: "What an Audit Returns"** with a real quick-check digest of example.com, and a
+  "GitHub Action and Scheduled Monitoring" section.
+- **A context budget, checked in CI.** `scripts/context_budget.py` (maintainer tool, not in the
+  plugin) reads `SKILL.md`'s routing table and reports the bytes and approximate tokens each route
+  makes an agent read. `tests/test_context_budget.py` fails when a route passes its ceiling in
+  `tests/context_budget.json` (about 10% above today's sizes; a full audit is 33.9 KB against 38 KB),
+  when `SKILL.md` passes 16 KB, when a route names a missing file, or when the digest of a
+  500-finding run passes 12 KB. Growing a route means raising its ceiling on purpose in that PR.
+- **`scripts/brief.py`** runs any one audit script, saves its full output to a file, and prints a
+  short view: lists cut to 8 items, strings to 300 characters, maps keyed by URL or path cut like
+  lists, deep nesting folded. Every cut says how much it left out, and the script's exit code
+  passes through. Only scripts in `scripts/` can be run, by file name. On a live 30-page crawl,
+  `site_graph.py --json` printed 3.4 MB and its short view 26 KB; `internal_links.py` went from
+  10.9 KB to 5.6 KB and `broken_links.py` from 8.7 KB to 4.8 KB. Most other scripts already print
+  under 4 KB and pass through almost unchanged.
+
+### Changed
+- **The skill now says "AEO" and "AI search" where people look for it.** The `SKILL.md`
+  description, the plugin and marketplace descriptions, the README headline, `GEMINI.md` and the
+  Custom GPT instructions name GEO "also called AEO (answer engine optimization)" and list AI Mode.
+  The plugin keywords add `aeo`, `answer-engine-optimization`, `generative-engine-optimization`
+  and `ai-overviews`. Routing sends "AEO", "AI visibility" and "answer engine optimization"
+  requests to § 3. A bare "AEO" goes to § 3 first, then to § 7c for featured-snippet formatting.
+- **AI search guidance refreshed against primary sources (checked 2026-11-25).**
+  - `references/ai-search-geo.md` cites Google's own guide to generative AI features: still SEO, no
+    llms.txt, special schema or chunking needed, and pages made for fan-out queries count as scaled
+    content abuse.
+  - A new Query Fan-Out section covers Google's definition, Ahrefs' study of 15 million ChatGPT
+    fan-out queries, and a mapping method that fills gaps on existing pages rather than adding a
+    page per sub-query. § 3 gains a fan-out step, and its quick check now asks whether the brand's
+    own pages state its facts, prices and specs.
+  - The Reddit advice is rewritten. ChatGPT answers citing Reddit fell from about 1 in 5 to 1 in 43
+    between March and September 2026, and those citing Wikipedia from 1 in 7 to 1 in 35, while
+    official sources rose. Being the original source now comes first, and the older 47.9% and
+    11.3% citation shares are marked out of date.
+  - § 24 E-commerce gains a ChatGPT product feed section from OpenAI's feed spec: setup, required
+    fields, value formats, the search and checkout flags, and how to audit feed and page agreement.
+  - The update timeline adds the September 2026 spam update, the November 2026 core update
+    (10 Nov to about 24 Nov) and the December 2026 core update entry listed on 24 Nov.
+  - The analytics reference flags the Search Console logging errors that lowered Generative AI
+    report impressions on 9–11 Nov and 13–17 Aug 2026.
+  - The May 2026 core update is corrected to 21 May – 2 Jun in two files, which had given it as
+    completed on 21 May.
+- **One file for a full audit.** `references/procedures/02-full-site-audit.md` is now the whole
+  Mode 1 playbook. It runs `generate_report.py` with `--digest`, reads the digest first, and ends
+  with the ten judgment checks from § 19 that `report_lint.py` cannot make. The script toolbox
+  (§ 21), the script matrix, § 19 and the thinking framework are opened only for a script run on
+  its own or a rule's full wording. Instructions read for an audit drop from about 89 KB to about
+  33 KB (`SKILL.md` plus § 2).
+- **`SKILL.md` is shorter (about 20 KB to 14 KB).** Its two routing tables are one table, the mode
+  decision tree is a paragraph, and the procedure index is a single line. `SKILL.md` loads on every
+  use of the skill, so this saving applies to every task, not only audits.
+- `AGENTS.md` and § 21 give the audit command with `--digest`.
+
 ## [1.22.1] - 2026-10-01
 
 The skill's files no longer name client or personal projects. Patch per D-020: wording, test data

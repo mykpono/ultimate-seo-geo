@@ -225,12 +225,17 @@ These ranges are for orientation. With Search Console access, judge a query agai
 
 | Update | Dates | Notes |
 |---|---|---|
-| **August 2026 spam update** | Aug 18–21, 2026 | Global, all languages. Most recent update of any kind |
+| **December 2026 core update** | Listed Nov 24, 2026 | On the dashboard as an information entry with no duration yet (checked 2026-11-25). Check its status before attributing late-November changes to it |
+| **November 2026 core update** | Nov 10 – ~Nov 24, 2026 | Dashboard duration 13 days 20 hours. Global, all languages |
+| **September 2026 spam update** | Sep 24 – ~Oct 8, 2026 | Dashboard duration 13 days 16 hours |
+| **August 2026 spam update** | Aug 18–21, 2026 | Global, all languages |
 | **June 2026 spam update** | Jun 24–26, 2026 | First enforcement pass after the May 15 AI-manipulation policy change |
-| **May 2026 core update** | May 21 – Jun 2, 2026 | **The most recent core update.** There was no core update in July or August 2026 |
+| **May 2026 core update** | May 21 – Jun 2, 2026 | There was no core update in July–October 2026 |
 | **March 2026 core update** | Mar 27 – Apr 8, 2026 | |
 | **March 2026 spam update** | Mar 24, 2026 | |
 | **February 2026 Discover update** | Feb 5–27, 2026 | |
+
+**Search Console data anomalies** (Google's [data anomalies](https://support.google.com/webmasters/answer/6211453) page): a logging error lowered impressions in the Generative AI performance report for **Nov 9–11, 2026**, and for **Aug 13–17, 2026** (later restored). These affect reporting only, not rankings: exclude those days before reading a trend from that report. Google advises waiting at least a week after an update completes before comparing Search Console data.
 
 **Do not attribute a traffic change to an update that is not on the dashboard.** If a client reports a
 drop and no confirmed update covers the window, it is unconfirmed volatility or a site-side cause —

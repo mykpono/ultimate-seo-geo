@@ -12,7 +12,7 @@ This table routes by **topic**. For mode selection (Audit vs. Plan vs. Execute),
 |---|---|---|
 | **Full Audit** | "audit", "analyze my site", "full check", "site review" | § 2 Full Audit |
 | **Traffic Drop / Rankings Lost** | "traffic dropped", "lost rankings", "rankings fell", "why did traffic drop", "core update", "algorithm update", "rankings dropped" | § 10 Analytics first, then § 4 Technical / § 6 Content |
-| **GEO / AI Search** | "AI Overviews", "ChatGPT", "Perplexity", "AI citations", "GEO", "AI Mode", "SearchGPT", "Gemini", "llms.txt", "AI search" | § 3 GEO |
+| **GEO / AI Search** | "AI Overviews", "ChatGPT", "Perplexity", "AI citations", "GEO", "AI Mode", "SearchGPT", "Gemini", "llms.txt", "AI search", "AI visibility", "AEO for AI answers", "answer engine optimization" | § 3 GEO |
 | **Technical SEO** | "crawl", "robots.txt", "Core Web Vitals", "speed", "indexing", "JS rendering", "mobile", "mobile-friendly", "HTTPS", "security headers", "redirect chain" | § 4 Technical |
 | **Schema / Structured Data** | "schema", "JSON-LD", "rich results", "structured data" | § 5 Schema |
 | **Content / E-E-A-T** | "content quality", "E-E-A-T", "thin content", "helpful content", "CORE-EEAT" | § 6 Content |
@@ -21,7 +21,7 @@ This table routes by **topic**. For mode selection (Audit vs. Plan vs. Execute),
 | **Content Pruning / Refresh** | "old content", "content decay", "delete pages", "refresh", "consolidate" | § 6b Pruning |
 | **Keyword Research** | "keywords", "ranking opportunities", "content gaps", "what should I write" | § 7 Keywords |
 | **Topic Clusters** | "topic cluster", "content strategy", "pillar page" | § 7b Clusters |
-| **AEO / Featured Snippets** | "featured snippet", "PAA", "voice search", "knowledge panel", "speakable" | § 7c AEO |
+| **AEO / Featured Snippets** | "featured snippet", "PAA", "voice search", "knowledge panel", "speakable" | § 7c AEO. "AEO" alone usually means AI answers: § 3 first, then § 7c for snippet formatting |
 | **Competitor Analysis** | "competitors", "benchmark", "compare to", "X vs Y page", "alternatives page" | § 8 Competitors |
 | **Link Building** | "backlinks", "internal links", "anchor text", "referring domains" | § 9 Links |
 | **Analytics / Reporting** | "GA4", "Search Console", "CTR", "rank tracking", "penalty", "manual action" | § 10 Analytics |

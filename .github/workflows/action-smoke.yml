@@ -1,0 +1,43 @@
+name: Action smoke test
+
+on:
+  pull_request:
+    paths:
+      - 'action.yml'
+      - 'scripts/github_action.py'
+      - 'scripts/generate_report.py'
+      - 'requirements.txt'
+      - '.github/workflows/action-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quick:
+    name: Run the action (quick check, no gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit example.com through the action
+        id: seo
+        uses: ./
+        with:
+          url: https://example.com/
+          quick: true
+          annotations: false
+
+      - name: Check the outputs
+        shell: bash
+        env:
+          SCORE: ${{ steps.seo.outputs.score }}
+          RESULT: ${{ steps.seo.outputs.result }}
+          DIGEST: ${{ steps.seo.outputs.digest-path }}
+          SUMMARY: ${{ steps.seo.outputs.summary-path }}
+        run: |
+          echo "score=$SCORE result=$RESULT"
+          test "$RESULT" = "not set"
+          case "$SCORE" in *"not a Health Score"*) ;; *) echo "quick score is not labelled"; exit 1 ;; esac
+          grep -q "Quick check:" "$DIGEST"
+          python -c "import json,sys; assert json.load(open(sys.argv[1]))['scope'] == 'quick'" "$SUMMARY"

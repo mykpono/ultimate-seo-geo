@@ -18,7 +18,7 @@ E-E-A-T = **E**xperience, **E**xpertise, **A**uthoritativeness, **T**rustworthin
 
 > **E-E-A-T now applies to ALL competitive queries, not just YMYL.**
 
-The December 2025 core update extended E-E-A-T evaluation to virtually all competitive queries, made author attribution standards tighter across ALL categories (not just health/finance), and penalized anonymous or generic authorship even for non-YMYL content. The May 2026 core update (completed May 21, 2026) continued this trajectory.
+The December 2025 core update extended E-E-A-T evaluation to virtually all competitive queries, made author attribution standards tighter across ALL categories (not just health/finance), and penalized anonymous or generic authorship even for non-YMYL content. The May 2026 core update (May 21 – June 2, 2026) continued this trajectory.
 
 **Key takeaway:** Even entertainment and lifestyle content now requires demonstrated expertise. Generic content no longer ranks — regardless of topical category.
 

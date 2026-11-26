@@ -139,6 +139,8 @@ CI fails if root skill/references/scripts/evals disagree with the plugin tree or
 
 **Audit script map:** `references/audit-script-matrix.md` (each automated step ↔ script). **Dependencies:** after `pip install -r requirements.txt`, `python3 scripts/requirements-check.py` should print OK. **Eval fixtures:** `python3 scripts/score_eval_transcript.py --all-fixtures` (exit 0). **Smoke all tools (truncated JSON):** `bash scripts/run_individual_checks.sh https://example.com` (starts with requirements check).
 
+**Context budget:** `python3 scripts/context_budget.py` prints what each `SKILL.md` route makes an agent read (SKILL.md plus the files its Read column names, in bytes and approximate tokens); `--check` exits 1 when a route passes its ceiling in `tests/context_budget.json`. `tests/test_context_budget.py` runs the same check in CI. If a change has to grow a route, raise its ceiling in the same PR and say why in the PR body.
+
 > **Eval growth rule:** Every bug fixed in SKILL.md must have a corresponding new eval fixture (assertion) before the fix merges. No exceptions. Target: suite grows from 10 → 25 scenarios over 6 months, driven by real failures — no dedicated sprint required. See `_local/strategy-directives/monthly-review-template.md` for the review cadence.
 
 ---
